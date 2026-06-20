@@ -1,0 +1,151 @@
+// ============================================================================
+//  Esquema de base de datos — Sistema de Actividad de Publicadores "Ocoa"
+//  ORM: Prisma · Motor: SQLite (desarrollo) — migrable a PostgreSQL (producción)
+//
+//  Nota: SQLite no soporta `enum` en Prisma, por lo que los campos de tipo
+//  enumerado (rol, estado, sexo) se guardan como String y se validan en la
+//  capa de aplicación mediante Zod y las constantes de `src/lib/constants.ts`.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ----------------------------------------------------------------------------
+//  USUARIOS  (Secretario, Superintendente, Auxiliar)
+// ----------------------------------------------------------------------------
+model User {
+  id           String  @id @default(cuid())
+  username     String  @unique
+  passwordHash String
+  name         String
+  role         String // SECRETARIO | SUPERINTENDENTE | AUXILIAR
+
+  // Secretario => groupId nulo (acceso total).
+  // Superintendente/Auxiliar => vinculado a UN grupo.
+  // Modelar la asignación por groupId+role permite "designar temporalmente"
+  // a otro usuario en el grupo sin perder el historial.
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  active             Boolean @default(true)
+  mustChangePassword Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones inversas
+  statusChanges    StatusChange[]  @relation("StatusChangedBy")
+  reportsSubmitted MonthlyReport[] @relation("ReportSubmittedBy")
+  auditLogs        AuditLog[]
+
+  @@index([groupId])
+  @@index([role])
+}
+
+// ----------------------------------------------------------------------------
+//  GRUPOS DE SERVICIO
+// ----------------------------------------------------------------------------
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  publishers Publisher[]
+}
+
+// ----------------------------------------------------------------------------
+//  PUBLICADORES
+// ----------------------------------------------------------------------------
+model Publisher {
+  id          String    @id @default(cuid())
+  fullName    String
+  sex         String? // M | F  (opcional)
+  birthDate   DateTime? // opcional
+  baptismDate DateTime? // si aplica
+  status      String // ver PUBLISHER_STATUSES en constants.ts
+  active      Boolean   @default(true)
+
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statusChanges StatusChange[]
+  reports       MonthlyReport[]
+
+  @@index([groupId])
+  @@index([status])
+}
+
+// ----------------------------------------------------------------------------
+//  HISTORIAL DE CAMBIOS DE ESTADO DE UN PUBLICADOR
+// ----------------------------------------------------------------------------
+model StatusChange {
+  id          String    @id @default(cuid())
+  publisherId String
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  status      String
+  changedAt   DateTime  @default(now())
+
+  changedById String?
+  changedBy   User?   @relation("StatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([publisherId])
+}
+
+// ----------------------------------------------------------------------------
+//  INFORMES MENSUALES  (un registro por publicador / año / mes)
+// ----------------------------------------------------------------------------
+model MonthlyReport {
+  id          String    @id @default(cuid())
+  publisherId String
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+
+  year  Int // ej. 2026
+  month Int // 1..12
+
+  participated Boolean @default(false) // participó en la predicación (Sí/No)
+  bibleStudies Int     @default(0) // cantidad de cursos bíblicos
+  hours        Int? // horas de predicación — solo precursores
+
+  // Estado del publicador en el momento del informe (para estadísticas históricas
+  // fiables aunque el estado cambie después).
+  statusAtReport String
+
+  submittedById String?
+  submittedBy   User?   @relation("ReportSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([publisherId, year, month])
+  @@index([year, month])
+}
+
+// ----------------------------------------------------------------------------
+//  REGISTRO DE AUDITORÍA
+// ----------------------------------------------------------------------------
+model AuditLog {
+  id       String  @id @default(cuid())
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action   String // CREAR | EDITAR | ELIMINAR | INGRESAR_SESION | REINICIAR_DATOS ...
+  entity   String // Grupo | Usuario | Publicador | Informe ...
+  entityId String?
+  details  String? // texto/JSON con el detalle del cambio
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity])
+}
