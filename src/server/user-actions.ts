@@ -99,10 +99,9 @@ export async function updateUserAction(
   const target = await prisma.user.findUnique({ where: { id: data.id } });
   if (!target) return { error: "Usuario no encontrado." };
 
-  // No permitir que el Secretario se desactive a sí mismo (se quedaría fuera).
-  if (target.id === actor.id && !data.active) {
-    return { error: "No puedes desactivar tu propia cuenta." };
-  }
+  // El usuario no puede desactivarse a sí mismo (se quedaría fuera): su cuenta
+  // se mantiene siempre activa al editar su propia ficha.
+  const active = target.id === actor.id ? true : (data.active ?? true);
 
   // Username único (excepto el propio).
   const dup = await prisma.user.findFirst({
@@ -123,7 +122,7 @@ export async function updateUserAction(
       username: data.username,
       role: data.role,
       groupId,
-      active: data.active ?? true,
+      active,
       // Si se ingresó una nueva contraseña, se restablece y se obliga a cambiarla.
       ...(data.newPassword
         ? {
