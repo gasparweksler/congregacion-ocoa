@@ -2,18 +2,24 @@
 
 /* ==========================================================================
    Tema de la aplicación "Ocoa"
-   Paleta serena y profesional: azul pizarra + acento índigo/esmeralda.
-   Se fuerza tema claro para máxima legibilidad en una herramienta de gestión.
+   Inspiración de estilo: limpio, espacioso y editorial (referencia jw.org),
+   con identidad propia en verde-petróleo (teal). Tema claro forzado para
+   máxima legibilidad en una herramienta de gestión.
    ========================================================================== */
 
 :root {
-  --background: #f1f5f9; /* slate-100 */
+  --background: #f3f5f6; /* gris muy claro y neutro */
   --surface: #ffffff;
-  --foreground: #0f172a; /* slate-900 */
-  --muted: #64748b; /* slate-500 */
-  --border: #e2e8f0; /* slate-200 */
-  --primary: #4f46e5; /* indigo-600 */
-  --primary-hover: #4338ca; /* indigo-700 */
+  --foreground: #142523; /* casi negro con matiz teal */
+  --muted: #5d6e6c; /* gris-teal para texto secundario */
+  --border: #e4e9e9;
+
+  --primary: #0f766e; /* teal-700 */
+  --primary-hover: #115e59; /* teal-800 */
+
+  /* Bloque de marca para la navegación (teal muy oscuro) */
+  --brand: #0c2e2b;
+  --brand-2: #134e48; /* tono intermedio para degradados */
 }
 
 @theme inline {
@@ -23,6 +29,8 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-primary: var(--primary);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -36,6 +44,14 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Títulos con un poco más de carácter (estilo editorial) */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
 }
 
 /* Mejoras de accesibilidad: foco visible y consistente */

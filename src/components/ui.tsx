@@ -19,7 +19,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-surface shadow-sm",
+        "rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,40,38,0.04),0_10px_30px_-18px_rgba(16,40,38,0.25)]",
         className,
       )}
     >
@@ -40,7 +40,9 @@ export function CardHeader({
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
       <div>
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        <h2 className="text-base font-semibold tracking-tight text-foreground">
+          {title}
+        </h2>
         {description ? (
           <p className="mt-0.5 text-sm text-muted">{description}</p>
         ) : null}
@@ -64,10 +66,10 @@ export function CardBody({
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-white hover:bg-[var(--primary-hover)] focus-visible:outline-primary",
+    "bg-primary text-white shadow-sm hover:bg-[var(--primary-hover)] focus-visible:outline-primary",
   secondary:
     "bg-white text-foreground border border-border hover:bg-slate-50",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  danger: "bg-red-600 text-white shadow-sm hover:bg-red-700",
   ghost: "text-foreground hover:bg-slate-100",
 };
 
@@ -83,7 +85,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         buttonVariants[variant],
         className,
       )}
@@ -107,7 +109,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
         buttonVariants[variant],
         className,
       )}
@@ -139,7 +141,7 @@ export function Label({
 }
 
 const fieldClasses =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-slate-50";
+  "w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:bg-slate-50";
 
 export const Input = React.forwardRef<
   HTMLInputElement,
