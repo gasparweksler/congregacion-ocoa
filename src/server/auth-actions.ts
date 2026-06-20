@@ -77,6 +77,7 @@ export async function changePasswordAction(
     where: { id: user.id },
     data: {
       passwordHash: await hashPassword(parsed.data.newPassword),
+      plainPassword: parsed.data.newPassword,
       mustChangePassword: false,
     },
   });

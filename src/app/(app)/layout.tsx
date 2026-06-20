@@ -47,6 +47,7 @@ export default async function AppLayout({
   const secretaryItems: NavItem[] = [
     { href: "/grupos", label: "Grupos", icon: "🗂️" },
     { href: "/usuarios", label: "Usuarios", icon: "🔑" },
+    { href: "/credenciales", label: "Ver Credenciales", icon: "👁️" },
     { href: "/exportar", label: "Exportar", icon: "⬇️" },
     { href: "/auditoria", label: "Auditoría", icon: "🛡️" },
   ];

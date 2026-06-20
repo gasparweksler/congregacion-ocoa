@@ -24,6 +24,10 @@ model User {
   id           String  @id @default(cuid())
   username     String  @unique
   passwordHash String
+  // Copia recuperable de la contraseña, solo para que el Secretario pueda
+  // consultarla desde "Ver Credenciales" (protegida por pregunta de seguridad).
+  // Se actualiza al crear el usuario y cada vez que se cambia la contraseña.
+  plainPassword String?
   name         String
   role         String // SECRETARIO | SUPERINTENDENTE | AUXILIAR
 

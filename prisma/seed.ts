@@ -30,6 +30,7 @@ async function main() {
       username: secUser,
       name: secName,
       passwordHash: await hash(secPass),
+      plainPassword: secPass,
       role: "SECRETARIO",
       mustChangePassword: true, // se le pedirá cambiarla al primer ingreso
     },
@@ -53,6 +54,7 @@ async function main() {
       username: "super1",
       name: "Superintendente de Demostración",
       passwordHash: await hash("Ocoa2026"),
+      plainPassword: "Ocoa2026",
       role: "SUPERINTENDENTE",
       groupId: grupo.id,
       mustChangePassword: true,
@@ -63,6 +65,7 @@ async function main() {
       username: "aux1",
       name: "Auxiliar de Demostración",
       passwordHash: await hash("Ocoa2026"),
+      plainPassword: "Ocoa2026",
       role: "AUXILIAR",
       groupId: grupo.id,
       mustChangePassword: true,

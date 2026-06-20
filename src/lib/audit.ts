@@ -14,7 +14,8 @@ export type AuditAction =
   | "INGRESAR_SESION"
   | "CAMBIAR_PASSWORD"
   | "REINICIAR_DATOS"
-  | "EXPORTAR";
+  | "EXPORTAR"
+  | "VER_CREDENCIALES";
 
 export async function logAudit(params: {
   userId?: string | null;

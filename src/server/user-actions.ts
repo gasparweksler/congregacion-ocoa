@@ -57,6 +57,7 @@ export async function createUserAction(
       name: data.name,
       username: data.username,
       passwordHash: await hashPassword(data.password),
+      plainPassword: data.password,
       role: data.role,
       groupId,
       mustChangePassword: data.mustChangePassword ?? false,
@@ -127,6 +128,7 @@ export async function updateUserAction(
       ...(data.newPassword
         ? {
             passwordHash: await hashPassword(data.newPassword),
+            plainPassword: data.newPassword,
             mustChangePassword: true,
           }
         : {}),
