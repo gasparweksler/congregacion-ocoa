@@ -64,12 +64,24 @@ export function ReportsForm({
                 </div>
               </Td>
               <Td className="text-center">
-                <input
-                  type="checkbox"
-                  name={`p_${r.id}`}
-                  defaultChecked={r.participated}
-                  className="h-5 w-5 rounded border-border accent-[var(--primary)]"
-                />
+                <label className="inline-flex cursor-pointer select-none items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    name={`p_${r.id}`}
+                    defaultChecked={r.participated}
+                    className="peer sr-only"
+                  />
+                  <span
+                    aria-hidden
+                    className="relative h-6 w-11 rounded-full bg-slate-300 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-5"
+                  />
+                  <span className="inline w-6 text-left text-sm font-semibold text-muted peer-checked:hidden">
+                    No
+                  </span>
+                  <span className="hidden w-6 text-left text-sm font-semibold text-primary peer-checked:inline">
+                    Sí
+                  </span>
+                </label>
               </Td>
               <Td className="text-center">
                 <input
