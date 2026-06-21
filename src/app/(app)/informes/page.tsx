@@ -40,7 +40,13 @@ export default async function InformesPage({
       status: true,
       reports: {
         where: { year, month },
-        select: { participated: true, bibleStudies: true, hours: true },
+        select: {
+          participated: true,
+          bibleStudies: true,
+          hours: true,
+          auxiliaryPioneer: true,
+          comment: true,
+        },
       },
     },
   });
@@ -55,6 +61,8 @@ export default async function InformesPage({
       participated: r?.participated ?? false,
       bibleStudies: r?.bibleStudies ?? 0,
       hours: r?.hours ?? null,
+      auxiliaryPioneer: r?.auxiliaryPioneer ?? false,
+      comment: r?.comment ?? "",
     };
   });
 

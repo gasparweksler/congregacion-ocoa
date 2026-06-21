@@ -113,7 +113,7 @@ async function SecretaryDashboard({
         <CardHeader title="Accesos rápidos" />
         <CardBody className="flex flex-col gap-2">
           <LinkButton href="/informes" variant="primary">
-            📝 Cargar informes
+            📝 Subir informe
           </LinkButton>
           <LinkButton href="/grupos" variant="secondary">
             🗂️ Grupos
@@ -171,7 +171,7 @@ async function GroupDashboard({
                     href="/informes"
                     className="text-sm font-medium text-primary hover:underline"
                   >
-                    Cargar →
+                    Subir →
                   </Link>
                 </li>
               ))}
@@ -184,7 +184,7 @@ async function GroupDashboard({
         <CardHeader title="Accesos rápidos" />
         <CardBody className="flex flex-col gap-2">
           <LinkButton href="/informes" variant="primary">
-            📝 Cargar informes
+            📝 Subir informe
           </LinkButton>
           <LinkButton href="/publicadores" variant="secondary">
             👥 Publicadores

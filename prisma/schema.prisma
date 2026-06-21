@@ -120,7 +120,14 @@ model MonthlyReport {
 
   participated Boolean @default(false) // participó en la predicación (Sí/No)
   bibleStudies Int     @default(0) // cantidad de cursos bíblicos
-  hours        Int? // horas de predicación — solo precursores
+  hours        Int? // horas de predicación — precursores (regular o auxiliar del mes)
+
+  // Precursor Auxiliar para ESTE mes (aunque no lo sea de forma permanente).
+  // Cuando es true, el publicador reporta horas en este informe.
+  auxiliaryPioneer Boolean @default(false)
+
+  // Comentario opcional del informe (lo agrega quien carga el informe).
+  comment String?
 
   // Estado del publicador en el momento del informe (para estadísticas históricas
   // fiables aunque el estado cambie después).

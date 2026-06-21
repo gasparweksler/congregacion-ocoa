@@ -58,9 +58,12 @@ export async function saveReportsAction(
 
     const participated = formData.get(`p_${p.id}`) === "on";
     const bibleStudies = toInt(formData.get(`b_${p.id}`), 999);
-    const hours = isPioneer(p.status)
-      ? toInt(formData.get(`h_${p.id}`), 9999)
-      : null;
+    // Precursor Auxiliar para este mes (los precursores permanentes siempre).
+    const auxiliaryPioneer = formData.get(`aux_${p.id}`) === "on";
+    const reportsHours = isPioneer(p.status) || auxiliaryPioneer;
+    const hours = reportsHours ? toInt(formData.get(`h_${p.id}`), 9999) : null;
+    const commentRaw = String(formData.get(`c_${p.id}`) ?? "").trim();
+    const comment = commentRaw.length > 0 ? commentRaw.slice(0, 2000) : null;
 
     await prisma.monthlyReport.upsert({
       where: {
@@ -73,6 +76,8 @@ export async function saveReportsAction(
         participated,
         bibleStudies,
         hours,
+        auxiliaryPioneer,
+        comment,
         statusAtReport: p.status,
         submittedById: user.id,
       },
@@ -80,6 +85,8 @@ export async function saveReportsAction(
         participated,
         bibleStudies,
         hours,
+        auxiliaryPioneer,
+        comment,
         statusAtReport: p.status,
         submittedById: user.id,
       },
