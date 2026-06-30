@@ -145,6 +145,7 @@ export const MEETING_SECTION_LABELS: Record<string, string> = {
   SMM: "Seamos Mejores Maestros",
   VC: "Nuestra Vida Cristiana",
   ORACION_FINAL: "Oración Final",
+  RESPONSABILIDADES: "Responsabilidades",
   SAB_ASIGNACIONES: "Asignaciones",
   SAB_RESPONSABILIDADES: "Responsabilidades",
 };
@@ -172,6 +173,13 @@ export const JUEVES_SLOTS: MeetingSlot[] = [
   { key: "j_vc_conductor", label: "Conductor del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_vc_lector", label: "Lector del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_oracion_final", label: "Oración Final", section: "ORACION_FINAL", allowTwo: false },
+  // Responsabilidades (igual que el sábado), al final de la reunión.
+  { key: "j_microfono", label: "Pasa micrófono", section: "RESPONSABILIDADES", allowTwo: true },
+  { key: "j_acomodador_entrada", label: "Acomodador de entrada", section: "RESPONSABILIDADES", allowTwo: true },
+  { key: "j_acomodador_auditorio", label: "Acomodador de auditorio", section: "RESPONSABILIDADES", allowTwo: true },
+  { key: "j_sonido", label: "Sonido", section: "RESPONSABILIDADES", allowTwo: false },
+  { key: "j_video", label: "Video", section: "RESPONSABILIDADES", allowTwo: false },
+  { key: "j_plataforma", label: "Plataforma", section: "RESPONSABILIDADES", allowTwo: true },
 ];
 
 export const SABADO_SLOTS: MeetingSlot[] = [
@@ -202,6 +210,7 @@ export const JUEVES_SECTION_ORDER = [
   "SMM",
   "VC",
   "ORACION_FINAL",
+  "RESPONSABILIDADES",
 ];
 export const SABADO_SECTION_ORDER = ["SAB_ASIGNACIONES", "SAB_RESPONSABILIDADES"];
 
