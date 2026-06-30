@@ -140,6 +140,7 @@ export const MEETING_DAY_LABELS: Record<MeetingDay, string> = {
 
 /** Secciones (encabezados) dentro de una reunión. */
 export const MEETING_SECTION_LABELS: Record<string, string> = {
+  PRESIDENCIA: "Presidencia",
   ORACION_INICIO: "Oración de Inicio",
   TESOROS: "Tesoros de la Biblia",
   SMM: "Seamos Mejores Maestros",
@@ -164,6 +165,7 @@ export type MeetingSlot = {
 };
 
 export const JUEVES_SLOTS: MeetingSlot[] = [
+  { key: "j_presidente", label: "Presidente de la reunión", section: "PRESIDENCIA", allowTwo: false },
   { key: "j_oracion_inicio", label: "Oración de Inicio", section: "ORACION_INICIO", allowTwo: false },
   { key: "j_tesoros_discurso", label: "Discurso", section: "TESOROS", allowTwo: false },
   { key: "j_perlas", label: "Busquemos perlas escondidas", section: "TESOROS", allowTwo: false },
@@ -210,6 +212,7 @@ export function meetingDayLabel(day: string): string {
 
 /** Orden de aparición de las secciones por día. */
 export const JUEVES_SECTION_ORDER = [
+  "PRESIDENCIA",
   "ORACION_INICIO",
   "TESOROS",
   "SMM",
