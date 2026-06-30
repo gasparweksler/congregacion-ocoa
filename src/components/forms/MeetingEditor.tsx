@@ -91,11 +91,12 @@ export function MeetingEditor({
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
     return (
-      `Hola ${name} 👋\n\n` +
-      `Te asignaron: *${label}*\n` +
-      `Reunión: ${dayLabel} ${dateLabel}\n\n` +
-      `Por favor abre este enlace y confirma tu disponibilidad ` +
-      `(podrás elegir “Sí, confirmo” o “No podré”):\n${origin}/confirmar/${token}`
+      `Hola querido Hermano/a *${name}* 🤗\n\n` +
+      `Le comento que para la reunión del día 📅 *${dayLabel} ${dateLabel}* ` +
+      `tiene la siguiente asignación: 📋 *${label}*.\n\n` +
+      `Por favor, haga click en el siguiente enlace para confirmar o rechazar ` +
+      `la asignación. ¡Muchísimas gracias! 🙏😊\n\n` +
+      `👉 ${origin}/confirmar/${token}`
     );
   }
 
