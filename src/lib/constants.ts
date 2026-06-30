@@ -154,8 +154,13 @@ export type MeetingSlot = {
   key: string;
   label: string;
   section: string;
-  /** Permite asignar 2 hermanos (Responsable + Auxiliar). */
+  /** Permite asignar 2 hermanos. */
   allowTwo: boolean;
+  /**
+   * Si es true, los 2 hermanos son iguales (ambos responsables, sin distinción
+   * Responsable/Auxiliar). Ej.: pasar micrófono.
+   */
+  equalPair?: boolean;
 };
 
 export const JUEVES_SLOTS: MeetingSlot[] = [
@@ -174,24 +179,24 @@ export const JUEVES_SLOTS: MeetingSlot[] = [
   { key: "j_vc_lector", label: "Lector del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_oracion_final", label: "Oración Final", section: "ORACION_FINAL", allowTwo: false },
   // Responsabilidades (igual que el sábado), al final de la reunión.
-  { key: "j_microfono", label: "Pasa micrófono", section: "RESPONSABILIDADES", allowTwo: true },
-  { key: "j_acomodador_entrada", label: "Acomodador de entrada", section: "RESPONSABILIDADES", allowTwo: true },
-  { key: "j_acomodador_auditorio", label: "Acomodador de auditorio", section: "RESPONSABILIDADES", allowTwo: true },
+  { key: "j_microfono", label: "Pasa micrófono", section: "RESPONSABILIDADES", allowTwo: true, equalPair: true },
+  { key: "j_acomodador_entrada", label: "Acomodador de entrada", section: "RESPONSABILIDADES", allowTwo: false },
+  { key: "j_acomodador_auditorio", label: "Acomodador de auditorio", section: "RESPONSABILIDADES", allowTwo: false },
   { key: "j_sonido", label: "Sonido", section: "RESPONSABILIDADES", allowTwo: false },
   { key: "j_video", label: "Video", section: "RESPONSABILIDADES", allowTwo: false },
-  { key: "j_plataforma", label: "Plataforma", section: "RESPONSABILIDADES", allowTwo: true },
+  { key: "j_plataforma", label: "Plataforma", section: "RESPONSABILIDADES", allowTwo: false },
 ];
 
 export const SABADO_SLOTS: MeetingSlot[] = [
   { key: "s_oracion_inicio", label: "Oración de inicio", section: "SAB_ASIGNACIONES", allowTwo: false },
   { key: "s_lector_atalaya", label: "Lector de la Atalaya", section: "SAB_ASIGNACIONES", allowTwo: false },
   { key: "s_presidente", label: "Presidente de la Reunión", section: "SAB_ASIGNACIONES", allowTwo: false },
-  { key: "s_microfono", label: "Pasa micrófono", section: "SAB_RESPONSABILIDADES", allowTwo: true },
-  { key: "s_acomodador_entrada", label: "Acomodador de entrada", section: "SAB_RESPONSABILIDADES", allowTwo: true },
-  { key: "s_acomodador_auditorio", label: "Acomodador de auditorio", section: "SAB_RESPONSABILIDADES", allowTwo: true },
+  { key: "s_microfono", label: "Pasa micrófono", section: "SAB_RESPONSABILIDADES", allowTwo: true, equalPair: true },
+  { key: "s_acomodador_entrada", label: "Acomodador de entrada", section: "SAB_RESPONSABILIDADES", allowTwo: false },
+  { key: "s_acomodador_auditorio", label: "Acomodador de auditorio", section: "SAB_RESPONSABILIDADES", allowTwo: false },
   { key: "s_sonido", label: "Sonido", section: "SAB_RESPONSABILIDADES", allowTwo: false },
   { key: "s_video", label: "Video", section: "SAB_RESPONSABILIDADES", allowTwo: false },
-  { key: "s_plataforma", label: "Plataforma", section: "SAB_RESPONSABILIDADES", allowTwo: true },
+  { key: "s_plataforma", label: "Plataforma", section: "SAB_RESPONSABILIDADES", allowTwo: false },
 ];
 
 /** Devuelve las casillas (slots) de una reunión según el día. */

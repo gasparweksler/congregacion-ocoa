@@ -40,6 +40,9 @@ export default async function ReunionDetallePage({
   const allowTwoByKey = Object.fromEntries(
     slots.map((s) => [s.key, s.allowTwo]),
   );
+  const equalPairByKey = Object.fromEntries(
+    slots.map((s) => [s.key, !!s.equalPair]),
+  );
 
   const sectionOrder =
     meeting.day === MEETING_DAYS.SABADO
@@ -52,6 +55,7 @@ export default async function ReunionDetallePage({
     section: a.section,
     label: a.label,
     allowTwo: allowTwoByKey[a.slotKey] ?? false,
+    equalPair: equalPairByKey[a.slotKey] ?? false,
     note: a.note ?? "",
     primaryName: a.primaryName ?? "",
     primaryToken: a.primaryToken,

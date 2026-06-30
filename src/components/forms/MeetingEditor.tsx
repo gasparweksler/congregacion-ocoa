@@ -26,6 +26,7 @@ type Row = {
   section: string;
   label: string;
   allowTwo: boolean;
+  equalPair: boolean;
   note: string;
   primaryName: string;
   primaryToken: string | null;
@@ -92,13 +93,21 @@ export function MeetingEditor({
   function buildMessage(name: string, label: string, token: string) {
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
+    const E = {
+      hug: "\u{1F917}",
+      cal: "\u{1F4C5}",
+      clip: "\u{1F4CB}",
+      pray: "\u{1F64F}",
+      smile: "\u{1F60A}",
+      point: "\u{1F449}",
+    };
     return (
-      `Hola querido Hermano/a *${name}* 🤗\n\n` +
-      `Le comento que para la reunión del día 📅 *${dayLabel} ${dateLabel}* ` +
-      `tiene la siguiente asignación: 📋 *${label}*.\n\n` +
+      `Hola querido Hermano/a *${name}* ${E.hug}\n\n` +
+      `Le comento que para la reunión del día ${E.cal} *${dayLabel} ${dateLabel}* ` +
+      `tiene la siguiente asignación: ${E.clip} *${label}*.\n\n` +
       `Por favor, haga click en el siguiente enlace para confirmar o rechazar ` +
-      `la asignación. ¡Muchísimas gracias! 🙏😊\n\n` +
-      `👉 ${origin}/confirmar/${token}`
+      `la asignación. ¡Muchísimas gracias! ${E.pray}${E.smile}\n\n` +
+      `${E.point} ${origin}/confirmar/${token}`
     );
   }
 
@@ -242,7 +251,11 @@ export function MeetingEditor({
                     name: vals[r.id]?.p ?? "",
                     token: r.primaryToken,
                     status: r.primaryStatus,
-                    roleLabel: r.allowTwo ? "Responsable" : "Hermano",
+                    roleLabel: !r.allowTwo
+                      ? "Hermano"
+                      : r.equalPair
+                        ? "Hermano 1"
+                        : "Responsable",
                   })}
                   {r.allowTwo
                     ? renderPerson({
@@ -252,7 +265,7 @@ export function MeetingEditor({
                         name: vals[r.id]?.s ?? "",
                         token: r.secondaryToken,
                         status: r.secondaryStatus,
-                        roleLabel: "Auxiliar",
+                        roleLabel: r.equalPair ? "Hermano 2" : "Auxiliar",
                       })
                     : null}
                 </div>
