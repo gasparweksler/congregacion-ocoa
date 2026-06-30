@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName, statusLabel, isPioneer } from "@/lib/constants";
 import { parsePeriod, yearOptions } from "@/lib/period";
@@ -25,7 +25,7 @@ export default async function HistorialPage({
 }: {
   searchParams: Promise<{ anio?: string; mes?: string; grupo?: string }>;
 }) {
-  const user = await requireUser();
+  const user = await requireReportsAccess();
   const secretary = isSecretary(user);
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);

@@ -1,4 +1,4 @@
-import { requireUser, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName } from "@/lib/constants";
 import { parsePeriod } from "@/lib/period";
@@ -28,7 +28,7 @@ export default async function EstadisticasPage({
 }: {
   searchParams: Promise<{ anio?: string; mes?: string; grupo?: string }>;
 }) {
-  const user = await requireUser();
+  const user = await requireReportsAccess();
   const secretary = isSecretary(user);
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);

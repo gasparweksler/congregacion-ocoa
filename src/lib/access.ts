@@ -37,16 +37,54 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
-/** Exige rol de Secretario. Si no lo es, redirige al panel. */
+/** Exige rol de Administrador (antes "Secretario"). Si no, redirige al inicio. */
 export async function requireSecretary(): Promise<SessionUser> {
   const user = await requireUser();
-  if (user.role !== ROLES.SECRETARIO) redirect("/panel");
+  if (user.role !== ROLES.SECRETARIO) redirect(landingFor(user));
   return user;
 }
 
-/** ¿El usuario es Secretario (administrador general)? */
+/** ¿El usuario es Administrador (acceso total)? */
 export function isSecretary(user: SessionUser): boolean {
   return user.role === ROLES.SECRETARIO;
+}
+
+/** ¿El usuario es Responsable de Confirmaciones? */
+export function isConfirmador(user: SessionUser): boolean {
+  return user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
+}
+
+/** ¿Puede acceder a la sección Reuniones? (Administrador o Responsable). */
+export function canAccessMeetings(user: SessionUser): boolean {
+  return isSecretary(user) || isConfirmador(user);
+}
+
+/** ¿Puede acceder a la sección Informes? (Administrador, Superintendente, Auxiliar). */
+export function canAccessReports(user: SessionUser): boolean {
+  return user.role !== ROLES.RESPONSABLE_CONFIRMACIONES;
+}
+
+/**
+ * Página de inicio según el rol:
+ * - Responsable de Confirmaciones -> Reuniones (no tiene Informes).
+ * - El resto -> Panel.
+ */
+export function landingFor(user: SessionUser): string {
+  return isConfirmador(user) ? "/reuniones" : "/panel";
+}
+
+/** Exige acceso a la sección Reuniones; si no, redirige al inicio del rol. */
+export async function requireMeetingsAccess(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!canAccessMeetings(user)) redirect(landingFor(user));
+  return user;
+}
+
+/** Exige acceso a la sección Informes; si no, redirige a Reuniones. */
+export async function requireReportsAccess(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!canAccessReports(user)) redirect(landingFor(user));
+  return user;
 }
 
 /**

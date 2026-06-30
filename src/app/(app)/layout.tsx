@@ -34,16 +34,22 @@ export default async function AppLayout({
   }
 
   const isSecretary = user.role === ROLES.SECRETARIO;
+  const isConfirmador = user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
   const groupName = dbUser.group?.name ?? null;
 
   // Menú según rol.
-  const commonItems: NavItem[] = [
+  const reportsItems: NavItem[] = [
     { href: "/panel", label: "Panel", icon: "🏠" },
     { href: "/publicadores", label: "Publicadores", icon: "👥" },
     { href: "/informes", label: "Informes", icon: "📝" },
     { href: "/estadisticas", label: "Estadísticas", icon: "📊" },
     { href: "/historial", label: "Historial", icon: "🕓" },
   ];
+  const meetingsItem: NavItem = {
+    href: "/reuniones",
+    label: "Reuniones",
+    icon: "📅",
+  };
   const secretaryItems: NavItem[] = [
     { href: "/grupos", label: "Grupos", icon: "🗂️" },
     { href: "/usuarios", label: "Usuarios", icon: "🔑" },
@@ -55,11 +61,22 @@ export default async function AppLayout({
     { href: "/cambiar-contrasena", label: "Mi contraseña", icon: "⚙️" },
   ];
 
-  const navItems = [
-    ...commonItems,
-    ...(isSecretary ? secretaryItems : []),
-    ...accountItems,
-  ];
+  let navItems: NavItem[];
+  if (isConfirmador) {
+    // Solo la sección Reuniones.
+    navItems = [meetingsItem, ...accountItems];
+  } else if (isSecretary) {
+    // Acceso completo: Informes + Reuniones + administración.
+    navItems = [
+      ...reportsItems,
+      meetingsItem,
+      ...secretaryItems,
+      ...accountItems,
+    ];
+  } else {
+    // Superintendente / Auxiliar: solo Informes de su grupo.
+    navItems = [...reportsItems, ...accountItems];
+  }
 
   return (
     <AppShell

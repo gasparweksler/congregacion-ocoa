@@ -31,7 +31,7 @@ export default async function UsuariosPage() {
     <>
       <PageHeader
         title="Usuarios"
-        description="Administra Secretarios, Superintendentes y Auxiliares y sus accesos."
+        description="Administra Administradores, Superintendentes, Auxiliares y Responsables de Confirmaciones y sus accesos."
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

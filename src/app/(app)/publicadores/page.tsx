@@ -1,4 +1,4 @@
-import { requireUser, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +12,7 @@ export default async function PublicadoresPage({
 }: {
   searchParams: Promise<{ grupo?: string }>;
 }) {
-  const user = await requireUser();
+  const user = await requireReportsAccess();
   const secretary = isSecretary(user);
   const { grupo } = await searchParams;
 

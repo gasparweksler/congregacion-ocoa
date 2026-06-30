@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { roleLabel, monthName } from "@/lib/constants";
 import { previousPeriod } from "@/lib/period";
@@ -21,7 +21,7 @@ import {
 import { StatsTiles } from "@/components/StatsTiles";
 
 export default async function PanelPage() {
-  const user = await requireUser();
+  const user = await requireReportsAccess();
   const secretary = isSecretary(user);
 
   // Período "a informar": el mes recién terminado.

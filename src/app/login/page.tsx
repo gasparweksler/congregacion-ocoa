@@ -42,7 +42,7 @@ export default async function LoginPage() {
         </div>
 
         <p className="relative text-xs text-white/50">
-          Acceso exclusivo para el Secretario, Superintendentes y Auxiliares.
+          Acceso exclusivo para personas autorizadas de la congregación.
         </p>
       </section>
 

@@ -1,0 +1,278 @@
+"use client";
+
+import { useState } from "react";
+import { useActionState } from "react";
+import {
+  saveMeetingAction,
+  deleteMeetingAction,
+} from "@/server/meeting-actions";
+import { EMPTY_FORM_STATE } from "@/server/actions-shared";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Label,
+  Input,
+  Alert,
+  Badge,
+} from "@/components/ui";
+import { SubmitButton } from "@/components/SubmitButton";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { CONFIRM_STATUS } from "@/lib/constants";
+
+type Row = {
+  id: string;
+  slotKey: string;
+  section: string;
+  label: string;
+  allowTwo: boolean;
+  note: string;
+  primaryName: string;
+  primaryToken: string | null;
+  primaryStatus: string;
+  secondaryName: string;
+  secondaryToken: string | null;
+  secondaryStatus: string;
+};
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === CONFIRM_STATUS.CONFIRMADO)
+    return <Badge tone="green">✅ Confirmado</Badge>;
+  if (status === CONFIRM_STATUS.RECHAZADO)
+    return <Badge tone="red">❌ Rechazado</Badge>;
+  return <Badge tone="amber">⏳ Pendiente</Badge>;
+}
+
+export function MeetingEditor({
+  meetingId,
+  dayLabel,
+  dateLabel,
+  confirmadorName,
+  rows,
+  sectionOrder,
+  sectionLabels,
+  hermanos,
+}: {
+  meetingId: string;
+  day: string;
+  dayLabel: string;
+  dateLabel: string;
+  confirmadorName: string;
+  rows: Row[];
+  sectionOrder: string[];
+  sectionLabels: Record<string, string>;
+  hermanos: string[];
+}) {
+  const [state, action] = useActionState(saveMeetingAction, EMPTY_FORM_STATE);
+  const [vals, setVals] = useState<
+    Record<string, { p: string; s: string; n: string }>
+  >(() =>
+    Object.fromEntries(
+      rows.map((r) => [
+        r.id,
+        { p: r.primaryName, s: r.secondaryName, n: r.note },
+      ]),
+    ),
+  );
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const setField = (id: string, key: "p" | "s" | "n", value: string) =>
+    setVals((prev) => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
+
+  const grouped = sectionOrder
+    .map((sec) => ({
+      sec,
+      label: sectionLabels[sec] ?? sec,
+      items: rows.filter((r) => r.section === sec),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  function buildMessage(name: string, label: string, token: string) {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    return (
+      `Hola ${name} 👋\n\n` +
+      `Te asignaron: *${label}*\n` +
+      `Reunión: ${dayLabel} ${dateLabel}\n\n` +
+      `Por favor confirma tu disponibilidad:\n` +
+      `✅ Sí, confirmo:\n${origin}/confirmar/${token}?r=si\n\n` +
+      `❌ No podré (necesito reemplazo):\n${origin}/confirmar/${token}?r=no`
+    );
+  }
+
+  async function copyMsg(key: string, msg: string) {
+    try {
+      await navigator.clipboard.writeText(msg);
+      setCopied(key);
+      setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const renderPerson = ({
+    rowId,
+    who,
+    label,
+    name,
+    token,
+    status,
+    roleLabel,
+  }: {
+    rowId: string;
+    who: "p" | "s";
+    label: string;
+    name: string;
+    token: string | null;
+    status: string;
+    roleLabel: string;
+  }) => {
+    const trimmed = name.trim();
+    const canSend = trimmed.length > 0 && !!token;
+    const key = `${rowId}_${who}`;
+    const msg = canSend ? buildMessage(trimmed, label, token!) : "";
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted">{roleLabel}</span>
+          {trimmed ? <StatusBadge status={status} /> : null}
+        </div>
+        <Input
+          list="hermanos-lista"
+          name={`${who}_${rowId}`}
+          value={name}
+          onChange={(e) => setField(rowId, who, e.target.value)}
+          placeholder="Buscar hermano…"
+          autoComplete="off"
+        />
+        {trimmed ? (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!canSend}
+              onClick={() =>
+                window.open(
+                  `https://wa.me/?text=${encodeURIComponent(msg)}`,
+                  "_blank",
+                )
+              }
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              title={
+                canSend
+                  ? "Abrir WhatsApp con el mensaje"
+                  : "Guarda la reunión para generar el enlace"
+              }
+            >
+              📲 WhatsApp
+            </button>
+            <button
+              type="button"
+              disabled={!canSend}
+              onClick={() => copyMsg(key, msg)}
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {copied === key ? "✓ Copiado" : "Copiar texto"}
+            </button>
+          </div>
+        ) : null}
+        {!token && trimmed ? (
+          <p className="text-xs text-amber-600">
+            Guarda la reunión para activar el enlace de confirmación.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <>
+    <form action={action} className="space-y-5">
+      <input type="hidden" name="meetingId" value={meetingId} />
+      <datalist id="hermanos-lista">
+        {hermanos.map((h) => (
+          <option key={h} value={h} />
+        ))}
+      </datalist>
+
+      {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      {state.success ? <Alert tone="success">{state.success}</Alert> : null}
+
+      <Card>
+        <CardBody className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="confirmadorName">Responsable de Confirmación</Label>
+            <Input
+              id="confirmadorName"
+              name="confirmadorName"
+              defaultValue={confirmadorName}
+              placeholder="Nombre de quien confirma"
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      {grouped.map((g) => (
+        <Card key={g.sec}>
+          <CardHeader title={g.label} />
+          <CardBody className="space-y-5">
+            {g.items.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-border p-3 sm:p-4"
+              >
+                <p className="mb-2 font-medium text-foreground">{r.label}</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {renderPerson({
+                    rowId: r.id,
+                    who: "p",
+                    label: r.label,
+                    name: vals[r.id]?.p ?? "",
+                    token: r.primaryToken,
+                    status: r.primaryStatus,
+                    roleLabel: r.allowTwo ? "Responsable" : "Hermano",
+                  })}
+                  {r.allowTwo
+                    ? renderPerson({
+                        rowId: r.id,
+                        who: "s",
+                        label: r.label,
+                        name: vals[r.id]?.s ?? "",
+                        token: r.secondaryToken,
+                        status: r.secondaryStatus,
+                        roleLabel: "Auxiliar",
+                      })
+                    : null}
+                </div>
+                <div className="mt-3">
+                  <Label htmlFor={`n_${r.id}`}>Anotación (opcional)</Label>
+                  <Input
+                    id={`n_${r.id}`}
+                    name={`n_${r.id}`}
+                    value={vals[r.id]?.n ?? ""}
+                    onChange={(e) => setField(r.id, "n", e.target.value)}
+                    placeholder="Ej. tema, lección, detalle…"
+                  />
+                </div>
+              </div>
+            ))}
+          </CardBody>
+        </Card>
+      ))}
+
+      <div className="flex justify-end border-t border-border pt-4">
+        <SubmitButton pendingText="Guardando…">Guardar reunión</SubmitButton>
+      </div>
+    </form>
+
+    <div className="mt-4">
+      <ConfirmButton
+        action={deleteMeetingAction}
+        hidden={{ id: meetingId }}
+        confirmText="¿Eliminar esta reunión y todas sus asignaciones? No se puede deshacer."
+      >
+        Eliminar reunión
+      </ConfirmButton>
+    </div>
+    </>
+  );
+}

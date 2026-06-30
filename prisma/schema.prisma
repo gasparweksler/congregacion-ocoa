@@ -48,6 +48,7 @@ model User {
   statusChanges    StatusChange[]  @relation("StatusChangedBy")
   reportsSubmitted MonthlyReport[] @relation("ReportSubmittedBy")
   auditLogs        AuditLog[]
+  meetingsCreated  Meeting[]       @relation("MeetingCreatedBy")
 
   @@index([groupId])
   @@index([role])
@@ -141,6 +142,55 @@ model MonthlyReport {
 
   @@unique([publisherId, year, month])
   @@index([year, month])
+}
+
+// ----------------------------------------------------------------------------
+//  REUNIONES DE LA CONGREGACIÓN
+// ----------------------------------------------------------------------------
+model Meeting {
+  id   String   @id @default(cuid())
+  date DateTime
+  day  String // JUEVES | SABADO
+
+  // "Responsable de Confirmación" mostrado en la reunión (texto libre).
+  confirmadorName String?
+
+  createdById String?
+  createdBy   User?   @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments MeetingAssignment[]
+
+  @@index([date])
+}
+
+// Una casilla de asignación/responsabilidad dentro de una reunión.
+// Puede tener 1 o 2 hermanos (principal = Responsable, secundario = Auxiliar).
+model MeetingAssignment {
+  id        String  @id @default(cuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  slotKey String // identifica la casilla (ver constants.ts)
+  section String // sección de la reunión (TESOROS, SMM, VC, ...)
+  label   String // etiqueta visible de la casilla
+  order   Int     @default(0)
+  note    String? // anotación opcional
+
+  // Hermano principal (Responsable)
+  primaryName   String?
+  primaryToken  String? @unique
+  primaryStatus String  @default("PENDIENTE") // PENDIENTE | CONFIRMADO | RECHAZADO
+
+  // Hermano secundario (Auxiliar) — solo en casillas que permiten 2
+  secondaryName   String?
+  secondaryToken  String? @unique
+  secondaryStatus String  @default("PENDIENTE")
+
+  @@unique([meetingId, slotKey])
+  @@index([meetingId])
 }
 
 // ----------------------------------------------------------------------------
