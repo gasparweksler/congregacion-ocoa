@@ -195,6 +195,80 @@ export function MeetingEditor({
     );
   }
 
+  const [tab, setTab] = useState<"asig" | "resp">("asig");
+  const RESP_SECTIONS = ["RESPONSABILIDADES", "SAB_RESPONSABILIDADES"];
+  const asigGroups = grouped.filter((g) => !RESP_SECTIONS.includes(g.sec));
+  const respGroups = grouped.filter((g) => RESP_SECTIONS.includes(g.sec));
+
+  const tabBtnClass = (active: boolean) =>
+    "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors " +
+    (active
+      ? "bg-primary text-white shadow-sm"
+      : "border border-border bg-white text-foreground hover:bg-slate-50");
+
+  const renderGroup = (g: { sec: string; label: string; items: Row[] }) => (
+    <Card key={g.sec}>
+      <CardHeader title={g.label} />
+      <CardBody className="space-y-5">
+        {g.items.map((r) => (
+          <div
+            key={r.id}
+            className="rounded-xl border border-border p-3 sm:p-4"
+          >
+            <div className="mb-3">
+              <span className="mb-1 block text-xs font-medium text-muted">
+                Título de la asignación
+              </span>
+              <Input
+                name={`l_${r.id}`}
+                value={vals[r.id]?.l ?? ""}
+                onChange={(e) => setField(r.id, "l", e.target.value)}
+                className="font-semibold"
+                placeholder="Título de la asignación"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {renderPerson({
+                rowId: r.id,
+                who: "p",
+                label: vals[r.id]?.l ?? r.label,
+                name: vals[r.id]?.p ?? "",
+                token: r.primaryToken,
+                status: r.primaryStatus,
+                roleLabel: !r.allowTwo
+                  ? "Hermano"
+                  : r.equalPair
+                    ? "Hermano 1"
+                    : "Responsable",
+              })}
+              {r.allowTwo
+                ? renderPerson({
+                    rowId: r.id,
+                    who: "s",
+                    label: vals[r.id]?.l ?? r.label,
+                    name: vals[r.id]?.s ?? "",
+                    token: r.secondaryToken,
+                    status: r.secondaryStatus,
+                    roleLabel: r.equalPair ? "Hermano 2" : "Auxiliar",
+                  })
+                : null}
+            </div>
+            <div className="mt-3">
+              <Label htmlFor={`n_${r.id}`}>Anotación (opcional)</Label>
+              <Input
+                id={`n_${r.id}`}
+                name={`n_${r.id}`}
+                value={vals[r.id]?.n ?? ""}
+                onChange={(e) => setField(r.id, "n", e.target.value)}
+                placeholder="Ej. tema, lección, detalle…"
+              />
+            </div>
+          </div>
+        ))}
+      </CardBody>
+    </Card>
+  );
+
   return (
     <>
     <form action={action} className="space-y-5">
@@ -222,68 +296,42 @@ export function MeetingEditor({
         </CardBody>
       </Card>
 
-      {grouped.map((g) => (
-        <Card key={g.sec}>
-          <CardHeader title={g.label} />
-          <CardBody className="space-y-5">
-            {g.items.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border border-border p-3 sm:p-4"
-              >
-                <div className="mb-3">
-                  <span className="mb-1 block text-xs font-medium text-muted">
-                    Título de la asignación
-                  </span>
-                  <Input
-                    name={`l_${r.id}`}
-                    value={vals[r.id]?.l ?? ""}
-                    onChange={(e) => setField(r.id, "l", e.target.value)}
-                    className="font-semibold"
-                    placeholder="Título de la asignación"
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {renderPerson({
-                    rowId: r.id,
-                    who: "p",
-                    label: vals[r.id]?.l ?? r.label,
-                    name: vals[r.id]?.p ?? "",
-                    token: r.primaryToken,
-                    status: r.primaryStatus,
-                    roleLabel: !r.allowTwo
-                      ? "Hermano"
-                      : r.equalPair
-                        ? "Hermano 1"
-                        : "Responsable",
-                  })}
-                  {r.allowTwo
-                    ? renderPerson({
-                        rowId: r.id,
-                        who: "s",
-                        label: vals[r.id]?.l ?? r.label,
-                        name: vals[r.id]?.s ?? "",
-                        token: r.secondaryToken,
-                        status: r.secondaryStatus,
-                        roleLabel: r.equalPair ? "Hermano 2" : "Auxiliar",
-                      })
-                    : null}
-                </div>
-                <div className="mt-3">
-                  <Label htmlFor={`n_${r.id}`}>Anotación (opcional)</Label>
-                  <Input
-                    id={`n_${r.id}`}
-                    name={`n_${r.id}`}
-                    value={vals[r.id]?.n ?? ""}
-                    onChange={(e) => setField(r.id, "n", e.target.value)}
-                    placeholder="Ej. tema, lección, detalle…"
-                  />
-                </div>
-              </div>
-            ))}
-          </CardBody>
-        </Card>
-      ))}
+      {/* Pestañas: Asignaciones / Responsabilidades */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setTab("asig")}
+          className={tabBtnClass(tab === "asig")}
+        >
+          Asignaciones
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("resp")}
+          className={tabBtnClass(tab === "resp")}
+        >
+          Responsabilidades
+        </button>
+      </div>
+
+      {/* Ambos grupos quedan en el DOM (el inactivo oculto con CSS) para no
+          perder datos al guardar; solo se ve la pestaña activa. */}
+      <div className={tab === "asig" ? "space-y-5" : "hidden"}>
+        {asigGroups.length ? (
+          asigGroups.map(renderGroup)
+        ) : (
+          <p className="text-sm text-muted">No hay asignaciones.</p>
+        )}
+      </div>
+      <div className={tab === "resp" ? "space-y-5" : "hidden"}>
+        {respGroups.length ? (
+          respGroups.map(renderGroup)
+        ) : (
+          <p className="text-sm text-muted">
+            Esta reunión no tiene sección de responsabilidades.
+          </p>
+        )}
+      </div>
 
       <div className="flex justify-end border-t border-border pt-4">
         <SubmitButton pendingText="Guardando…">Guardar reunión</SubmitButton>
