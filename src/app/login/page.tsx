@@ -33,11 +33,10 @@ export default async function LoginPage() {
 
         <div className="relative my-10 lg:my-0">
           <h1 className="max-w-md text-3xl font-bold leading-tight tracking-tight lg:text-4xl">
-            Registro de informes Congregación Ocoa
+            Congregación Ocoa
           </h1>
           <p className="mt-4 max-w-md text-base text-white/70">
-            Registra informes, consulta estadísticas y organiza los grupos de
-            servicio desde cualquier dispositivo.
+            Registro de informes de la congregación y gestión de reuniones.
           </p>
         </div>
 
