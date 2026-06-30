@@ -19,7 +19,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,40,38,0.04),0_10px_30px_-18px_rgba(16,40,38,0.25)]",
+        "min-w-0 rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,40,38,0.04),0_10px_30px_-18px_rgba(16,40,38,0.25)]",
         className,
       )}
     >
