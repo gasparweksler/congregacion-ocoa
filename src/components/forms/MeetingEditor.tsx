@@ -48,6 +48,7 @@ export function MeetingEditor({
   dayLabel,
   dateLabel,
   confirmadorName,
+  currentUserName,
   rows,
   sectionOrder,
   sectionLabels,
@@ -58,6 +59,7 @@ export function MeetingEditor({
   dayLabel: string;
   dateLabel: string;
   confirmadorName: string;
+  currentUserName: string;
   rows: Row[];
   sectionOrder: string[];
   sectionLabels: Record<string, string>;
@@ -204,7 +206,7 @@ export function MeetingEditor({
             <Input
               id="confirmadorName"
               name="confirmadorName"
-              defaultValue={confirmadorName}
+              defaultValue={confirmadorName || currentUserName}
               placeholder="Nombre de quien confirma"
             />
           </div>

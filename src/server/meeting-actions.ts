@@ -40,6 +40,8 @@ export async function createMeetingAction(
       date,
       day,
       createdById: user.id,
+      // Responsable de Confirmación por defecto: quien crea la reunión.
+      confirmadorName: user.name ?? null,
       assignments: {
         create: slots.map((s, i) => ({
           slotKey: s.key,

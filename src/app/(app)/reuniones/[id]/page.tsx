@@ -19,7 +19,7 @@ export default async function ReunionDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireMeetingsAccess();
+  const user = await requireMeetingsAccess();
   const { id } = await params;
 
   const meeting = await prisma.meeting.findUnique({
@@ -81,6 +81,7 @@ export default async function ReunionDetallePage({
         dayLabel={meetingDayLabel(meeting.day)}
         dateLabel={formatDate(meeting.date)}
         confirmadorName={meeting.confirmadorName ?? ""}
+        currentUserName={user.name ?? user.username}
         rows={rows}
         sectionOrder={sectionOrder}
         sectionLabels={MEETING_SECTION_LABELS}
