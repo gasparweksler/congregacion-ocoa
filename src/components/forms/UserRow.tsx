@@ -17,6 +17,7 @@ export type UserRowData = {
   groupId: string | null;
   groupName: string | null;
   active: boolean;
+  alsoConfirmador: boolean;
 };
 
 export function UserRow({
@@ -52,6 +53,11 @@ export function UserRow({
             {roleLabel(user.role)}
             {user.groupName ? ` · ${user.groupName}` : ""}
           </p>
+          {user.alsoConfirmador ? (
+            <span className="mt-1 inline-block">
+              <Badge tone="violet">+ Encargado de Confirmaciones</Badge>
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -143,6 +149,23 @@ export function UserRow({
             Cuenta activa
           </label>
         </div>
+
+        {needsGroup ? (
+          <label className="flex items-start gap-2 text-sm text-foreground sm:col-span-2">
+            <input
+              type="checkbox"
+              name="alsoConfirmador"
+              defaultChecked={user.alsoConfirmador}
+              className="mt-0.5 h-4 w-4 rounded border-border"
+            />
+            <span>
+              También <strong>Encargado de Confirmaciones</strong>
+              <span className="block text-xs text-muted">
+                Le da acceso a la sección Reuniones además de Informes.
+              </span>
+            </span>
+          </label>
+        ) : null}
 
         <div className="flex gap-2 sm:col-span-2">
           <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>

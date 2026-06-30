@@ -15,6 +15,7 @@ declare module "next-auth" {
       groupId: string | null;
       username: string;
       mustChangePassword: boolean;
+      alsoConfirmador: boolean;
     } & DefaultSession["user"];
   }
 
@@ -23,6 +24,7 @@ declare module "next-auth" {
     role: Role;
     groupId: string | null;
     mustChangePassword?: boolean;
+    alsoConfirmador?: boolean;
   }
 }
 
@@ -33,5 +35,6 @@ declare module "next-auth/jwt" {
     groupId: string | null;
     username: string;
     mustChangePassword: boolean;
+    alsoConfirmador: boolean;
   }
 }

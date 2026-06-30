@@ -22,6 +22,7 @@ export default async function UsuariosPage() {
         role: true,
         groupId: true,
         active: true,
+        alsoConfirmador: true,
         group: { select: { name: true } },
       },
     }),
@@ -67,6 +68,7 @@ export default async function UsuariosPage() {
                       groupId: u.groupId,
                       groupName: u.group?.name ?? null,
                       active: u.active,
+                      alsoConfirmador: u.alsoConfirmador,
                     }}
                   />
                 ))}

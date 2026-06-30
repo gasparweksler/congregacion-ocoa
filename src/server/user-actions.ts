@@ -34,6 +34,7 @@ export async function createUserAction(
     role: formData.get("role"),
     groupId: formData.get("groupId") || null,
     mustChangePassword: formData.get("mustChangePassword") === "on",
+    alsoConfirmador: formData.get("alsoConfirmador") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -52,6 +53,10 @@ export async function createUserAction(
     if (!g) return { error: "El grupo seleccionado no existe." };
   }
 
+  // La capacidad "también Confirmaciones" solo aplica a Super/Aux.
+  const alsoConfirmador =
+    GROUP_ROLES.includes(data.role as Role) && !!data.alsoConfirmador;
+
   const created = await prisma.user.create({
     data: {
       name: data.name,
@@ -61,6 +66,7 @@ export async function createUserAction(
       role: data.role,
       groupId,
       mustChangePassword: data.mustChangePassword ?? false,
+      alsoConfirmador,
     },
   });
 
@@ -90,6 +96,7 @@ export async function updateUserAction(
     groupId: formData.get("groupId") || null,
     active: formData.get("active") === "on",
     newPassword: formData.get("newPassword") || "",
+    alsoConfirmador: formData.get("alsoConfirmador") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -115,6 +122,9 @@ export async function updateUserAction(
     if (!g) return { error: "El grupo seleccionado no existe." };
   }
 
+  const alsoConfirmador =
+    GROUP_ROLES.includes(data.role as Role) && !!data.alsoConfirmador;
+
   await prisma.user.update({
     where: { id: data.id },
     data: {
@@ -123,6 +133,7 @@ export async function updateUserAction(
       role: data.role,
       groupId,
       active,
+      alsoConfirmador,
       // Si se ingresó una nueva contraseña, se restablece y se obliga a cambiarla.
       ...(data.newPassword
         ? {

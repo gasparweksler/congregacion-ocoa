@@ -82,6 +82,8 @@ export async function saveMeetingAction(
     const pName = String(formData.get(`p_${a.id}`) ?? "").trim() || null;
     const sName = String(formData.get(`s_${a.id}`) ?? "").trim() || null;
     const note = String(formData.get(`n_${a.id}`) ?? "").trim() || null;
+    // Título editable de la asignación (si queda vacío, se conserva el actual).
+    const label = String(formData.get(`l_${a.id}`) ?? "").trim() || a.label;
 
     // Token y estado del hermano principal.
     let primaryToken = a.primaryToken;
@@ -112,6 +114,7 @@ export async function saveMeetingAction(
     await prisma.meetingAssignment.update({
       where: { id: a.id },
       data: {
+        label,
         primaryName: pName,
         primaryToken,
         primaryStatus,

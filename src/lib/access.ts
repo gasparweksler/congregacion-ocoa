@@ -18,6 +18,7 @@ export type SessionUser = {
   role: Role;
   groupId: string | null;
   mustChangePassword: boolean;
+  alsoConfirmador: boolean;
 };
 
 /** Devuelve el usuario de la sesión o null si no hay sesión. */
@@ -49,12 +50,15 @@ export function isSecretary(user: SessionUser): boolean {
   return user.role === ROLES.SECRETARIO;
 }
 
-/** ¿El usuario es Responsable de Confirmaciones? */
+/**
+ * ¿El usuario tiene el rol de Confirmaciones? (rol base Responsable, o cualquier
+ * usuario con la capacidad adicional `alsoConfirmador`).
+ */
 export function isConfirmador(user: SessionUser): boolean {
-  return user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
+  return user.role === ROLES.RESPONSABLE_CONFIRMACIONES || user.alsoConfirmador;
 }
 
-/** ¿Puede acceder a la sección Reuniones? (Administrador o Responsable). */
+/** ¿Puede acceder a la sección Reuniones? (Administrador o Confirmaciones). */
 export function canAccessMeetings(user: SessionUser): boolean {
   return isSecretary(user) || isConfirmador(user);
 }
@@ -66,11 +70,12 @@ export function canAccessReports(user: SessionUser): boolean {
 
 /**
  * Página de inicio según el rol:
- * - Responsable de Confirmaciones -> Reuniones (no tiene Informes).
- * - El resto -> Panel.
+ * - Quien tiene acceso a Informes (Administrador, Superintendente, Auxiliar,
+ *   incluso si además confirma) -> Panel.
+ * - Responsable de Confirmaciones "puro" (sin Informes) -> Reuniones.
  */
 export function landingFor(user: SessionUser): string {
-  return isConfirmador(user) ? "/reuniones" : "/panel";
+  return canAccessReports(user) ? "/panel" : "/reuniones";
 }
 
 /** Exige acceso a la sección Reuniones; si no, redirige al inicio del rol. */

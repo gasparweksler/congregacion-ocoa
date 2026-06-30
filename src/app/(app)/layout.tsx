@@ -34,7 +34,11 @@ export default async function AppLayout({
   }
 
   const isSecretary = user.role === ROLES.SECRETARIO;
-  const isConfirmador = user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
+  // Responsable de Confirmaciones "puro" (su único rol).
+  const isPureConfirmador =
+    user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
+  // Super/Aux que además tiene la capacidad de confirmaciones.
+  const alsoConfirmador = Boolean(user.alsoConfirmador);
   const groupName = dbUser.group?.name ?? null;
 
   // Menú según rol.
@@ -62,7 +66,7 @@ export default async function AppLayout({
   ];
 
   let navItems: NavItem[];
-  if (isConfirmador) {
+  if (isPureConfirmador) {
     // Solo la sección Reuniones.
     navItems = [meetingsItem, ...accountItems];
   } else if (isSecretary) {
@@ -74,8 +78,13 @@ export default async function AppLayout({
       ...accountItems,
     ];
   } else {
-    // Superintendente / Auxiliar: solo Informes de su grupo.
-    navItems = [...reportsItems, ...accountItems];
+    // Superintendente / Auxiliar: Informes de su grupo, y Reuniones si además
+    // tiene la capacidad de confirmaciones.
+    navItems = [
+      ...reportsItems,
+      ...(alsoConfirmador ? [meetingsItem] : []),
+      ...accountItems,
+    ];
   }
 
   return (

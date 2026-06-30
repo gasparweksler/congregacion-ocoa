@@ -41,6 +41,11 @@ model User {
   active             Boolean @default(true)
   mustChangePassword Boolean @default(false)
 
+  // Rol adicional: además de su rol base, también es Encargado de Confirmaciones
+  // (acceso a la sección Reuniones). Permite combinar p.ej. Superintendente +
+  // Confirmaciones, o Auxiliar + Confirmaciones.
+  alsoConfirmador Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

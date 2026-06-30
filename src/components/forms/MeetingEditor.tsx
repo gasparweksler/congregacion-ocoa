@@ -65,18 +65,18 @@ export function MeetingEditor({
 }) {
   const [state, action] = useActionState(saveMeetingAction, EMPTY_FORM_STATE);
   const [vals, setVals] = useState<
-    Record<string, { p: string; s: string; n: string }>
+    Record<string, { p: string; s: string; n: string; l: string }>
   >(() =>
     Object.fromEntries(
       rows.map((r) => [
         r.id,
-        { p: r.primaryName, s: r.secondaryName, n: r.note },
+        { p: r.primaryName, s: r.secondaryName, n: r.note, l: r.label },
       ]),
     ),
   );
   const [copied, setCopied] = useState<string | null>(null);
 
-  const setField = (id: string, key: "p" | "s" | "n", value: string) =>
+  const setField = (id: string, key: "p" | "s" | "n" | "l", value: string) =>
     setVals((prev) => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
 
   const grouped = sectionOrder
@@ -94,9 +94,8 @@ export function MeetingEditor({
       `Hola ${name} 👋\n\n` +
       `Te asignaron: *${label}*\n` +
       `Reunión: ${dayLabel} ${dateLabel}\n\n` +
-      `Por favor confirma tu disponibilidad:\n` +
-      `✅ Sí, confirmo:\n${origin}/confirmar/${token}?r=si\n\n` +
-      `❌ No podré (necesito reemplazo):\n${origin}/confirmar/${token}?r=no`
+      `Por favor abre este enlace y confirma tu disponibilidad ` +
+      `(podrás elegir “Sí, confirmo” o “No podré”):\n${origin}/confirmar/${token}`
     );
   }
 
@@ -220,12 +219,23 @@ export function MeetingEditor({
                 key={r.id}
                 className="rounded-xl border border-border p-3 sm:p-4"
               >
-                <p className="mb-2 font-medium text-foreground">{r.label}</p>
+                <div className="mb-3">
+                  <span className="mb-1 block text-xs font-medium text-muted">
+                    Título de la asignación
+                  </span>
+                  <Input
+                    name={`l_${r.id}`}
+                    value={vals[r.id]?.l ?? ""}
+                    onChange={(e) => setField(r.id, "l", e.target.value)}
+                    className="font-semibold"
+                    placeholder="Título de la asignación"
+                  />
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {renderPerson({
                     rowId: r.id,
                     who: "p",
-                    label: r.label,
+                    label: vals[r.id]?.l ?? r.label,
                     name: vals[r.id]?.p ?? "",
                     token: r.primaryToken,
                     status: r.primaryStatus,
@@ -235,7 +245,7 @@ export function MeetingEditor({
                     ? renderPerson({
                         rowId: r.id,
                         who: "s",
-                        label: r.label,
+                        label: vals[r.id]?.l ?? r.label,
                         name: vals[r.id]?.s ?? "",
                         token: r.secondaryToken,
                         status: r.secondaryStatus,

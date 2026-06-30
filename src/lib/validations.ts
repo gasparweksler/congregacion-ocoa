@@ -62,6 +62,7 @@ export const createUserSchema = z
     role: z.enum(ROLE_VALUES as [string, ...string[]]),
     groupId: z.string().trim().optional().nullable(),
     mustChangePassword: z.boolean().optional().default(false),
+    alsoConfirmador: z.boolean().optional().default(false),
   })
   .refine(
     // Superintendente/Auxiliar deben tener grupo asignado.
@@ -77,6 +78,7 @@ export const updateUserSchema = z
     role: z.enum(ROLE_VALUES as [string, ...string[]]),
     groupId: z.string().trim().optional().nullable(),
     active: z.boolean().optional().default(true),
+    alsoConfirmador: z.boolean().optional().default(false),
     // Opcional: si se completa, restablece la contraseña.
     newPassword: z
       .string()

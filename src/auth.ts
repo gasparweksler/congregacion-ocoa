@@ -44,6 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role as Role,
           groupId: user.groupId,
           mustChangePassword: user.mustChangePassword,
+          alsoConfirmador: user.alsoConfirmador,
         };
       },
     }),
@@ -57,6 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.groupId = user.groupId ?? null;
         token.username = user.username;
         token.mustChangePassword = user.mustChangePassword ?? false;
+        token.alsoConfirmador = user.alsoConfirmador ?? false;
       }
       return token;
     },
@@ -68,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.groupId = (token.groupId as string | null) ?? null;
         session.user.username = token.username as string;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        session.user.alsoConfirmador = Boolean(token.alsoConfirmador);
       }
       return session;
     },
