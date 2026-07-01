@@ -88,7 +88,7 @@ export default async function ReunionesPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-foreground">
-                            {formatDate(m.date)}
+                            {m.weekLabel ?? formatDate(m.date)}
                           </span>
                           <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
                         </div>

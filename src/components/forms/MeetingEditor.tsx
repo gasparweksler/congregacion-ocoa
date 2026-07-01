@@ -50,6 +50,8 @@ export function MeetingEditor({
   dateLabel,
   confirmadorName,
   currentUserName,
+  weekLabel,
+  dateInput,
   rows,
   sectionOrder,
   sectionLabels,
@@ -61,6 +63,8 @@ export function MeetingEditor({
   dateLabel: string;
   confirmadorName: string;
   currentUserName: string;
+  weekLabel: string;
+  dateInput: string;
   rows: Row[];
   sectionOrder: string[];
   sectionLabels: Record<string, string>;
@@ -285,6 +289,24 @@ export function MeetingEditor({
       <Card>
         <CardBody className="grid gap-4 sm:grid-cols-2">
           <div>
+            <Label htmlFor="weekLabel">Semana de la reunión</Label>
+            <Input
+              id="weekLabel"
+              name="weekLabel"
+              defaultValue={weekLabel}
+              placeholder="Ej. 20-26 de Julio"
+            />
+          </div>
+          <div>
+            <Label htmlFor="date">Fecha (para ordenar)</Label>
+            <Input
+              id="date"
+              name="date"
+              type="date"
+              defaultValue={dateInput}
+            />
+          </div>
+          <div className="sm:col-span-2">
             <Label htmlFor="confirmadorName">Responsable de Confirmación</Label>
             <Input
               id="confirmadorName"

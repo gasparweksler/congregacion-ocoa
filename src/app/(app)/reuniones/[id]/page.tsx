@@ -9,7 +9,7 @@ import {
   MEETING_SECTION_LABELS,
   MEETING_DAYS,
 } from "@/lib/constants";
-import { formatDate } from "@/lib/dates";
+import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { LinkButton } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
@@ -68,7 +68,7 @@ export default async function ReunionDetallePage({
   return (
     <>
       <PageHeader
-        title={`Reunión · ${formatDate(meeting.date)}`}
+        title={`Reunión · ${meeting.weekLabel ?? formatDate(meeting.date)}`}
         description={`${meetingDayLabel(meeting.day)} · Creada ${formatDate(
           meeting.createdAt,
         )} · Última modificación ${formatDate(meeting.updatedAt)}`}
@@ -86,6 +86,8 @@ export default async function ReunionDetallePage({
         dateLabel={formatDate(meeting.date)}
         confirmadorName={meeting.confirmadorName ?? ""}
         currentUserName={user.name ?? user.username}
+        weekLabel={meeting.weekLabel ?? ""}
+        dateInput={toInputDate(meeting.date)}
         rows={rows}
         sectionOrder={sectionOrder}
         sectionLabels={MEETING_SECTION_LABELS}

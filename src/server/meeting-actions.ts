@@ -79,6 +79,10 @@ export async function saveMeetingAction(
 
   const confirmadorName =
     String(formData.get("confirmadorName") ?? "").trim() || null;
+  const weekLabel = String(formData.get("weekLabel") ?? "").trim() || null;
+  const dateStr = String(formData.get("date") ?? "").trim();
+  const parsedDate = dateStr ? new Date(`${dateStr}T12:00:00`) : null;
+  const newDate = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate : null;
 
   for (const a of meeting.assignments) {
     const pName = String(formData.get(`p_${a.id}`) ?? "").trim() || null;
@@ -130,7 +134,11 @@ export async function saveMeetingAction(
 
   await prisma.meeting.update({
     where: { id: meetingId },
-    data: { confirmadorName },
+    data: {
+      confirmadorName,
+      weekLabel,
+      ...(newDate ? { date: newDate } : {}),
+    },
   });
 
   await logAudit({

@@ -157,6 +157,10 @@ model Meeting {
   date DateTime
   day  String // JUEVES | SABADO
 
+  // Etiqueta de la semana (rango) mostrada en vez de una fecha única, p. ej.
+  // "20-26 de Julio". Opcional; si es null se muestra la fecha.
+  weekLabel String?
+
   // "Responsable de Confirmación" mostrado en la reunión (texto libre).
   confirmadorName String?
 
