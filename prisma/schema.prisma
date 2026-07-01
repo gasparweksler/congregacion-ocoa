@@ -188,6 +188,11 @@ model MeetingAssignment {
   order   Int     @default(0)
   note    String? // anotación opcional
 
+  // Si admite 2 hermanos, y si ambos son iguales (par) — guardado por asignación
+  // para poder crear/eliminar asignaciones manualmente.
+  allowTwo  Boolean @default(false)
+  equalPair Boolean @default(false)
+
   // Hermano principal (Responsable)
   primaryName   String?
   primaryToken  String? @unique

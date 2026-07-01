@@ -48,6 +48,8 @@ export async function createMeetingAction(
           section: s.section,
           label: s.label,
           order: i,
+          allowTwo: s.allowTwo,
+          equalPair: !!s.equalPair,
         })),
       },
     },
@@ -84,51 +86,85 @@ export async function saveMeetingAction(
   const parsedDate = dateStr ? new Date(`${dateStr}T12:00:00`) : null;
   const newDate = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate : null;
 
-  for (const a of meeting.assignments) {
-    const pName = String(formData.get(`p_${a.id}`) ?? "").trim() || null;
-    const sName = String(formData.get(`s_${a.id}`) ?? "").trim() || null;
-    const note = String(formData.get(`n_${a.id}`) ?? "").trim() || null;
-    // Título editable de la asignación (si queda vacío, se conserva el actual).
-    const label = String(formData.get(`l_${a.id}`) ?? "").trim() || a.label;
+  const keys = String(formData.get("keys") ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  const existingById = new Map(meeting.assignments.map((a) => [a.id, a]));
+  const submittedIds = new Set<string>();
 
-    // Token y estado del hermano principal.
-    let primaryToken = a.primaryToken;
-    let primaryStatus = a.primaryStatus;
+  for (let idx = 0; idx < keys.length; idx++) {
+    const key = keys[idx];
+    const id = String(formData.get(`id_${key}`) ?? "").trim();
+    const label =
+      String(formData.get(`lbl_${key}`) ?? "").trim() || "Asignación";
+    const section =
+      String(formData.get(`sec_${key}`) ?? "").trim() || "ASIGNACIONES";
+    const allowTwo = formData.get(`two_${key}`) === "1";
+    const equalPair = formData.get(`eq_${key}`) === "1";
+    const note = String(formData.get(`n_${key}`) ?? "").trim() || null;
+    const pName = String(formData.get(`p_${key}`) ?? "").trim() || null;
+    const sName = allowTwo
+      ? String(formData.get(`s_${key}`) ?? "").trim() || null
+      : null;
+
+    const prev = id ? existingById.get(id) : undefined;
+
+    // Token/estado: se conserva la confirmación salvo que cambie el nombre.
+    let primaryToken = prev?.primaryToken ?? null;
+    let primaryStatus = prev?.primaryStatus ?? CONFIRM_STATUS.PENDIENTE;
     if (!pName) {
       primaryToken = null;
       primaryStatus = CONFIRM_STATUS.PENDIENTE;
-    } else if (pName !== a.primaryName) {
+    } else if (pName !== prev?.primaryName) {
       primaryToken = newToken();
       primaryStatus = CONFIRM_STATUS.PENDIENTE;
     } else if (!primaryToken) {
       primaryToken = newToken();
     }
 
-    // Token y estado del hermano secundario (Auxiliar).
-    let secondaryToken = a.secondaryToken;
-    let secondaryStatus = a.secondaryStatus;
+    let secondaryToken = prev?.secondaryToken ?? null;
+    let secondaryStatus = prev?.secondaryStatus ?? CONFIRM_STATUS.PENDIENTE;
     if (!sName) {
       secondaryToken = null;
       secondaryStatus = CONFIRM_STATUS.PENDIENTE;
-    } else if (sName !== a.secondaryName) {
+    } else if (sName !== prev?.secondaryName) {
       secondaryToken = newToken();
       secondaryStatus = CONFIRM_STATUS.PENDIENTE;
     } else if (!secondaryToken) {
       secondaryToken = newToken();
     }
 
-    await prisma.meetingAssignment.update({
-      where: { id: a.id },
-      data: {
-        label,
-        primaryName: pName,
-        primaryToken,
-        primaryStatus,
-        secondaryName: sName,
-        secondaryToken,
-        secondaryStatus,
-        note,
-      },
+    const fields = {
+      section, label, order: idx, note, allowTwo, equalPair,
+      primaryName: pName, primaryToken, primaryStatus,
+      secondaryName: sName, secondaryToken, secondaryStatus,
+    };
+
+    if (prev) {
+      await prisma.meetingAssignment.update({
+        where: { id: prev.id },
+        data: fields,
+      });
+      submittedIds.add(prev.id);
+    } else {
+      await prisma.meetingAssignment.create({
+        data: {
+          ...fields,
+          meetingId,
+          slotKey: `custom_${newToken().slice(0, 12)}`,
+        },
+      });
+    }
+  }
+
+  // Eliminar las asignaciones que se quitaron en la pantalla.
+  const toDelete = meeting.assignments
+    .filter((a) => !submittedIds.has(a.id))
+    .map((a) => a.id);
+  if (toDelete.length) {
+    await prisma.meetingAssignment.deleteMany({
+      where: { id: { in: toDelete } },
     });
   }
 

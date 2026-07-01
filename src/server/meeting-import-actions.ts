@@ -252,23 +252,30 @@ export async function importMeetingsAction(
     }
 
     const data = buildSlotData(w);
-    const assignments = juevesSlots.map((s, i) => {
-      const d = data[s.key] ?? {};
-      const primaryName = d.p || null;
-      const secondaryName = s.allowTwo ? d.s || null : null;
-      return {
-        slotKey: s.key,
-        section: s.section,
-        label: d.label ?? s.label,
-        order: i,
-        primaryName,
-        primaryToken: primaryName ? newToken() : null,
-        primaryStatus: CONFIRM_STATUS.PENDIENTE,
-        secondaryName,
-        secondaryToken: secondaryName ? newToken() : null,
-        secondaryStatus: CONFIRM_STATUS.PENDIENTE,
-      };
-    });
+    const assignments = juevesSlots
+      .map((s, i) => {
+        const d = data[s.key] ?? {};
+        const primaryName = d.p || null;
+        const secondaryName = s.allowTwo ? d.s || null : null;
+        // Solo se crean las asignaciones con datos del Excel (título o nombre);
+        // las que quedarían vacías no se crean.
+        if (!d.label && !primaryName && !secondaryName) return null;
+        return {
+          slotKey: s.key,
+          section: s.section,
+          label: d.label ?? s.label,
+          order: i,
+          allowTwo: s.allowTwo,
+          equalPair: !!s.equalPair,
+          primaryName,
+          primaryToken: primaryName ? newToken() : null,
+          primaryStatus: CONFIRM_STATUS.PENDIENTE,
+          secondaryName,
+          secondaryToken: secondaryName ? newToken() : null,
+          secondaryStatus: CONFIRM_STATUS.PENDIENTE,
+        };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null);
 
     await prisma.meeting.create({
       data: {

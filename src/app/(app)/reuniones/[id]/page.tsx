@@ -3,7 +3,6 @@ import { requireMeetingsAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   meetingDayLabel,
-  slotsForDay,
   JUEVES_SECTION_ORDER,
   SABADO_SECTION_ORDER,
   MEETING_SECTION_LABELS,
@@ -35,15 +34,6 @@ export default async function ReunionDetallePage({
   });
   const hermanos = publishers.map((p) => p.fullName);
 
-  // Mapa slotKey -> allowTwo, para saber si la casilla admite 2 hermanos.
-  const slots = slotsForDay(meeting.day);
-  const allowTwoByKey = Object.fromEntries(
-    slots.map((s) => [s.key, s.allowTwo]),
-  );
-  const equalPairByKey = Object.fromEntries(
-    slots.map((s) => [s.key, !!s.equalPair]),
-  );
-
   const sectionOrder =
     meeting.day === MEETING_DAYS.SABADO
       ? SABADO_SECTION_ORDER
@@ -54,8 +44,8 @@ export default async function ReunionDetallePage({
     slotKey: a.slotKey,
     section: a.section,
     label: a.label,
-    allowTwo: allowTwoByKey[a.slotKey] ?? false,
-    equalPair: equalPairByKey[a.slotKey] ?? false,
+    allowTwo: a.allowTwo,
+    equalPair: a.equalPair,
     note: a.note ?? "",
     primaryName: a.primaryName ?? "",
     primaryToken: a.primaryToken,
