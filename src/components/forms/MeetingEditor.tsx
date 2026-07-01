@@ -39,6 +39,22 @@ type Item = Row & { key: string; tab: "asig" | "resp" };
 
 const RESP_SECTIONS = ["RESPONSABILIDADES", "SAB_RESPONSABILIDADES"];
 
+// Colores por sección, como en el programa impreso (Excel).
+const SECTION_STYLE: Record<string, { card: string; chip: string }> = {
+  TESOROS: {
+    card: "border-l-4 border-l-[#4f7a86] bg-[#4f7a86]/[0.06]",
+    chip: "bg-[#4f7a86] text-white",
+  },
+  SMM: {
+    card: "border-l-4 border-l-[#b58a2e] bg-[#b58a2e]/[0.06]",
+    chip: "bg-[#b58a2e] text-white",
+  },
+  VC: {
+    card: "border-l-4 border-l-[#9d3b33] bg-[#9d3b33]/[0.06]",
+    chip: "bg-[#9d3b33] text-white",
+  },
+};
+
 function StatusBadge({ status }: { status: string }) {
   if (status === CONFIRM_STATUS.CONFIRMADO)
     return <Badge tone="green">✅ Confirmado</Badge>;
@@ -56,6 +72,7 @@ export function MeetingEditor({
   weekLabel,
   dateInput,
   rows,
+  sectionLabels,
   hermanos,
 }: {
   meetingId: string;
@@ -293,7 +310,24 @@ export function MeetingEditor({
             </p>
           ) : (
             visible.map((it) => (
-              <div key={it.key} className="rounded-xl border border-border p-3 sm:p-4">
+              <div
+                key={it.key}
+                className={
+                  "rounded-xl border border-border p-3 sm:p-4 " +
+                  (SECTION_STYLE[it.section]?.card ?? "")
+                }
+              >
+                {sectionLabels[it.section] ? (
+                  <span
+                    className={
+                      "mb-2 inline-block rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold " +
+                      (SECTION_STYLE[it.section]?.chip ??
+                        "bg-slate-200 text-slate-700")
+                    }
+                  >
+                    {sectionLabels[it.section]}
+                  </span>
+                ) : null}
                 <div className="mb-3 flex items-start gap-2">
                   <div className="flex-1">
                     <span className="mb-1 block text-xs font-medium text-muted">

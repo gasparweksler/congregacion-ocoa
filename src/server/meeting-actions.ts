@@ -190,6 +190,19 @@ export async function saveMeetingAction(
   return { success: "Reunión guardada correctamente." };
 }
 
+export async function deleteAllMeetingsAction(): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const res = await prisma.meeting.deleteMany({});
+  await logAudit({
+    userId: user.id,
+    action: "ELIMINAR",
+    entity: "Reunion",
+    details: `Se eliminaron TODAS las reuniones (${res.count}).`,
+  });
+  revalidatePath("/reuniones");
+  redirect("/reuniones");
+}
+
 export async function deleteMeetingAction(formData: FormData): Promise<void> {
   const user = await requireMeetingsAccess();
   const id = String(formData.get("id") ?? "");

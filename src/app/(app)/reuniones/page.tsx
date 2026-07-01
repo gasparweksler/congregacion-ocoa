@@ -8,7 +8,10 @@ import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { deleteMeetingAction } from "@/server/meeting-actions";
+import {
+  deleteMeetingAction,
+  deleteAllMeetingsAction,
+} from "@/server/meeting-actions";
 
 export default async function ReunionesPage() {
   await requireMeetingsAccess();
@@ -50,6 +53,16 @@ export default async function ReunionesPage() {
             <CardHeader
               title="Reuniones"
               description={`${meetings.length} reunión(es) registradas.`}
+              action={
+                meetings.length > 0 ? (
+                  <ConfirmButton
+                    action={deleteAllMeetingsAction}
+                    confirmText="¿Eliminar TODAS las reuniones? Esta acción no se puede deshacer."
+                  >
+                    Eliminar todas
+                  </ConfirmButton>
+                ) : undefined
+              }
             />
             {meetings.length === 0 ? (
               <EmptyState
