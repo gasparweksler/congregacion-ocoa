@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
+import { MeetingImport } from "@/components/forms/MeetingImport";
 
 export default async function ReunionesPage() {
   await requireMeetingsAccess();
@@ -23,11 +24,21 @@ export default async function ReunionesPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+        <div className="space-y-6 lg:col-span-1">
           <Card>
             <CardHeader title="Nueva reunión" />
             <CardBody>
               <MeetingCreateForm />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Carga masiva (Excel)"
+              description="Crea varias reuniones de una vez desde una plantilla."
+            />
+            <CardBody>
+              <MeetingImport />
             </CardBody>
           </Card>
         </div>
