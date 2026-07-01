@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { deleteMeetingAction } from "@/server/meeting-actions";
 
 export default async function ReunionesPage() {
   await requireMeetingsAccess();
@@ -80,37 +82,50 @@ export default async function ReunionesPage() {
                     }
                   }
                   return (
-                    <Link
+                    <div
                       key={m.id}
-                      href={`/reuniones/${m.id}`}
-                      className="flex flex-col gap-2 px-5 py-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-slate-50"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">
-                            {m.weekLabel ?? formatDate(m.date)}
-                          </span>
-                          <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
+                      <Link
+                        href={`/reuniones/${m.id}`}
+                        className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground">
+                              {m.weekLabel ?? formatDate(m.date)}
+                            </span>
+                            <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
+                          </div>
+                          <p className="mt-0.5 text-sm text-muted">
+                            {assigned} asignación(es)
+                            {m.confirmadorName
+                              ? ` · Confirma: ${m.confirmadorName}`
+                              : ""}
+                          </p>
                         </div>
-                        <p className="mt-0.5 text-sm text-muted">
-                          {assigned} asignación(es)
-                          {m.confirmadorName
-                            ? ` · Confirma: ${m.confirmadorName}`
-                            : ""}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {confirmed > 0 ? (
-                          <Badge tone="green">✅ {confirmed}</Badge>
-                        ) : null}
-                        {pending > 0 ? (
-                          <Badge tone="amber">⏳ {pending}</Badge>
-                        ) : null}
-                        {rejected > 0 ? (
-                          <Badge tone="red">❌ {rejected}</Badge>
-                        ) : null}
-                      </div>
-                    </Link>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {confirmed > 0 ? (
+                            <Badge tone="green">✅ {confirmed}</Badge>
+                          ) : null}
+                          {pending > 0 ? (
+                            <Badge tone="amber">⏳ {pending}</Badge>
+                          ) : null}
+                          {rejected > 0 ? (
+                            <Badge tone="red">❌ {rejected}</Badge>
+                          ) : null}
+                        </div>
+                      </Link>
+                      <ConfirmButton
+                        action={deleteMeetingAction}
+                        hidden={{ id: m.id }}
+                        confirmText={`¿Eliminar la reunión "${
+                          m.weekLabel ?? formatDate(m.date)
+                        }"? No se puede deshacer.`}
+                      >
+                        🗑️ Eliminar
+                      </ConfirmButton>
+                    </div>
                   );
                 })}
               </div>
