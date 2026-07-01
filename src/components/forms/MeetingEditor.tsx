@@ -97,13 +97,16 @@ export function MeetingEditor({
   function buildMessage(name: string, label: string, token: string) {
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
+    // Se generan en tiempo de ejecución desde su código (número) para evitar
+    // cualquier problema de codificación al empaquetar/servir el emoji.
+    const cp = String.fromCodePoint;
     const E = {
-      hug: "\u{1F917}",
-      cal: "\u{1F4C5}",
-      clip: "\u{1F4CB}",
-      pray: "\u{1F64F}",
-      smile: "\u{1F60A}",
-      point: "\u{1F449}",
+      hug: cp(0x1f917),
+      cal: cp(0x1f4c5),
+      clip: cp(0x1f4cb),
+      pray: cp(0x1f64f),
+      smile: cp(0x1f60a),
+      point: cp(0x1f449),
     };
     return (
       `Hola querido Hermano/a *${name}* ${E.hug}\n\n` +
