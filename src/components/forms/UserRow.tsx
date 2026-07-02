@@ -18,6 +18,7 @@ export type UserRowData = {
   groupName: string | null;
   active: boolean;
   alsoConfirmador: boolean;
+  groupRoleLabel: string | null;
 };
 
 export function UserRow({
@@ -38,6 +39,7 @@ export function UserRow({
   }, [state.success]);
 
   const needsGroup = GROUP_ROLES.includes(role as never);
+  const isAdmin = role === ROLES.SECRETARIO;
 
   if (!editing) {
     return (
@@ -56,6 +58,15 @@ export function UserRow({
           {user.alsoConfirmador ? (
             <span className="mt-1 inline-block">
               <Badge tone="violet">+ Encargado de Confirmaciones</Badge>
+            </span>
+          ) : null}
+          {user.role === ROLES.SECRETARIO &&
+          user.groupRoleLabel &&
+          user.groupName ? (
+            <span className="mt-1 inline-block">
+              <Badge tone="slate">
+                {roleLabel(user.groupRoleLabel)} · {user.groupName}
+              </Badge>
             </span>
           ) : null}
         </div>
@@ -114,11 +125,14 @@ export function UserRow({
           </Select>
         </div>
         <div>
-          <Label>Grupo {needsGroup ? "" : "(no aplica)"}</Label>
+          <Label>
+            Grupo{" "}
+            {needsGroup ? "" : isAdmin ? "(opcional)" : "(no aplica)"}
+          </Label>
           <Select
             name="groupId"
             defaultValue={user.groupId ?? ""}
-            disabled={!needsGroup}
+            disabled={!needsGroup && !isAdmin}
           >
             <option value="">— Sin grupo —</option>
             {groups.map((g) => (
@@ -128,6 +142,22 @@ export function UserRow({
             ))}
           </Select>
         </div>
+
+        {isAdmin ? (
+          <div>
+            <Label>Etiqueta en el grupo (opcional)</Label>
+            <Select
+              name="groupRoleLabel"
+              defaultValue={user.groupRoleLabel ?? ""}
+            >
+              <option value="">— Ninguna —</option>
+              <option value={ROLES.SUPERINTENDENTE}>
+                Superintendente de Grupo
+              </option>
+              <option value={ROLES.AUXILIAR}>Auxiliar de Grupo</option>
+            </Select>
+          </div>
+        ) : null}
         <div>
           <Label>Restablecer contraseña (opcional)</Label>
           <Input

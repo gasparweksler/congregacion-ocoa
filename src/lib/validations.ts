@@ -63,6 +63,7 @@ export const createUserSchema = z
     groupId: z.string().trim().optional().nullable(),
     mustChangePassword: z.boolean().optional().default(false),
     alsoConfirmador: z.boolean().optional().default(false),
+    groupRoleLabel: z.string().trim().optional().nullable(),
   })
   .refine(
     // Superintendente/Auxiliar deben tener grupo asignado.
@@ -79,6 +80,7 @@ export const updateUserSchema = z
     groupId: z.string().trim().optional().nullable(),
     active: z.boolean().optional().default(true),
     alsoConfirmador: z.boolean().optional().default(false),
+    groupRoleLabel: z.string().trim().optional().nullable(),
     // Opcional: si se completa, restablece la contraseña.
     newPassword: z
       .string()

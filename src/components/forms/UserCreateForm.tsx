@@ -15,6 +15,7 @@ export function UserCreateForm({ groups }: { groups: GroupOption[] }) {
   const formRef = useRef<HTMLFormElement>(null);
 
   const needsGroup = GROUP_ROLES.includes(role as never);
+  const isAdmin = role === ROLES.SECRETARIO;
 
   useEffect(() => {
     if (state.success) {
@@ -74,14 +75,19 @@ export function UserCreateForm({ groups }: { groups: GroupOption[] }) {
         </Select>
       </div>
 
-      {needsGroup ? (
+      {needsGroup || isAdmin ? (
         <div>
-          <Label htmlFor="groupId" required>
-            Grupo
+          <Label htmlFor="groupId" required={needsGroup}>
+            {needsGroup ? "Grupo" : "Grupo (opcional)"}
           </Label>
-          <Select id="groupId" name="groupId" defaultValue="" required>
-            <option value="" disabled>
-              Selecciona un grupo
+          <Select
+            id="groupId"
+            name="groupId"
+            defaultValue=""
+            required={needsGroup}
+          >
+            <option value="">
+              {needsGroup ? "Selecciona un grupo" : "Sin grupo"}
             </option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -94,6 +100,23 @@ export function UserCreateForm({ groups }: { groups: GroupOption[] }) {
               Primero crea un grupo en la sección “Grupos”.
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {isAdmin ? (
+        <div>
+          <Label htmlFor="groupRoleLabel">
+            Etiqueta en el grupo (opcional)
+          </Label>
+          <Select id="groupRoleLabel" name="groupRoleLabel" defaultValue="">
+            <option value="">— Ninguna —</option>
+            <option value={ROLES.SUPERINTENDENTE}>Superintendente de Grupo</option>
+            <option value={ROLES.AUXILIAR}>Auxiliar de Grupo</option>
+          </Select>
+          <p className="mt-1 text-xs text-muted">
+            Solo es una designación visible; el Administrador conserva acceso
+            total.
+          </p>
         </div>
       ) : null}
 

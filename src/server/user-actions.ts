@@ -15,10 +15,25 @@ import { ROLES, GROUP_ROLES, roleLabel, type Role } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
 
-// Normaliza el groupId según el rol: el Secretario nunca tiene grupo.
+// Normaliza el groupId según el rol. Super/Aux siempre tienen grupo; el
+// Administrador PUEDE tener grupo (designación opcional); Responsable no.
 function resolveGroupId(role: string, groupId: string | null | undefined) {
   if (GROUP_ROLES.includes(role as Role)) return groupId || null;
-  return null; // SECRETARIO
+  if (role === ROLES.SECRETARIO) return groupId || null;
+  return null; // RESPONSABLE_CONFIRMACIONES
+}
+
+// Etiqueta secundaria (Superintendente/Auxiliar) solo aplica al Administrador y
+// solo si tiene un grupo asignado.
+function resolveGroupRoleLabel(
+  role: string,
+  groupId: string | null,
+  label: string | null | undefined,
+) {
+  if (role !== ROLES.SECRETARIO || !groupId) return null;
+  return label === ROLES.SUPERINTENDENTE || label === ROLES.AUXILIAR
+    ? label
+    : null;
 }
 
 export async function createUserAction(
@@ -35,6 +50,7 @@ export async function createUserAction(
     groupId: formData.get("groupId") || null,
     mustChangePassword: formData.get("mustChangePassword") === "on",
     alsoConfirmador: formData.get("alsoConfirmador") === "on",
+    groupRoleLabel: formData.get("groupRoleLabel") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -56,6 +72,11 @@ export async function createUserAction(
   // La capacidad "también Confirmaciones" solo aplica a Super/Aux.
   const alsoConfirmador =
     GROUP_ROLES.includes(data.role as Role) && !!data.alsoConfirmador;
+  const groupRoleLabel = resolveGroupRoleLabel(
+    data.role,
+    groupId,
+    data.groupRoleLabel,
+  );
 
   const created = await prisma.user.create({
     data: {
@@ -67,6 +88,7 @@ export async function createUserAction(
       groupId,
       mustChangePassword: data.mustChangePassword ?? false,
       alsoConfirmador,
+      groupRoleLabel,
     },
   });
 
@@ -97,6 +119,7 @@ export async function updateUserAction(
     active: formData.get("active") === "on",
     newPassword: formData.get("newPassword") || "",
     alsoConfirmador: formData.get("alsoConfirmador") === "on",
+    groupRoleLabel: formData.get("groupRoleLabel") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -124,6 +147,11 @@ export async function updateUserAction(
 
   const alsoConfirmador =
     GROUP_ROLES.includes(data.role as Role) && !!data.alsoConfirmador;
+  const groupRoleLabel = resolveGroupRoleLabel(
+    data.role,
+    groupId,
+    data.groupRoleLabel,
+  );
 
   await prisma.user.update({
     where: { id: data.id },
@@ -134,6 +162,7 @@ export async function updateUserAction(
       groupId,
       active,
       alsoConfirmador,
+      groupRoleLabel,
       // Si se ingresó una nueva contraseña, se restablece y se obliga a cambiarla.
       ...(data.newPassword
         ? {

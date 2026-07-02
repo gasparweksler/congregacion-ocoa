@@ -46,6 +46,11 @@ model User {
   // Confirmaciones, o Auxiliar + Confirmaciones.
   alsoConfirmador Boolean @default(false)
 
+  // Etiqueta secundaria en un grupo para el Administrador (SUPERINTENDENTE |
+  // AUXILIAR). No cambia sus permisos (sigue con acceso total); es solo una
+  // designación visible, junto con groupId.
+  groupRoleLabel String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

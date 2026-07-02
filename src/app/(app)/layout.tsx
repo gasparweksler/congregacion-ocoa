@@ -21,6 +21,7 @@ export default async function AppLayout({
       name: true,
       mustChangePassword: true,
       active: true,
+      groupRoleLabel: true,
       group: { select: { name: true } },
     },
   });
@@ -91,7 +92,11 @@ export default async function AppLayout({
     <AppShell
       user={{
         name: dbUser.name ?? user.username,
-        roleLabel: roleLabel(user.role),
+        roleLabel:
+          roleLabel(user.role) +
+          (isSecretary && dbUser.groupRoleLabel
+            ? ` · ${roleLabel(dbUser.groupRoleLabel)}`
+            : ""),
         groupName,
       }}
       navItems={navItems}
