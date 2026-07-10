@@ -7,8 +7,13 @@
 // ============================================================================
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser, canAccessGroup } from "@/lib/access";
+import {
+  requireUser,
+  canAccessGroup,
+  scopedGroupId,
+} from "@/lib/access";
 import { isPioneer } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
@@ -17,6 +22,46 @@ function toInt(value: FormDataEntryValue | null, max = 9999): number {
   const n = parseInt(String(value ?? "0"), 10);
   if (isNaN(n) || n < 0) return 0;
   return Math.min(n, max);
+}
+
+// Elimina los informes de un período (año/mes) dentro del alcance del usuario.
+// Un Superintendente/Auxiliar solo puede borrar los de su grupo; el
+// Administrador puede borrar los del grupo filtrado (o de todos si no filtra).
+export async function deleteReportsPeriodAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireUser();
+  const year = parseInt(String(formData.get("year") ?? ""), 10);
+  const month = parseInt(String(formData.get("month") ?? ""), 10);
+  if (isNaN(year) || isNaN(month)) return;
+
+  const scope = scopedGroupId(user); // grupo si super/aux; null si admin
+  const submittedGroup = String(formData.get("grupo") ?? "") || null;
+  const groupId = scope ?? submittedGroup;
+
+  const res = await prisma.monthlyReport.deleteMany({
+    where: {
+      year,
+      month,
+      ...(groupId ? { publisher: { groupId } } : {}),
+    },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "ELIMINAR",
+    entity: "Informe",
+    details: `Se eliminaron ${res.count} informe(s) de ${month}/${year}.`,
+  });
+
+  revalidatePath("/informes");
+  revalidatePath("/estadisticas");
+  revalidatePath("/panel");
+  redirect(
+    `/informes?anio=${year}&mes=${month}${
+      submittedGroup ? `&grupo=${submittedGroup}` : ""
+    }`,
+  );
 }
 
 export async function saveReportsAction(

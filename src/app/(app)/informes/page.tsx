@@ -4,7 +4,15 @@ import { isPioneer, monthName } from "@/lib/constants";
 import { parsePeriod, previousPeriod } from "@/lib/period";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardHeader, CardBody, EmptyState } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  EmptyState,
+  LinkButton,
+} from "@/components/ui";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { deleteReportsPeriodAction } from "@/server/report-actions";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { GroupFilter } from "@/components/GroupFilter";
 import { ReportsForm, type ReportRow } from "@/components/forms/ReportsForm";
@@ -98,18 +106,43 @@ export default async function InformesPage({
 
       {lastReport ? (
         <Card className="mb-4">
-          <CardBody className="text-sm">
-            <span className="font-semibold text-foreground">
-              📌 Último informe subido:{" "}
-            </span>
-            {monthName(lastReport.month)} {lastReport.year}
-            <span className="text-muted">
-              {" "}
-              · guardado el {formatDate(lastReport.updatedAt)}
-              {lastReport.submittedBy?.name
-                ? ` por ${lastReport.submittedBy.name}`
-                : ""}
-            </span>
+          <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm">
+              <span className="font-semibold text-foreground">
+                📌 Último informe subido:{" "}
+              </span>
+              {monthName(lastReport.month)} {lastReport.year}
+              <span className="text-muted">
+                {" "}
+                · guardado el {formatDate(lastReport.updatedAt)}
+                {lastReport.submittedBy?.name
+                  ? ` por ${lastReport.submittedBy.name}`
+                  : ""}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <LinkButton
+                href={`/informes?anio=${lastReport.year}&mes=${lastReport.month}${
+                  sp.grupo ? `&grupo=${sp.grupo}` : ""
+                }`}
+                variant="secondary"
+              >
+                ✏️ Editar
+              </LinkButton>
+              <ConfirmButton
+                action={deleteReportsPeriodAction}
+                hidden={{
+                  year: String(lastReport.year),
+                  month: String(lastReport.month),
+                  grupo: sp.grupo ?? "",
+                }}
+                confirmText={`¿Eliminar los informes de ${monthName(
+                  lastReport.month,
+                )} ${lastReport.year}? Esta acción no se puede deshacer.`}
+              >
+                🗑️ Eliminar
+              </ConfirmButton>
+            </div>
           </CardBody>
         </Card>
       ) : null}
