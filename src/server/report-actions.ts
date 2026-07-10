@@ -34,7 +34,12 @@ export async function updateSingleReportAction(
   const id = String(formData.get("id") ?? "");
   const report = await prisma.monthlyReport.findUnique({
     where: { id },
-    select: { statusAtReport: true },
+    select: {
+      statusAtReport: true,
+      publisherId: true,
+      year: true,
+      month: true,
+    },
   });
   if (!report) return { error: "Informe no encontrado." };
 
@@ -46,9 +51,35 @@ export async function updateSingleReportAction(
   const commentRaw = String(formData.get("comment") ?? "").trim();
   const comment = commentRaw.length > 0 ? commentRaw.slice(0, 2000) : null;
 
+  // Mes/año (corregibles). Si cambian, no debe existir otro informe del mismo
+  // publicador en ese período.
+  const year = parseInt(String(formData.get("year") ?? ""), 10);
+  const month = parseInt(String(formData.get("month") ?? ""), 10);
+  const newYear = !isNaN(year) && year >= 2000 && year <= 2100 ? year : report.year;
+  const newMonth = !isNaN(month) && month >= 1 && month <= 12 ? month : report.month;
+  if (newYear !== report.year || newMonth !== report.month) {
+    const clash = await prisma.monthlyReport.findFirst({
+      where: {
+        publisherId: report.publisherId,
+        year: newYear,
+        month: newMonth,
+        NOT: { id },
+      },
+      select: { id: true },
+    });
+    if (clash) {
+      return {
+        error:
+          "Ya existe un informe de ese publicador en el mes/año elegido. Elimínalo primero o elige otro período.",
+      };
+    }
+  }
+
   await prisma.monthlyReport.update({
     where: { id },
     data: {
+      year: newYear,
+      month: newMonth,
       participated,
       bibleStudies,
       hours,
@@ -71,6 +102,72 @@ export async function updateSingleReportAction(
   revalidatePath("/estadisticas");
   revalidatePath("/panel");
   return { success: "Informe actualizado correctamente." };
+}
+
+// Mueve TODOS los informes de un período (año/mes, opcionalmente de un grupo) a
+// otro período. Útil para corregir un mes cargado por error. Solo Administrador.
+export async function moveReportsPeriodAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireSecretary();
+  const fromYear = parseInt(String(formData.get("fromYear") ?? ""), 10);
+  const fromMonth = parseInt(String(formData.get("fromMonth") ?? ""), 10);
+  const toYear = parseInt(String(formData.get("toYear") ?? ""), 10);
+  const toMonth = parseInt(String(formData.get("toMonth") ?? ""), 10);
+  const groupId = String(formData.get("grupo") ?? "") || null;
+
+  if ([fromYear, fromMonth, toYear, toMonth].some((n) => isNaN(n))) {
+    return { error: "Completa el período de origen y el de destino." };
+  }
+  if (fromYear === toYear && fromMonth === toMonth) {
+    return { error: "El período de origen y el de destino son iguales." };
+  }
+
+  const source = await prisma.monthlyReport.findMany({
+    where: {
+      year: fromYear,
+      month: fromMonth,
+      ...(groupId ? { publisher: { groupId } } : {}),
+    },
+    select: { id: true, publisherId: true },
+  });
+  if (source.length === 0) {
+    return {
+      error: "No hay informes en el período de origen (revisa mes, año y grupo).",
+    };
+  }
+
+  const publisherIds = source.map((r) => r.publisherId);
+  // Evitar conflictos: se borran los informes que ya existan en el destino para
+  // esos publicadores, y luego se mueven los de origen.
+  await prisma.$transaction([
+    prisma.monthlyReport.deleteMany({
+      where: {
+        year: toYear,
+        month: toMonth,
+        publisherId: { in: publisherIds },
+      },
+    }),
+    prisma.monthlyReport.updateMany({
+      where: { id: { in: source.map((r) => r.id) } },
+      data: { year: toYear, month: toMonth },
+    }),
+  ]);
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Informe",
+    details: `Movidos ${source.length} informe(s) de ${fromMonth}/${fromYear} a ${toMonth}/${toYear}.`,
+  });
+
+  revalidatePath("/informes/historial");
+  revalidatePath("/estadisticas");
+  revalidatePath("/panel");
+  return {
+    success: `Se movieron ${source.length} informe(s) de ${fromMonth}/${fromYear} a ${toMonth}/${toYear}.`,
+  };
 }
 
 export async function deleteSingleReportAction(

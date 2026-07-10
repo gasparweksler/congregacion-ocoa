@@ -75,6 +75,8 @@ export default async function ReporteDetallePage({
               hours: report.hours,
               auxiliaryPioneer: report.auxiliaryPioneer,
               comment: report.comment ?? "",
+              year: report.year,
+              month: report.month,
             }}
           />
         </CardBody>

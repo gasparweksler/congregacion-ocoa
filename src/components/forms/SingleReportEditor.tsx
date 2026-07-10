@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { updateSingleReportAction } from "@/server/report-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
-import { Label, Input, Alert, Button, Badge } from "@/components/ui";
+import { Label, Input, Select, Alert, Button, Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { statusLabel } from "@/lib/constants";
+import { statusLabel, monthName, MONTH_NAMES } from "@/lib/constants";
+import { yearOptions } from "@/lib/period";
 import { statusTone } from "@/lib/ui-helpers";
 
 export type SingleReportData = {
@@ -18,6 +19,8 @@ export type SingleReportData = {
   hours: number | null;
   auxiliaryPioneer: boolean;
   comment: string;
+  year: number;
+  month: number;
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -44,6 +47,9 @@ export function SingleReportEditor({ report }: { report: SingleReportData }) {
       <div className="space-y-4">
         {state.success ? <Alert tone="success">{state.success}</Alert> : null}
         <div className="rounded-xl border border-border p-4">
+          <Field label="Período">
+            {monthName(report.month)} {report.year}
+          </Field>
           <Field label="Estado">
             <Badge tone={statusTone(report.status)}>
               {statusLabel(report.status)}
@@ -72,6 +78,29 @@ export function SingleReportEditor({ report }: { report: SingleReportData }) {
     <form action={action} className="space-y-4">
       <input type="hidden" name="id" value={report.id} />
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="month">Mes</Label>
+          <Select id="month" name="month" defaultValue={String(report.month)}>
+            {MONTH_NAMES.map((m, i) => (
+              <option key={i} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="year">Año</Label>
+          <Select id="year" name="year" defaultValue={String(report.year)}>
+            {yearOptions().map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
 
       <label className="flex items-center gap-2 text-sm text-foreground">
         <input

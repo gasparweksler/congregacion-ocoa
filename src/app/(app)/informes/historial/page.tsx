@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
   CardHeader,
+  CardBody,
   EmptyState,
   Badge,
   LinkButton,
@@ -19,6 +20,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { deleteSingleReportAction } from "@/server/report-actions";
 import { deleteAllReportsAction } from "@/server/maintenance-actions";
 import { HistoryFilters } from "@/components/HistoryFilters";
+import { MoveReportsForm } from "@/components/forms/MoveReportsForm";
 
 export default async function HistorialInformesPage({
   searchParams,
@@ -88,6 +90,16 @@ export default async function HistorialInformesPage({
           </ConfirmButton>
         ) : null}
       </div>
+
+      <Card className="mb-4">
+        <CardHeader
+          title="🔧 Corregir mes/año de informes"
+          description="Mueve todos los informes de un período a otro (ej. lo cargado en Julio hacia Junio). Puedes limitarlo a un grupo."
+        />
+        <CardBody>
+          <MoveReportsForm years={yearOptions()} groups={groups} />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader
