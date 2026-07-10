@@ -11,6 +11,7 @@ import {
   monthName,
   isPioneer,
   SEX_LABELS,
+  PUBLISHER_STATUS,
   type Sex,
 } from "@/lib/constants";
 import { getCongregationStats } from "@/lib/stats";
@@ -154,28 +155,92 @@ export async function buildStatsWorkbook(
   resumen.getCell("A1").value = `Estadísticas — ${monthName(month)} ${year}`;
   resumen.getCell("A1").font = { bold: true, size: 14 };
 
-  const filas: Array<[string, number | string]> = [
-    ["Total de publicadores", totals.totalPublishers],
-    ["Informaron actividad", totals.reported],
-    ["Participación (%)", `${totals.participationPct}%`],
-    ["Cursos bíblicos", totals.totalBibleStudies],
-    ["Horas de predicación", totals.totalHours],
-    ["Bautizados", totals.byStatus.BAUTIZADO],
-    ["No bautizados", totals.byStatus.NO_BAUTIZADO],
-    ["Inactivos", totals.byStatus.INACTIVO],
-    ["Precursores regulares", totals.byStatus.PRECURSOR_REGULAR],
-    ["Precursores auxiliares", totals.byStatus.PRECURSOR_AUXILIAR],
-    [
-      "Precursores auxiliares indefinidos",
-      totals.byStatus.PRECURSOR_AUXILIAR_INDEFINIDO,
-    ],
-  ];
-  resumen.getColumn(1).width = 34;
-  resumen.getColumn(2).width = 16;
-  filas.forEach(([k, v]) => {
-    const row = resumen.addRow([k, v]);
-    row.getCell(1).font = { bold: true };
+  // Informes del período para el desglose detallado.
+  const reports = await prisma.monthlyReport.findMany({
+    where: { year, month },
+    select: {
+      participated: true,
+      bibleStudies: true,
+      hours: true,
+      auxiliaryPioneer: true,
+      statusAtReport: true,
+    },
   });
+  type Report = (typeof reports)[number];
+
+  // Categoría efectiva del mes (excluyentes): un bautizado que hace auxiliar ese
+  // mes cuenta como auxiliar (informa horas).
+  const catOf = (r: Report): string => {
+    const s = r.statusAtReport;
+    if (s === PUBLISHER_STATUS.PRECURSOR_REGULAR) return "regular";
+    if (
+      s === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
+      s === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO ||
+      r.auxiliaryPioneer
+    )
+      return "auxiliar";
+    if (s === PUBLISHER_STATUS.BAUTIZADO) return "bautizado";
+    if (s === PUBLISHER_STATUS.NO_BAUTIZADO) return "no_bautizado";
+    return "otro";
+  };
+  const sumBy = (arr: Report[], f: (r: Report) => number) =>
+    arr.reduce((a, r) => a + f(r), 0);
+
+  const baut = reports.filter((r) => catOf(r) === "bautizado");
+  const noBaut = reports.filter((r) => catOf(r) === "no_bautizado");
+  const reg = reports.filter((r) => catOf(r) === "regular");
+  const aux = reports.filter((r) => catOf(r) === "auxiliar");
+
+  const bautParticiparon = baut.filter((r) => r.participated).length;
+  const bautNo = baut.length - bautParticiparon;
+  const cursosBautNoBaut =
+    sumBy(baut, (r) => r.bibleStudies) + sumBy(noBaut, (r) => r.bibleStudies);
+
+  resumen.getColumn(1).width = 44;
+  resumen.getColumn(2).width = 16;
+
+  const addSection = (title: string) => {
+    const row = resumen.addRow([title, ""]);
+    row.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    row.getCell(1).fill = HEADER_FILL;
+    row.getCell(2).fill = HEADER_FILL;
+  };
+  const addVal = (k: string, v: number | string, bold = true) => {
+    const row = resumen.addRow([k, v]);
+    row.getCell(1).font = { bold };
+    row.getCell(2).alignment = { horizontal: "right" };
+  };
+
+  resumen.addRow([]);
+  addVal("Total de publicadores", totals.totalPublishers);
+
+  resumen.addRow([]);
+  addSection("PUBLICADORES BAUTIZADOS");
+  addVal("Informes de Publicadores Bautizados", baut.length);
+  addVal("   • Sí participaron", bautParticiparon, false);
+  addVal("   • No participaron", bautNo, false);
+
+  resumen.addRow([]);
+  addSection("CURSOS BÍBLICOS");
+  addVal("Total cursos bíblicos (Bautizados y No Bautizados)", cursosBautNoBaut);
+
+  resumen.addRow([]);
+  addSection("PRECURSORES REGULARES");
+  addVal("Total informes precursores regulares", reg.length);
+  addVal("Total horas precursores regulares", sumBy(reg, (r) => r.hours ?? 0));
+  addVal(
+    "Total cursos bíblicos precursores regulares",
+    sumBy(reg, (r) => r.bibleStudies),
+  );
+
+  resumen.addRow([]);
+  addSection("PRECURSORES AUXILIARES");
+  addVal("Total informes precursores auxiliares", aux.length);
+  addVal("Total horas precursores auxiliares", sumBy(aux, (r) => r.hours ?? 0));
+  addVal(
+    "Total cursos bíblicos precursores auxiliares",
+    sumBy(aux, (r) => r.bibleStudies),
+  );
 
   // --- Hoja comparación por grupo ---
   const comp = wb.addWorksheet("Por grupo");
