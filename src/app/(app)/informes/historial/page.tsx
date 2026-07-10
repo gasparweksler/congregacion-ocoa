@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
   CardHeader,
-  CardBody,
   EmptyState,
   Badge,
   LinkButton,
@@ -91,15 +90,9 @@ export default async function HistorialInformesPage({
         ) : null}
       </div>
 
-      <Card className="mb-4">
-        <CardHeader
-          title="🔧 Corregir mes/año de informes"
-          description="Mueve todos los informes de un período a otro (ej. lo cargado en Julio hacia Junio). Puedes limitarlo a un grupo."
-        />
-        <CardBody>
-          <MoveReportsForm years={yearOptions()} groups={groups} />
-        </CardBody>
-      </Card>
+      <div className="mb-4">
+        <MoveReportsForm years={yearOptions()} groups={groups} />
+      </div>
 
       <Card>
         <CardHeader
