@@ -11,8 +11,6 @@ import {
   EmptyState,
   LinkButton,
 } from "@/components/ui";
-import { ConfirmButton } from "@/components/ConfirmButton";
-import { deleteReportsPeriodAction } from "@/server/report-actions";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { GroupFilter } from "@/components/GroupFilter";
 import { ReportsForm, type ReportRow } from "@/components/forms/ReportsForm";
@@ -31,22 +29,26 @@ export default async function InformesPage({
   const scope = scopedGroupId(user); // null si secretario
   const groupFilter = secretary ? sp.grupo : (scope ?? undefined);
 
-  // Último informe subido dentro del alcance del usuario (para mostrarlo arriba).
-  const lastReport = await prisma.monthlyReport.findFirst({
+  // ¿El período mostrado ya tiene informes? Si sí, se muestra quién los subió y
+  // el formulario inicia bloqueado (hasta pulsar "Editar informe").
+  const periodReport = await prisma.monthlyReport.findFirst({
     where: {
+      year,
+      month,
       publisher: {
         ...(scope ? { groupId: scope } : {}),
         ...(groupFilter ? { groupId: groupFilter } : {}),
       },
     },
     orderBy: { updatedAt: "desc" },
-    select: {
-      updatedAt: true,
-      year: true,
-      month: true,
-      submittedBy: { select: { name: true } },
-    },
+    select: { updatedAt: true, submittedBy: { select: { name: true } } },
   });
+  const submitted = periodReport
+    ? {
+        by: periodReport.submittedBy?.name ?? "—",
+        at: formatDate(periodReport.updatedAt),
+      }
+    : null;
 
   const groups = secretary
     ? await prisma.group.findMany({
@@ -120,49 +122,6 @@ export default async function InformesPage({
         </div>
       ) : null}
 
-      {lastReport ? (
-        <Card className="mb-4">
-          <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm">
-              <span className="font-semibold text-foreground">
-                📌 Último informe subido:{" "}
-              </span>
-              {monthName(lastReport.month)} {lastReport.year}
-              <span className="text-muted">
-                {" "}
-                · guardado el {formatDate(lastReport.updatedAt)}
-                {lastReport.submittedBy?.name
-                  ? ` por ${lastReport.submittedBy.name}`
-                  : ""}
-              </span>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <LinkButton
-                href={`/informes?anio=${lastReport.year}&mes=${lastReport.month}${
-                  sp.grupo ? `&grupo=${sp.grupo}` : ""
-                }`}
-                variant="secondary"
-              >
-                ✏️ Editar
-              </LinkButton>
-              <ConfirmButton
-                action={deleteReportsPeriodAction}
-                hidden={{
-                  year: String(lastReport.year),
-                  month: String(lastReport.month),
-                  grupo: sp.grupo ?? "",
-                }}
-                confirmText={`¿Eliminar los informes de ${monthName(
-                  lastReport.month,
-                )} ${lastReport.year}? Esta acción no se puede deshacer.`}
-              >
-                🗑️ Eliminar
-              </ConfirmButton>
-            </div>
-          </CardBody>
-        </Card>
-      ) : null}
-
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <PeriodSelector year={year} month={month} />
         {secretary ? (
@@ -191,7 +150,12 @@ export default async function InformesPage({
           />
         ) : (
           <CardBody>
-            <ReportsForm year={year} month={month} rows={rows} />
+            <ReportsForm
+              year={year}
+              month={month}
+              rows={rows}
+              submitted={submitted}
+            />
           </CardBody>
         )}
       </Card>

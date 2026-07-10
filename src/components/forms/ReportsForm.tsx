@@ -58,13 +58,17 @@ export function ReportsForm({
   year,
   month,
   rows,
+  submitted,
 }: {
   year: number;
   month: number;
   rows: ReportRow[];
+  submitted: { by: string; at: string } | null;
 }) {
   const [state, action] = useActionState(saveReportsAction, EMPTY_FORM_STATE);
   const ids = rows.map((r) => r.id).join(",");
+  // Si el período ya tiene informes, el formulario inicia BLOQUEADO.
+  const [locked, setLocked] = useState(!!submitted);
 
   // Estado por fila: "Precursor Auxiliar" (controla habilitar Horas) y comentario.
   const [aux, setAux] = useState<Record<string, boolean>>(
@@ -95,7 +99,19 @@ export function ReportsForm({
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 
-      {/* Región con scroll: en móvil el encabezado queda fijo (sticky). */}
+      {submitted ? (
+        <Alert tone="info">
+          📌 Informe subido por <strong>{submitted.by}</strong> el{" "}
+          {submitted.at}.
+          {locked
+            ? " Está bloqueado para evitar cambios; pulsa “Editar informe” para modificarlo."
+            : " Modo edición activado."}
+        </Alert>
+      ) : null}
+
+      {/* Región con scroll: en móvil el encabezado queda fijo (sticky).
+          Un <fieldset disabled> bloquea todos los campos cuando está bloqueado. */}
+      <fieldset disabled={locked} className="min-w-0 border-0 p-0">
       <div className="max-h-[68vh] overflow-auto rounded-xl border border-border md:max-h-none md:overflow-x-auto md:rounded-none md:border-0">
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-20 bg-surface shadow-[0_1px_0_var(--border)]">
@@ -220,9 +236,14 @@ export function ReportsForm({
           </tbody>
         </table>
       </div>
+      </fieldset>
 
       <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
-        <SubmitButton pendingText="Guardando…">Guardar informes</SubmitButton>
+        {locked ? (
+          <Button onClick={() => setLocked(false)}>✏️ Editar informe</Button>
+        ) : (
+          <SubmitButton pendingText="Guardando…">Guardar informes</SubmitButton>
+        )}
       </div>
 
       {/* --- Modal de comentario --- */}
