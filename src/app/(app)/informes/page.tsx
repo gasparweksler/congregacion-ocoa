@@ -104,6 +104,22 @@ export default async function InformesPage({
         description={`Registra la actividad de ${monthName(month)} ${year}.`}
       />
 
+      {secretary ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <LinkButton href="/informes/historial" variant="secondary">
+            📋 Historial de informes
+          </LinkButton>
+          {user.groupId ? (
+            <LinkButton
+              href={`/informes?grupo=${user.groupId}`}
+              variant="primary"
+            >
+              📝 Subir informes de mi propio grupo
+            </LinkButton>
+          ) : null}
+        </div>
+      ) : null}
+
       {lastReport ? (
         <Card className="mb-4">
           <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

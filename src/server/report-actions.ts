@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
   requireUser,
+  requireSecretary,
   canAccessGroup,
   scopedGroupId,
 } from "@/lib/access";
@@ -22,6 +23,74 @@ function toInt(value: FormDataEntryValue | null, max = 9999): number {
   const n = parseInt(String(value ?? "0"), 10);
   if (isNaN(n) || n < 0) return 0;
   return Math.min(n, max);
+}
+
+// --- Edición/eliminación de un informe individual (solo Administrador) ------
+export async function updateSingleReportAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireSecretary();
+  const id = String(formData.get("id") ?? "");
+  const report = await prisma.monthlyReport.findUnique({
+    where: { id },
+    select: { statusAtReport: true },
+  });
+  if (!report) return { error: "Informe no encontrado." };
+
+  const participated = formData.get("participated") === "on";
+  const bibleStudies = toInt(formData.get("bibleStudies"), 999);
+  const auxiliaryPioneer = formData.get("auxiliaryPioneer") === "on";
+  const reportsHours = isPioneer(report.statusAtReport) || auxiliaryPioneer;
+  const hours = reportsHours ? toInt(formData.get("hours"), 9999) : null;
+  const commentRaw = String(formData.get("comment") ?? "").trim();
+  const comment = commentRaw.length > 0 ? commentRaw.slice(0, 2000) : null;
+
+  await prisma.monthlyReport.update({
+    where: { id },
+    data: {
+      participated,
+      bibleStudies,
+      hours,
+      auxiliaryPioneer,
+      comment,
+      submittedById: user.id,
+    },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Informe",
+    entityId: id,
+    details: "Informe editado desde el historial.",
+  });
+
+  revalidatePath("/informes/historial");
+  revalidatePath(`/informes/historial/${id}`);
+  revalidatePath("/estadisticas");
+  revalidatePath("/panel");
+  return { success: "Informe actualizado correctamente." };
+}
+
+export async function deleteSingleReportAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireSecretary();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.monthlyReport.delete({ where: { id } });
+  await logAudit({
+    userId: user.id,
+    action: "ELIMINAR",
+    entity: "Informe",
+    entityId: id,
+    details: "Informe eliminado desde el historial.",
+  });
+  revalidatePath("/informes/historial");
+  revalidatePath("/estadisticas");
+  revalidatePath("/panel");
+  redirect("/informes/historial");
 }
 
 // Elimina los informes de un período (año/mes) dentro del alcance del usuario.
