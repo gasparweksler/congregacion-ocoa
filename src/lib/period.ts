@@ -27,8 +27,8 @@ export function yearOptions(startYear = 2024): number[] {
 export function parsePeriod(
   yearStr?: string,
   monthStr?: string,
+  def: Period = currentPeriod(),
 ): Period {
-  const def = currentPeriod();
   const year = parseInt(yearStr ?? "", 10);
   const month = parseInt(monthStr ?? "", 10);
   return {

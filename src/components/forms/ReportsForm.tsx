@@ -79,7 +79,15 @@ export function ReportsForm({
   const openRow = rows.find((r) => r.id === openComment) ?? null;
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!window.confirm("¿Guardar los informes de este período?")) {
+          e.preventDefault();
+        }
+      }}
+      className="space-y-4"
+    >
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
       <input type="hidden" name="ids" value={ids} />

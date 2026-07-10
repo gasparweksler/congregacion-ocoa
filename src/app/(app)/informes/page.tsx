@@ -1,7 +1,8 @@
 import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { isPioneer, monthName } from "@/lib/constants";
-import { parsePeriod } from "@/lib/period";
+import { parsePeriod, previousPeriod } from "@/lib/period";
+import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState } from "@/components/ui";
 import { PeriodSelector } from "@/components/PeriodSelector";
@@ -16,10 +17,28 @@ export default async function InformesPage({
   const user = await requireReportsAccess();
   const secretary = isSecretary(user);
   const sp = await searchParams;
-  const { year, month } = parsePeriod(sp.anio, sp.mes);
+  // Por defecto se muestra el mes anterior (el que toca informar). Editable.
+  const { year, month } = parsePeriod(sp.anio, sp.mes, previousPeriod());
 
   const scope = scopedGroupId(user); // null si secretario
   const groupFilter = secretary ? sp.grupo : (scope ?? undefined);
+
+  // Último informe subido dentro del alcance del usuario (para mostrarlo arriba).
+  const lastReport = await prisma.monthlyReport.findFirst({
+    where: {
+      publisher: {
+        ...(scope ? { groupId: scope } : {}),
+        ...(groupFilter ? { groupId: groupFilter } : {}),
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      updatedAt: true,
+      year: true,
+      month: true,
+      submittedBy: { select: { name: true } },
+    },
+  });
 
   const groups = secretary
     ? await prisma.group.findMany({
@@ -76,6 +95,24 @@ export default async function InformesPage({
         title="Informes mensuales"
         description={`Registra la actividad de ${monthName(month)} ${year}.`}
       />
+
+      {lastReport ? (
+        <Card className="mb-4">
+          <CardBody className="text-sm">
+            <span className="font-semibold text-foreground">
+              📌 Último informe subido:{" "}
+            </span>
+            {monthName(lastReport.month)} {lastReport.year}
+            <span className="text-muted">
+              {" "}
+              · guardado el {formatDate(lastReport.updatedAt)}
+              {lastReport.submittedBy?.name
+                ? ` por ${lastReport.submittedBy.name}`
+                : ""}
+            </span>
+          </CardBody>
+        </Card>
+      ) : null}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <PeriodSelector year={year} month={month} />
