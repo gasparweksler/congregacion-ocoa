@@ -57,6 +57,20 @@ export default async function InformesPage({
       })
     : [];
 
+  // Seguimiento de entrega del MES ANTERIOR (siempre, independiente del filtro).
+  const prev = previousPeriod();
+  let deliveredGroups: { id: string; name: string }[] = [];
+  let pendingGroups: { id: string; name: string }[] = [];
+  if (secretary) {
+    const reported = await prisma.monthlyReport.findMany({
+      where: { year: prev.year, month: prev.month },
+      select: { publisher: { select: { groupId: true } } },
+    });
+    const reportedIds = new Set(reported.map((r) => r.publisher.groupId));
+    deliveredGroups = groups.filter((g) => reportedIds.has(g.id));
+    pendingGroups = groups.filter((g) => !reportedIds.has(g.id));
+  }
+
   const publishers = await prisma.publisher.findMany({
     where: {
       ...(scope ? { groupId: scope } : {}),
@@ -120,6 +134,57 @@ export default async function InformesPage({
             </LinkButton>
           ) : null}
         </div>
+      ) : null}
+
+      {secretary ? (
+        <Card className="mb-4">
+          <CardHeader
+            title={`Entrega de informes · ${monthName(prev.month)} ${prev.year}`}
+            description="Seguimiento del mes anterior (se actualiza solo cada mes)."
+          />
+          <CardBody className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="mb-2 text-sm font-semibold text-emerald-700">
+                ✅ Entregaron ({deliveredGroups.length})
+              </p>
+              {deliveredGroups.length === 0 ? (
+                <p className="text-sm text-muted">Ningún grupo todavía.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {deliveredGroups.map((g) => (
+                    <li
+                      key={g.id}
+                      className="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
+                    >
+                      {g.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold text-amber-700">
+                ⏳ Pendientes ({pendingGroups.length})
+              </p>
+              {pendingGroups.length === 0 ? (
+                <p className="text-sm text-muted">
+                  ¡Todos los grupos entregaron!
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {pendingGroups.map((g) => (
+                    <li
+                      key={g.id}
+                      className="rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800"
+                    >
+                      {g.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </CardBody>
+        </Card>
       ) : null}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
