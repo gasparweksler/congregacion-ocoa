@@ -1,11 +1,21 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/access";
+import { prisma } from "@/lib/prisma";
 import { LoginForm } from "@/components/forms/LoginForm";
 
-// Página de inicio de sesión. Si ya hay sesión, va directo al panel.
+// Página de inicio de sesión. Si ya hay una sesión VÁLIDA (la cuenta existe y
+// está activa), va directo al panel. Si la sesión apunta a una cuenta que ya
+// no existe/está inactiva (cookie vieja), se muestra el login para poder
+// reingresar, evitando bucles de redirección.
 export default async function LoginPage() {
   const user = await getSessionUser();
-  if (user) redirect("/panel");
+  if (user) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { active: true },
+    });
+    if (dbUser && dbUser.active) redirect("/panel");
+  }
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
