@@ -13,8 +13,8 @@ export function InviteReportButton({ periodLabel }: { periodLabel: string }) {
 
     const msg =
       `Hola querido Hermano ${smile}${wave}\n\n` +
-      `Un recordatorio cariñoso: ya puedes subir tu informe de predicación` +
-      (periodLabel ? ` de *${periodLabel}*` : "") +
+      `Un recordatorio cariñoso: ya puedes subir el informe de predicación de tu grupo` +
+      (periodLabel ? ` de ${periodLabel}` : "") +
       `. Es muy rápido y sencillo ${pray}${sparkles}\n\n` +
       `Ingresa aquí e inicia sesión:\n` +
       `${point} https://congregacion-ocoa.vercel.app/login\n\n` +
