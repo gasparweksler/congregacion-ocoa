@@ -26,31 +26,44 @@ export function InviteReportButton({ periodLabel }: { periodLabel: string }) {
     );
   };
 
-  const onClick = async () => {
-    const msg = buildMessage();
+  const openWhatsApp = () => {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(buildMessage())}`,
+      "_blank",
+    );
+  };
+
+  const copyText = async () => {
     try {
-      await navigator.clipboard.writeText(msg);
+      await navigator.clipboard.writeText(buildMessage());
       setCopied(true);
-      setTimeout(() => setCopied(false), 8000);
+      setTimeout(() => setCopied(false), 6000);
     } catch {
       /* ignore */
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   return (
-    <div className="flex flex-col items-start gap-1 sm:items-end">
-      <button
-        type="button"
-        onClick={onClick}
-        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
-      >
-        📲 Invitar a subir informe
-      </button>
+    <div className="flex flex-col items-start gap-1.5 sm:items-end">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={openWhatsApp}
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+        >
+          📲 Invitar a subir informe
+        </button>
+        <button
+          type="button"
+          onClick={copyText}
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-slate-50"
+        >
+          {copied ? "✓ Copiado" : "📋 Copiar texto de invitación"}
+        </button>
+      </div>
       {copied ? (
-        <span className="max-w-xs text-xs text-emerald-700">
-          ✓ Mensaje copiado. Si en WhatsApp de PC los emojis salen raros, borra
-          y pega con Ctrl+V.
+        <span className="text-xs text-emerald-700">
+          Pégalo en WhatsApp con Ctrl+V (los emojis se verán perfectos).
         </span>
       ) : null}
     </div>
