@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { GroupFilter } from "@/components/GroupFilter";
+import { InviteReportButton } from "@/components/InviteReportButton";
 import { ReportsForm, type ReportRow } from "@/components/forms/ReportsForm";
 
 export default async function InformesPage({
@@ -141,6 +142,11 @@ export default async function InformesPage({
           <CardHeader
             title={`Entrega de informes · ${monthName(prev.month)} ${prev.year}`}
             description="Seguimiento del mes anterior (se actualiza solo cada mes)."
+            action={
+              <InviteReportButton
+                periodLabel={`${monthName(prev.month)} ${prev.year}`}
+              />
+            }
           />
           <CardBody className="grid gap-4 sm:grid-cols-2">
             <div>
