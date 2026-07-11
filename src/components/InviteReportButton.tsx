@@ -4,18 +4,21 @@ export function InviteReportButton({ periodLabel }: { periodLabel: string }) {
   const openWhatsApp = () => {
     const cp = String.fromCodePoint;
     const smile = cp(0x1f60a);
+    const wave = cp(0x1f44b);
     const pray = cp(0x1f64f);
-    const heart = cp(0x1f49a);
+    const sparkles = cp(0x2728);
     const point = cp(0x1f449);
+    const heart = cp(0x1f49a);
+    const party = cp(0x1f389);
 
     const msg =
-      `Hola querido Hermano/a ${smile}\n\n` +
+      `Hola querido Hermano ${smile}${wave}\n\n` +
       `Un recordatorio cariñoso: ya puedes subir tu informe de predicación` +
       (periodLabel ? ` de *${periodLabel}*` : "") +
-      `. Es muy rápido y sencillo ${pray}\n\n` +
+      `. Es muy rápido y sencillo ${pray}${sparkles}\n\n` +
       `Ingresa aquí e inicia sesión:\n` +
       `${point} https://congregacion-ocoa.vercel.app/login\n\n` +
-      `¡Muchas gracias por tu esfuerzo! ${heart}`;
+      `¡Muchísimas gracias por tu trabajo! ${heart}${party}`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
