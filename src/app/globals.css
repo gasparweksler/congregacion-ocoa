@@ -69,3 +69,22 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* iOS/Safari da a los inputs de fecha/hora un ancho mínimo intrínseco que
+   ignora width:100% y desborda su contenedor en celular. Quitar la apariencia
+   nativa hace que respeten el ancho y no se salgan de la tarjeta. */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+
+/* Refuerzo global: ningún campo de formulario debe exceder su contenedor. */
+input,
+select,
+textarea {
+  max-width: 100%;
+}
