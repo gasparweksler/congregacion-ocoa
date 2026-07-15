@@ -1,0 +1,34 @@
+# ============================================================================
+#  Keep-alive de la base de datos (GitHub Actions)
+#  GitHub llama a /api/keep-alive cada ~10 minutos para que la base de datos
+#  de Supabase (plan gratuito) no se enfríe ni se pause. Así los hermanos
+#  entran sin la espera del "arranque en frío". No requiere configurar nada
+#  externo: GitHub lo ejecuta solo mientras el repositorio esté activo.
+# ============================================================================
+
+name: keep-alive
+
+on:
+  schedule:
+    # Cada 10 minutos (GitHub programa "en la medida de lo posible").
+    - cron: "*/10 * * * *"
+  # Permite ejecutarlo a mano desde la pestaña Actions de GitHub.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Despertar la base de datos
+        run: |
+          echo "Pingeando keep-alive..."
+          code=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            --max-time 90 \
+            https://congregacion-ocoa.vercel.app/api/keep-alive)
+          echo "HTTP $code"
+          cat /tmp/body.txt
+          # Falla el job solo si no fue 2xx (para verlo en el historial).
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::keep-alive respondió $code"
+            exit 1
+          fi
