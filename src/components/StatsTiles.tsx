@@ -4,6 +4,7 @@ import { Card, StatTile } from "@/components/ui";
 import { PUBLISHER_STATUS, PUBLISHER_STATUS_LABELS } from "@/lib/constants";
 import type { PeriodStats } from "@/lib/stats";
 import { cn } from "@/lib/cn";
+import { PioneerTile } from "@/components/PioneerTile";
 
 // Recuadro enriquecido: título, número grande y una lista de sub-datos.
 // Mantiene el mismo estilo visual de tarjeta que el resto de la página.
@@ -87,9 +88,9 @@ export function StatsTiles({
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-      {/* 1. Total de publicadores */}
+      {/* 1. Total Publicadores */}
       <RichTile
-        label="Total publicadores"
+        label="Total Publicadores"
         value={stats.totalPublishers}
         tone="slate"
         rows={[
@@ -103,30 +104,28 @@ export function StatsTiles({
           },
           { k: "✅ Participaron", v: stats.reported },
           { k: "❌ No participaron", v: notReported },
-          { k: "Cursos bíblicos", v: stats.totalBibleStudies },
+          { k: "Cursos bíblicos", v: stats.publisherBibleStudies },
         ]}
       />
 
-      {/* 2. Precursores Regulares */}
-      <RichTile
+      {/* 2. Precursores Regulares (título clicable -> lista de nombres) */}
+      <PioneerTile
         label={PUBLISHER_STATUS_LABELS.PRECURSOR_REGULAR}
-        value={stats.regularPioneers.count}
+        count={stats.regularPioneers.count}
+        hours={stats.regularPioneers.hours}
+        bibleStudies={stats.regularPioneers.bibleStudies}
+        names={stats.regularPioneers.names}
         tone="violet"
-        rows={[
-          { k: "Horas de predicación", v: stats.regularPioneers.hours },
-          { k: "Cursos bíblicos", v: stats.regularPioneers.bibleStudies },
-        ]}
       />
 
       {/* 3. Precursores Auxiliares (auxiliares + auxiliares indefinidos) */}
-      <RichTile
+      <PioneerTile
         label="Precursores Auxiliares"
-        value={stats.auxiliaryPioneers.count}
+        count={stats.auxiliaryPioneers.count}
+        hours={stats.auxiliaryPioneers.hours}
+        bibleStudies={stats.auxiliaryPioneers.bibleStudies}
+        names={stats.auxiliaryPioneers.names}
         tone="amber"
-        rows={[
-          { k: "Horas de predicación", v: stats.auxiliaryPioneers.hours },
-          { k: "Cursos bíblicos", v: stats.auxiliaryPioneers.bibleStudies },
-        ]}
       />
     </div>
   );

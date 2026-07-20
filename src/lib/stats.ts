@@ -21,11 +21,23 @@ export type PeriodStats = {
   totalPrecursores: number;
   reported: number; // publicadores que informaron actividad (participaron)
   totalBibleStudies: number;
+  // Cursos bíblicos solo de publicadores Bautizados y No Bautizados (sin precursores).
+  publisherBibleStudies: number;
   totalHours: number;
   participationPct: number; // reported / totalPublishers * 100
   // Desgloses por categoría de precursor (según estado actual del publicador).
-  regularPioneers: { count: number; hours: number; bibleStudies: number };
-  auxiliaryPioneers: { count: number; hours: number; bibleStudies: number };
+  regularPioneers: {
+    count: number;
+    hours: number;
+    bibleStudies: number;
+    names: string[];
+  };
+  auxiliaryPioneers: {
+    count: number;
+    hours: number;
+    bibleStudies: number;
+    names: string[];
+  };
 };
 
 function emptyByStatus(): Record<PublisherStatus, number> {
@@ -48,7 +60,8 @@ export async function getPeriodStats(
 ): Promise<PeriodStats> {
   const publishers = await prisma.publisher.findMany({
     where: { ...(where.groupId ? { groupId: where.groupId } : {}) },
-    select: { id: true, status: true },
+    orderBy: { fullName: "asc" },
+    select: { id: true, status: true, fullName: true },
   });
 
   const reports = await prisma.monthlyReport.findMany({
@@ -85,6 +98,18 @@ export async function getPeriodStats(
   const totalBibleStudies = reports.reduce((a, r) => a + r.bibleStudies, 0);
   const totalHours = reports.reduce((a, r) => a + (r.hours ?? 0), 0);
   const totalPublishers = publishers.length;
+
+  // Mapa estado actual por publicador (para desgloses por categoría).
+  const statusById = new Map(publishers.map((p) => [p.id, p.status]));
+
+  // Cursos bíblicos SOLO de Bautizados y No Bautizados (sin precursores).
+  const publisherBibleStudies = reports.reduce((a, r) => {
+    const st = statusById.get(r.publisherId);
+    return st === PUBLISHER_STATUS.BAUTIZADO ||
+      st === PUBLISHER_STATUS.NO_BAUTIZADO
+      ? a + r.bibleStudies
+      : a;
+  }, 0);
   const totalPrecursores =
     byStatus[PUBLISHER_STATUS.PRECURSOR_REGULAR] +
     byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR] +
@@ -92,12 +117,14 @@ export async function getPeriodStats(
 
   // Agregados de horas/cursos por categoría de precursor, según el estado
   // actual del publicador. Los auxiliares agrupan ambos tipos (auxiliar y
-  // auxiliar indefinido).
-  const statusById = new Map(publishers.map((p) => [p.id, p.status]));
+  // auxiliar indefinido). Los nombres se listan (orden alfabético) para el modal.
   const regularPioneers = {
     count: byStatus[PUBLISHER_STATUS.PRECURSOR_REGULAR],
     hours: 0,
     bibleStudies: 0,
+    names: publishers
+      .filter((p) => p.status === PUBLISHER_STATUS.PRECURSOR_REGULAR)
+      .map((p) => p.fullName),
   };
   const auxiliaryPioneers = {
     count:
@@ -105,6 +132,13 @@ export async function getPeriodStats(
       byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO],
     hours: 0,
     bibleStudies: 0,
+    names: publishers
+      .filter(
+        (p) =>
+          p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
+          p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO,
+      )
+      .map((p) => p.fullName),
   };
   for (const r of reports) {
     const st = statusById.get(r.publisherId);
@@ -125,6 +159,7 @@ export async function getPeriodStats(
     byStatus,
     participationByStatus,
     totalPrecursores,
+    publisherBibleStudies,
     regularPioneers,
     auxiliaryPioneers,
     reported,
