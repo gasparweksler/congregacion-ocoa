@@ -4,7 +4,7 @@ import { toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, EmptyState } from "@/components/ui";
 import { PublisherCreateForm } from "@/components/forms/PublisherCreateForm";
-import { PublisherRow } from "@/components/forms/PublisherRow";
+import { PublisherList } from "@/components/forms/PublisherList";
 import { GroupFilter } from "@/components/GroupFilter";
 
 export default async function PublicadoresPage({
@@ -76,25 +76,20 @@ export default async function PublicadoresPage({
             description="Usa el botón “Nuevo publicador” para agregar el primero."
           />
         ) : (
-          <div className="divide-y divide-border">
-            {publishers.map((p) => (
-              <PublisherRow
-                key={p.id}
-                showGroup={secretary}
-                groups={groups}
-                publisher={{
-                  id: p.id,
-                  fullName: p.fullName,
-                  sex: p.sex,
-                  birthDate: toInputDate(p.birthDate),
-                  baptismDate: toInputDate(p.baptismDate),
-                  status: p.status,
-                  groupId: p.groupId,
-                  groupName: p.group?.name ?? null,
-                }}
-              />
-            ))}
-          </div>
+          <PublisherList
+            showGroup={secretary}
+            groups={groups}
+            publishers={publishers.map((p) => ({
+              id: p.id,
+              fullName: p.fullName,
+              sex: p.sex,
+              birthDate: toInputDate(p.birthDate),
+              baptismDate: toInputDate(p.baptismDate),
+              status: p.status,
+              groupId: p.groupId,
+              groupName: p.group?.name ?? null,
+            }))}
+          />
         )}
       </Card>
     </>
