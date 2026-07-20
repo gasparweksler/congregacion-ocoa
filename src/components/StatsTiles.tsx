@@ -32,9 +32,12 @@ function RichTile({
       <p className={cn("mt-1 text-2xl font-bold tabular-nums", accent[tone])}>
         {value}
       </p>
-      <dl className="mt-3 space-y-1.5 border-t border-border pt-3 text-sm">
+      <dl className="mt-3 divide-y divide-border border-t border-border text-sm">
         {rows.map((r, i) => (
-          <div key={i} className="flex items-baseline justify-between gap-3">
+          <div
+            key={i}
+            className="flex items-baseline justify-between gap-3 py-2"
+          >
             <dt className="text-muted">{r.k}</dt>
             <dd className="font-semibold tabular-nums text-foreground">
               {r.v}
@@ -94,6 +97,11 @@ export function StatsTiles({
         value={stats.totalPublishers}
         tone="slate"
         rows={[
+          { k: "Total de Inactivos", v: s[PUBLISHER_STATUS.INACTIVO] },
+          {
+            k: "Publicadores Activos",
+            v: stats.totalPublishers - s[PUBLISHER_STATUS.INACTIVO],
+          },
           {
             k: PUBLISHER_STATUS_LABELS.BAUTIZADO,
             v: s[PUBLISHER_STATUS.BAUTIZADO],

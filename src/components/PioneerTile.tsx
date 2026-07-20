@@ -40,14 +40,14 @@ export function PioneerTile({
       <p className={cn("mt-1 text-2xl font-bold tabular-nums", accent)}>
         {count}
       </p>
-      <dl className="mt-3 space-y-1.5 border-t border-border pt-3 text-sm">
-        <div className="flex items-baseline justify-between gap-3">
+      <dl className="mt-3 divide-y divide-border border-t border-border text-sm">
+        <div className="flex items-baseline justify-between gap-3 py-2">
           <dt className="text-muted">Horas de predicación</dt>
           <dd className="font-semibold tabular-nums text-foreground">
             {hours}
           </dd>
         </div>
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline justify-between gap-3 py-2">
           <dt className="text-muted">Cursos bíblicos</dt>
           <dd className="font-semibold tabular-nums text-foreground">
             {bibleStudies}
