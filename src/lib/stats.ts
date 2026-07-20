@@ -23,6 +23,9 @@ export type PeriodStats = {
   totalBibleStudies: number;
   totalHours: number;
   participationPct: number; // reported / totalPublishers * 100
+  // Desgloses por categoría de precursor (según estado actual del publicador).
+  regularPioneers: { count: number; hours: number; bibleStudies: number };
+  auxiliaryPioneers: { count: number; hours: number; bibleStudies: number };
 };
 
 function emptyByStatus(): Record<PublisherStatus, number> {
@@ -87,11 +90,43 @@ export async function getPeriodStats(
     byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR] +
     byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO];
 
+  // Agregados de horas/cursos por categoría de precursor, según el estado
+  // actual del publicador. Los auxiliares agrupan ambos tipos (auxiliar y
+  // auxiliar indefinido).
+  const statusById = new Map(publishers.map((p) => [p.id, p.status]));
+  const regularPioneers = {
+    count: byStatus[PUBLISHER_STATUS.PRECURSOR_REGULAR],
+    hours: 0,
+    bibleStudies: 0,
+  };
+  const auxiliaryPioneers = {
+    count:
+      byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR] +
+      byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO],
+    hours: 0,
+    bibleStudies: 0,
+  };
+  for (const r of reports) {
+    const st = statusById.get(r.publisherId);
+    if (st === PUBLISHER_STATUS.PRECURSOR_REGULAR) {
+      regularPioneers.hours += r.hours ?? 0;
+      regularPioneers.bibleStudies += r.bibleStudies;
+    } else if (
+      st === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
+      st === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO
+    ) {
+      auxiliaryPioneers.hours += r.hours ?? 0;
+      auxiliaryPioneers.bibleStudies += r.bibleStudies;
+    }
+  }
+
   return {
     totalPublishers,
     byStatus,
     participationByStatus,
     totalPrecursores,
+    regularPioneers,
+    auxiliaryPioneers,
     reported,
     totalBibleStudies,
     totalHours,
