@@ -16,6 +16,8 @@ import { monthName } from "@/lib/constants";
 export type PeriodStats = {
   totalPublishers: number;
   byStatus: Record<PublisherStatus, number>;
+  // Por cada estado: cuántos SÍ participaron y cuántos NO.
+  participationByStatus: Record<PublisherStatus, { yes: number; no: number }>;
   totalPrecursores: number;
   reported: number; // publicadores que informaron actividad (participaron)
   totalBibleStudies: number;
@@ -26,6 +28,12 @@ export type PeriodStats = {
 function emptyByStatus(): Record<PublisherStatus, number> {
   const obj = {} as Record<PublisherStatus, number>;
   for (const s of PUBLISHER_STATUS_VALUES) obj[s] = 0;
+  return obj;
+}
+
+function emptyParticipation(): Record<PublisherStatus, { yes: number; no: number }> {
+  const obj = {} as Record<PublisherStatus, { yes: number; no: number }>;
+  for (const s of PUBLISHER_STATUS_VALUES) obj[s] = { yes: 0, no: 0 };
   return obj;
 }
 
@@ -46,12 +54,28 @@ export async function getPeriodStats(
       month,
       ...(where.groupId ? { publisher: { groupId: where.groupId } } : {}),
     },
-    select: { participated: true, bibleStudies: true, hours: true },
+    select: {
+      publisherId: true,
+      participated: true,
+      bibleStudies: true,
+      hours: true,
+    },
   });
 
+  // Conjunto de publicadores que SÍ participaron en el período.
+  const participatedIds = new Set(
+    reports.filter((r) => r.participated).map((r) => r.publisherId),
+  );
+
   const byStatus = emptyByStatus();
+  const participationByStatus = emptyParticipation();
   for (const p of publishers) {
-    if (p.status in byStatus) byStatus[p.status as PublisherStatus]++;
+    if (p.status in byStatus) {
+      const st = p.status as PublisherStatus;
+      byStatus[st]++;
+      if (participatedIds.has(p.id)) participationByStatus[st].yes++;
+      else participationByStatus[st].no++;
+    }
   }
 
   const reported = reports.filter((r) => r.participated).length;
@@ -66,6 +90,7 @@ export async function getPeriodStats(
   return {
     totalPublishers,
     byStatus,
+    participationByStatus,
     totalPrecursores,
     reported,
     totalBibleStudies,

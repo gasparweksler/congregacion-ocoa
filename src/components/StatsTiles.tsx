@@ -61,11 +61,13 @@ export function StatsTiles({
         label={PUBLISHER_STATUS_LABELS.BAUTIZADO}
         value={s[PUBLISHER_STATUS.BAUTIZADO]}
         tone="green"
+        hint={`✅ ${stats.participationByStatus[PUBLISHER_STATUS.BAUTIZADO].yes} participaron · ❌ ${stats.participationByStatus[PUBLISHER_STATUS.BAUTIZADO].no} no`}
       />
       <StatTile
         label={PUBLISHER_STATUS_LABELS.NO_BAUTIZADO}
         value={s[PUBLISHER_STATUS.NO_BAUTIZADO]}
         tone="blue"
+        hint={`✅ ${stats.participationByStatus[PUBLISHER_STATUS.NO_BAUTIZADO].yes} participaron · ❌ ${stats.participationByStatus[PUBLISHER_STATUS.NO_BAUTIZADO].no} no`}
       />
       <StatTile
         label={PUBLISHER_STATUS_LABELS.INACTIVO}

@@ -193,6 +193,8 @@ export async function buildStatsWorkbook(
 
   const bautParticiparon = baut.filter((r) => r.participated).length;
   const bautNo = baut.length - bautParticiparon;
+  const noBautParticiparon = noBaut.filter((r) => r.participated).length;
+  const noBautNo = noBaut.length - noBautParticiparon;
   const cursosBautNoBaut =
     sumBy(baut, (r) => r.bibleStudies) + sumBy(noBaut, (r) => r.bibleStudies);
 
@@ -219,6 +221,12 @@ export async function buildStatsWorkbook(
   addVal("Informes de Publicadores Bautizados", baut.length);
   addVal("   • Sí participaron", bautParticiparon, false);
   addVal("   • No participaron", bautNo, false);
+
+  resumen.addRow([]);
+  addSection("PUBLICADORES NO BAUTIZADOS");
+  addVal("Informes de Publicadores No Bautizados", noBaut.length);
+  addVal("   • Sí participaron", noBautParticiparon, false);
+  addVal("   • No participaron", noBautNo, false);
 
   resumen.addRow([]);
   addSection("CURSOS BÍBLICOS");
