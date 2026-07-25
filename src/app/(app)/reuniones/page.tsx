@@ -8,6 +8,7 @@ import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { EnterMeetingButton } from "@/components/EnterMeetingButton";
 import {
   deleteMeetingAction,
   deleteAllMeetingsAction,
@@ -129,6 +130,7 @@ export default async function ReunionesPage() {
                           ) : null}
                         </div>
                       </Link>
+                      <EnterMeetingButton meetingId={m.id} />
                       <ConfirmButton
                         action={deleteMeetingAction}
                         hidden={{ id: m.id }}
