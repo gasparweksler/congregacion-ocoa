@@ -50,7 +50,7 @@ export default async function ReunionesPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-1">
+        <div className="min-w-0 space-y-6 lg:col-span-1">
           <Card>
             <CardHeader title="Nueva reunión" />
             <CardBody>
@@ -69,7 +69,7 @@ export default async function ReunionesPage() {
           </Card>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <Card>
             <CardHeader
               title="Reuniones"
@@ -118,7 +118,7 @@ export default async function ReunionesPage() {
                   return (
                     <div
                       key={m.id}
-                      className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-slate-50"
+                      className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center"
                     >
                       <div className="min-w-0 flex-1">
                         <Link
@@ -156,16 +156,18 @@ export default async function ReunionesPage() {
                           />
                         </div>
                       </div>
-                      <EnterMeetingButton meetingId={m.id} />
-                      <ConfirmButton
-                        action={deleteMeetingAction}
-                        hidden={{ id: m.id }}
-                        confirmText={`¿Eliminar la reunión "${
-                          m.weekLabel ?? formatDate(m.date)
-                        }"? No se puede deshacer.`}
-                      >
-                        🗑️ Eliminar
-                      </ConfirmButton>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <EnterMeetingButton meetingId={m.id} />
+                        <ConfirmButton
+                          action={deleteMeetingAction}
+                          hidden={{ id: m.id }}
+                          confirmText={`¿Eliminar la reunión "${
+                            m.weekLabel ?? formatDate(m.date)
+                          }"? No se puede deshacer.`}
+                        >
+                          🗑️ Eliminar
+                        </ConfirmButton>
+                      </div>
                     </div>
                   );
                 })}
