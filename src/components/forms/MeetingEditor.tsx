@@ -225,6 +225,25 @@ export function MeetingEditor({
     });
   };
 
+  // F3 (móvil) · Subir/bajar con botones ▲▼ (el arrastre no funciona en táctil).
+  const moveItem = (key: string, dir: "up" | "down") => {
+    const idx = items.findIndex((i) => i.key === key);
+    if (idx < 0) return;
+    const tabOf = items[idx].tab;
+    const step = dir === "up" ? -1 : 1;
+    let j = idx + step;
+    // Busca el vecino más cercano de la MISMA pestaña.
+    while (j >= 0 && j < items.length && items[j].tab !== tabOf) j += step;
+    if (j < 0 || j >= items.length) return;
+    const next = [...items];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setItems(next);
+    const ids = next.filter((i) => i.id).map((i) => i.id);
+    startTransition(() => {
+      void reorderAssignmentsAction(meetingId, ids);
+    });
+  };
+
   function buildMessage(name: string, label: string, token: string) {
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
@@ -422,7 +441,7 @@ export function MeetingEditor({
               No hay asignaciones en esta sección. Usa “Agregar asignación”.
             </p>
           ) : (
-            visible.map((it) => (
+            visible.map((it, vidx) => (
               <div
                 key={it.key}
                 onDragOver={(e) => {
@@ -438,15 +457,37 @@ export function MeetingEditor({
                     : "")
                 }
               >
-                {/* Encabezado: mango de arrastre + chip de sección + categoría */}
+                {/* Encabezado: reordenar (botones ▲▼ + mango) + chip + categoría */}
                 <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => moveItem(it.key, "up")}
+                      disabled={vidx === 0}
+                      title="Subir"
+                      aria-label="Subir asignación"
+                      className="rounded-md border border-border px-1.5 py-1 text-sm leading-none text-muted transition-colors hover:bg-slate-50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveItem(it.key, "down")}
+                      disabled={vidx === visible.length - 1}
+                      title="Bajar"
+                      aria-label="Bajar asignación"
+                      className="rounded-md border border-border px-1.5 py-1 text-sm leading-none text-muted transition-colors hover:bg-slate-50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      ▼
+                    </button>
+                  </div>
                   <span
                     draggable
                     onDragStart={() => setDragKey(it.key)}
                     onDragEnd={() => setDragKey(null)}
-                    title="Arrastra para reordenar la asignación"
+                    title="Arrastra para reordenar (en computadora)"
                     aria-label="Arrastrar para reordenar"
-                    className="cursor-grab select-none rounded-md px-1 text-lg leading-none text-muted active:cursor-grabbing"
+                    className="hidden cursor-grab select-none rounded-md px-1 text-lg leading-none text-muted active:cursor-grabbing sm:inline"
                   >
                     ⠿
                   </span>
