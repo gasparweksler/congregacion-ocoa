@@ -190,6 +190,102 @@ export async function saveMeetingAction(
   return { success: "Reunión guardada correctamente." };
 }
 
+/**
+ * Resetea el estado de confirmación de un hermano (principal o secundario) de
+ * una asignación, devolviéndolo a PENDIENTE. Sirve para corregir confirmaciones
+ * hechas por error. Persiste de inmediato y revalida (sincroniza a todos).
+ */
+export async function resetConfirmationAction(
+  assignmentId: string,
+  who: "p" | "s",
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const assignment = await prisma.meetingAssignment.findUnique({
+    where: { id: assignmentId },
+    select: { id: true, meetingId: true },
+  });
+  if (!assignment) return;
+
+  await prisma.meetingAssignment.update({
+    where: { id: assignmentId },
+    data:
+      who === "p"
+        ? { primaryStatus: CONFIRM_STATUS.PENDIENTE }
+        : { secondaryStatus: CONFIRM_STATUS.PENDIENTE },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: assignment.meetingId,
+    details: "Confirmación reseteada a Pendiente.",
+  });
+
+  revalidatePath(`/reuniones/${assignment.meetingId}`);
+  revalidatePath("/reuniones");
+}
+
+/**
+ * Guarda el nuevo orden de las asignaciones (drag & drop). Recibe los IDs ya
+ * existentes en el orden deseado y actualiza su campo `order`. Las asignaciones
+ * nuevas (sin id) conservan su orden al guardar la reunión completa.
+ */
+export async function reorderAssignmentsAction(
+  meetingId: string,
+  orderedIds: string[],
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const ids = orderedIds.filter(Boolean);
+  if (ids.length === 0) return;
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.meetingAssignment.updateMany({
+        where: { id, meetingId },
+        data: { order: index },
+      }),
+    ),
+  );
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: meetingId,
+    details: "Asignaciones reordenadas.",
+  });
+
+  revalidatePath(`/reuniones/${meetingId}`);
+}
+
+/**
+ * Asigna el Responsable de Confirmación de una reunión (desde el desplegable de
+ * la lista de reuniones). Guarda automáticamente y sincroniza.
+ */
+export async function setMeetingConfirmadorAction(
+  meetingId: string,
+  name: string,
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const clean = name.trim() || null;
+  await prisma.meeting.update({
+    where: { id: meetingId },
+    data: { confirmadorName: clean },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: meetingId,
+    details: `Responsable de Confirmación: ${clean ?? "(ninguno)"}.`,
+  });
+
+  revalidatePath("/reuniones");
+  revalidatePath(`/reuniones/${meetingId}`);
+}
+
 export async function deleteAllMeetingsAction(): Promise<void> {
   const user = await requireMeetingsAccess();
   const res = await prisma.meeting.deleteMany({});

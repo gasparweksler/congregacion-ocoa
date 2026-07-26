@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireMeetingsAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { meetingDayLabel, CONFIRM_STATUS } from "@/lib/constants";
+import { meetingDayLabel, CONFIRM_STATUS, ROLES } from "@/lib/constants";
+import { ConfirmadorSelect } from "@/components/ConfirmadorSelect";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
@@ -21,6 +22,23 @@ export default async function ReunionesPage() {
     orderBy: { date: "desc" },
     include: { assignments: true },
   });
+
+  // Responsables de Confirmación disponibles para el desplegable de cada reunión.
+  const confirmadoresUsers = await prisma.user.findMany({
+    where: {
+      active: true,
+      OR: [
+        { alsoConfirmador: true },
+        { role: ROLES.RESPONSABLE_CONFIRMACIONES },
+        { role: ROLES.SECRETARIO },
+      ],
+    },
+    orderBy: { name: "asc" },
+    select: { name: true },
+  });
+  const confirmadorOptions = Array.from(
+    new Set(confirmadoresUsers.map((u) => u.name).filter(Boolean)),
+  );
 
   return (
     <>
@@ -100,36 +118,42 @@ export default async function ReunionesPage() {
                       key={m.id}
                       className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-slate-50"
                     >
-                      <Link
-                        href={`/reuniones/${m.id}`}
-                        className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-foreground">
-                              {m.weekLabel ?? formatDate(m.date)}
-                            </span>
-                            <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/reuniones/${m.id}`}
+                          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground">
+                                {m.weekLabel ?? formatDate(m.date)}
+                              </span>
+                              <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
+                            </div>
+                            <p className="mt-0.5 text-sm text-muted">
+                              {assigned} asignación(es)
+                            </p>
                           </div>
-                          <p className="mt-0.5 text-sm text-muted">
-                            {assigned} asignación(es)
-                            {m.confirmadorName
-                              ? ` · Confirma: ${m.confirmadorName}`
-                              : ""}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {confirmed > 0 ? (
+                              <Badge tone="green">✅ {confirmed}</Badge>
+                            ) : null}
+                            {pending > 0 ? (
+                              <Badge tone="amber">⏳ {pending}</Badge>
+                            ) : null}
+                            {rejected > 0 ? (
+                              <Badge tone="red">❌ {rejected}</Badge>
+                            ) : null}
+                          </div>
+                        </Link>
+                        <div className="mt-2">
+                          <ConfirmadorSelect
+                            meetingId={m.id}
+                            current={m.confirmadorName ?? ""}
+                            options={confirmadorOptions}
+                          />
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {confirmed > 0 ? (
-                            <Badge tone="green">✅ {confirmed}</Badge>
-                          ) : null}
-                          {pending > 0 ? (
-                            <Badge tone="amber">⏳ {pending}</Badge>
-                          ) : null}
-                          {rejected > 0 ? (
-                            <Badge tone="red">❌ {rejected}</Badge>
-                          ) : null}
-                        </div>
-                      </Link>
+                      </div>
                       <EnterMeetingButton meetingId={m.id} />
                       <ConfirmButton
                         action={deleteMeetingAction}

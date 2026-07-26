@@ -109,67 +109,50 @@ export function ReportsForm({
         </Alert>
       ) : null}
 
-      {/* Región con scroll: en móvil el encabezado queda fijo (sticky).
+      {/* Mobile-first: cada publicador es una tarjeta con campos verticales.
+          Nunca hay scroll horizontal; se completa haciendo scroll vertical.
           Un <fieldset disabled> bloquea todos los campos cuando está bloqueado. */}
       <fieldset disabled={locked} className="min-w-0 border-0 p-0">
-      <div className="max-h-[68vh] overflow-auto rounded-xl border border-border md:max-h-none md:overflow-x-auto md:rounded-none md:border-0">
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 z-20 bg-surface shadow-[0_1px_0_var(--border)]">
-            <tr>
-              <th className="whitespace-nowrap border-b border-border bg-surface px-3 py-2.5 text-left font-semibold text-muted">
-                Publicador
-              </th>
-              <th className="whitespace-nowrap border-b border-border bg-surface px-3 py-2.5 text-center font-semibold text-muted">
-                Participó
-              </th>
-              <th className="whitespace-nowrap border-b border-border bg-surface px-3 py-2.5 text-center font-semibold text-muted">
-                Precursor Auxiliar
-              </th>
-              <th className="whitespace-nowrap border-b border-border bg-surface px-3 py-2.5 text-center font-semibold text-muted">
-                Cursos bíblicos
-              </th>
-              <th className="whitespace-nowrap border-b border-border bg-surface px-3 py-2.5 text-center font-semibold text-muted">
-                Horas
-              </th>
-              <th className="whitespace-nowrap border-b border-border bg-surface px-3 py-2.5 text-center font-semibold text-muted">
-                Comentario
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const hoursEnabled = r.isPioneer || aux[r.id];
-              const hasComment = (comments[r.id] ?? "").trim().length > 0;
-              return (
-                <tr key={r.id} className="align-middle">
-                  {/* 1. Publicador */}
-                  <td className="border-b border-border px-3 py-2">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {r.fullName}
-                      </span>
-                      <span>
-                        <Badge tone={statusTone(r.status)}>
-                          {statusLabel(r.status)}
-                        </Badge>
-                      </span>
-                    </div>
-                  </td>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {rows.map((r) => {
+            const hoursEnabled = r.isPioneer || aux[r.id];
+            const hasComment = (comments[r.id] ?? "").trim().length > 0;
+            const fieldInput =
+              "w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+            return (
+              <div
+                key={r.id}
+                className="rounded-2xl border-2 border-border bg-surface p-4 shadow-sm"
+              >
+                {/* Nombre del publicador */}
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                  <span className="font-semibold text-foreground">
+                    {r.fullName}
+                  </span>
+                  <Badge tone={statusTone(r.status)}>
+                    {statusLabel(r.status)}
+                  </Badge>
+                </div>
 
-                  {/* 2. Participó */}
-                  <td className="border-b border-border px-3 py-2 text-center">
+                <div className="space-y-3">
+                  {/* Participó (switch Sí/No) */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-foreground">
+                      ¿Participó?
+                    </span>
                     <ParticipatedToggle id={r.id} initial={r.participated} />
-                  </td>
+                  </div>
 
-                  {/* 3. Precursor Auxiliar */}
-                  <td className="border-b border-border px-3 py-2 text-center">
-                    {r.isPioneer ? (
-                      <span className="text-xs text-muted">
-                        Precursor
-                        <br />
-                        (siempre)
+                  {/* Precursor Auxiliar (solo para no precursores) */}
+                  {r.isPioneer ? (
+                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-muted">
+                      Precursor (siempre informa horas)
+                    </p>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-foreground">
+                        Precursor Auxiliar
                       </span>
-                    ) : (
                       <Toggle
                         name={`aux_${r.id}`}
                         checked={aux[r.id] ?? false}
@@ -177,41 +160,57 @@ export function ReportsForm({
                           setAux((prev) => ({ ...prev, [r.id]: v }))
                         }
                       />
-                    )}
-                  </td>
+                    </div>
+                  )}
 
-                  {/* 4. Cursos bíblicos */}
-                  <td className="border-b border-border px-3 py-2 text-center">
+                  {/* Cursos bíblicos */}
+                  <div>
+                    <label
+                      htmlFor={`b_${r.id}`}
+                      className="mb-1 block text-sm font-medium text-foreground"
+                    >
+                      Cursos bíblicos
+                    </label>
                     <input
+                      id={`b_${r.id}`}
                       type="number"
+                      inputMode="numeric"
                       name={`b_${r.id}`}
                       defaultValue={r.bibleStudies}
                       min={0}
                       max={999}
-                      className="w-20 rounded-lg border border-border px-2 py-1 text-center text-sm"
+                      className={fieldInput}
                     />
-                  </td>
+                  </div>
 
-                  {/* 5. Horas (según Precursor Auxiliar / precursor permanente) */}
-                  <td className="border-b border-border px-3 py-2 text-center">
+                  {/* Horas (solo habilitado para precursores / auxiliar del mes) */}
+                  <div>
+                    <label
+                      htmlFor={`h_${r.id}`}
+                      className="mb-1 block text-sm font-medium text-foreground"
+                    >
+                      Horas de predicación
+                    </label>
                     <input
+                      id={`h_${r.id}`}
                       type="number"
+                      inputMode="numeric"
                       name={`h_${r.id}`}
                       defaultValue={r.hours ?? 0}
                       min={0}
                       max={9999}
                       disabled={!hoursEnabled}
-                      title={
-                        hoursEnabled
-                          ? undefined
-                          : "Activa 'Precursor Auxiliar' para registrar horas"
-                      }
-                      className="w-24 rounded-lg border border-border px-2 py-1 text-center text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                      className={fieldInput}
                     />
-                  </td>
+                    {!hoursEnabled ? (
+                      <p className="mt-1 text-xs text-muted">
+                        Solo para precursores (activa “Precursor Auxiliar”).
+                      </p>
+                    ) : null}
+                  </div>
 
-                  {/* 6. Comentario */}
-                  <td className="border-b border-border px-3 py-2 text-center">
+                  {/* Comentarios */}
+                  <div>
                     <input
                       type="hidden"
                       name={`c_${r.id}`}
@@ -221,21 +220,20 @@ export function ReportsForm({
                       type="button"
                       onClick={() => setOpenComment(r.id)}
                       className={
-                        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors " +
+                        "flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors " +
                         (hasComment
                           ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
                           : "border-border text-muted hover:bg-slate-50")
                       }
                     >
-                      💬 {hasComment ? "Ver comentario" : "Añadir comentario"}
+                      💬 {hasComment ? "Ver / editar comentario" : "Añadir comentario"}
                     </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </fieldset>
 
       <div className="flex items-center justify-end gap-3 border-t border-border pt-4">

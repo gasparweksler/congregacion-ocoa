@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useActionState } from "react";
 import {
   saveMeetingAction,
   deleteMeetingAction,
+  resetConfirmationAction,
+  reorderAssignmentsAction,
 } from "@/server/meeting-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
+import { Select } from "@/components/ui";
 import {
   Card,
   CardBody,
@@ -55,6 +58,22 @@ const SECTION_STYLE: Record<string, { card: string; chip: string }> = {
   },
 };
 
+// Categoría de la asignación -> sección (que determina el color). "Otro" deja
+// la asignación con estilo neutro (sin color), como oraciones/presidencia.
+const CATEGORY_OPTIONS = [
+  { value: "TESOROS", label: "Tesoros de la Biblia" },
+  { value: "SMM", label: "Seamos Mejores Maestros" },
+  { value: "VC", label: "Nuestra Vida Cristiana" },
+  { value: "OTRO", label: "Otro (sin color)" },
+];
+
+// Dada una sección guardada, devuelve el valor de categoría a mostrar.
+function categoryOf(section: string): string {
+  if (section === "TESOROS" || section === "SMM" || section === "VC")
+    return section;
+  return "OTRO";
+}
+
 function StatusBadge({ status }: { status: string }) {
   if (status === CONFIRM_STATUS.CONFIRMADO)
     return <Badge tone="green">✅ Confirmado</Badge>;
@@ -92,6 +111,8 @@ export function MeetingEditor({
   const [tab, setTab] = useState<"asig" | "resp">("asig");
   const [copied, setCopied] = useState<string | null>(null);
   const [counter, setCounter] = useState(0);
+  const [, startTransition] = useTransition();
+  const [dragKey, setDragKey] = useState<string | null>(null);
 
   const [items, setItems] = useState<Item[]>(() =>
     rows.map((r) => ({
@@ -131,6 +152,50 @@ export function MeetingEditor({
       },
     ]);
     setTab(t);
+  };
+
+  // F1 · Resetear confirmación a Pendiente (corrige errores). Persiste y refleja.
+  const resetConfirm = (it: Item, who: "p" | "s") => {
+    if (!it.id) return;
+    if (!window.confirm("¿Resetear esta confirmación a Pendiente?")) return;
+    update(
+      it.key,
+      who === "p"
+        ? { primaryStatus: CONFIRM_STATUS.PENDIENTE }
+        : { secondaryStatus: CONFIRM_STATUS.PENDIENTE },
+    );
+    startTransition(() => {
+      void resetConfirmationAction(it.id, who);
+    });
+  };
+
+  // F2 · Cambiar categoría -> cambia la sección (y por tanto el color).
+  const changeCategory = (it: Item, category: string) => {
+    let section: string;
+    if (category === "OTRO") {
+      section = it.tab === "resp" ? "RESPONSABILIDADES" : "ASIGNACIONES";
+    } else {
+      section = category; // TESOROS | SMM | VC
+    }
+    update(it.key, { section });
+  };
+
+  // F3 · Reordenar por arrastrar y soltar. Al soltar, persiste el nuevo orden.
+  const onDropOn = (targetKey: string) => {
+    const dk = dragKey;
+    setDragKey(null);
+    if (!dk || dk === targetKey) return;
+    const dragItem = items.find((i) => i.key === dk);
+    const targetItem = items.find((i) => i.key === targetKey);
+    if (!dragItem || !targetItem || dragItem.tab !== targetItem.tab) return;
+    const without = items.filter((i) => i.key !== dk);
+    const ti = without.findIndex((i) => i.key === targetKey);
+    without.splice(ti, 0, dragItem);
+    setItems(without);
+    const ids = without.filter((i) => i.id).map((i) => i.id);
+    startTransition(() => {
+      void reorderAssignmentsAction(meetingId, ids);
+    });
   };
 
   function buildMessage(name: string, label: string, token: string) {
@@ -175,9 +240,23 @@ export function MeetingEditor({
     const msg = canSend ? buildMessage(trimmed, it.label, token!) : "";
     return (
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-medium text-muted">{roleLabel}</span>
-          {trimmed ? <StatusBadge status={status} /> : null}
+          {trimmed ? (
+            <div className="flex items-center gap-1.5">
+              <StatusBadge status={status} />
+              {it.id && status !== CONFIRM_STATUS.PENDIENTE ? (
+                <button
+                  type="button"
+                  onClick={() => resetConfirm(it, who)}
+                  title="Resetear el estado de confirmación a Pendiente"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-0.5 text-[0.7rem] font-medium text-muted transition-colors hover:bg-slate-50 hover:text-foreground"
+                >
+                  ↺ Resetear
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <Input
           list="hermanos-lista"
@@ -312,22 +391,57 @@ export function MeetingEditor({
             visible.map((it) => (
               <div
                 key={it.key}
+                onDragOver={(e) => {
+                  if (dragKey && dragKey !== it.key) e.preventDefault();
+                }}
+                onDrop={() => onDropOn(it.key)}
                 className={
-                  "rounded-xl border border-border p-3 sm:p-4 " +
-                  (SECTION_STYLE[it.section]?.card ?? "")
+                  "rounded-xl border border-border p-3 transition-shadow sm:p-4 " +
+                  (SECTION_STYLE[it.section]?.card ?? "") +
+                  (dragKey === it.key ? " opacity-50" : "") +
+                  (dragKey && dragKey !== it.key
+                    ? " ring-1 ring-dashed ring-primary/40"
+                    : "")
                 }
               >
-                {sectionLabels[it.section] ? (
+                {/* Encabezado: mango de arrastre + chip de sección + categoría */}
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span
-                    className={
-                      "mb-2 inline-block rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold " +
-                      (SECTION_STYLE[it.section]?.chip ??
-                        "bg-slate-200 text-slate-700")
-                    }
+                    draggable
+                    onDragStart={() => setDragKey(it.key)}
+                    onDragEnd={() => setDragKey(null)}
+                    title="Arrastra para reordenar la asignación"
+                    aria-label="Arrastrar para reordenar"
+                    className="cursor-grab select-none rounded-md px-1 text-lg leading-none text-muted active:cursor-grabbing"
                   >
-                    {sectionLabels[it.section]}
+                    ⠿
                   </span>
-                ) : null}
+                  {sectionLabels[it.section] ? (
+                    <span
+                      className={
+                        "inline-block rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold " +
+                        (SECTION_STYLE[it.section]?.chip ??
+                          "bg-slate-200 text-slate-700")
+                      }
+                    >
+                      {sectionLabels[it.section]}
+                    </span>
+                  ) : null}
+                  <label className="ml-auto flex items-center gap-1.5 text-[0.7rem] text-muted">
+                    Categoría
+                    <Select
+                      value={categoryOf(it.section)}
+                      onChange={(e) => changeCategory(it, e.target.value)}
+                      className="w-auto min-w-0 px-2 py-1 text-xs"
+                    >
+                      {CATEGORY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                </div>
                 <div className="mb-3 flex items-start gap-2">
                   <div className="flex-1">
                     <span className="mb-1 block text-xs font-medium text-muted">

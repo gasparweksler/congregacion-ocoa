@@ -96,52 +96,67 @@ export default async function ConfirmarPage({
       </div>
 
       {answered ? (
-        <div
-          className={
-            "mt-4 rounded-xl px-4 py-3 text-sm font-medium " +
-            (confirmed
-              ? "bg-emerald-50 text-emerald-800"
-              : "bg-red-50 text-red-800")
-          }
-        >
-          {confirmed
-            ? "✅ ¡Gracias! Registramos tu confirmación."
-            : "❌ Registramos que no podrás. Se buscará un reemplazo."}
-        </div>
+        // Ya respondió: se muestra SOLO el estado registrado + agradecimiento,
+        // sin los botones, para evitar respuestas duplicadas o repetidas.
+        <>
+          <div
+            className={
+              "mt-4 rounded-xl px-4 py-4 text-center " +
+              (confirmed
+                ? "bg-emerald-50 text-emerald-800"
+                : "bg-red-50 text-red-800")
+            }
+          >
+            <p className="text-3xl">{confirmed ? "✅" : "📝"}</p>
+            <p className="mt-1 text-base font-semibold">
+              {confirmed ? "¡Gracias! Tu confirmación fue recibida." : "¡Gracias! Tu respuesta fue recibida."}
+            </p>
+            <p className="mt-1 text-sm">
+              {confirmed
+                ? "Quedaste confirmado para esta asignación."
+                : "Registramos que no podrás. Se buscará un reemplazo."}
+            </p>
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+            <span className="text-muted">Estado registrado:</span>
+            <span
+              className={
+                "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold " +
+                (confirmed
+                  ? "bg-emerald-600 text-white"
+                  : "bg-red-600 text-white")
+              }
+            >
+              {confirmed ? "✅ Confirmado" : "❌ Rechazado"}
+            </span>
+          </div>
+          <p className="mt-4 text-center text-xs text-muted">
+            Tu respuesta ya quedó guardada. Si necesitas modificarla, comunícate
+            con el responsable de confirmaciones.
+          </p>
+        </>
       ) : (
-        <p className="mt-4 text-sm text-muted">
-          ¿Puedes encargarte de esta asignación?
-        </p>
+        // Aún pendiente: se muestran los botones para responder por primera vez.
+        <>
+          <p className="mt-4 text-sm text-muted">
+            ¿Puedes encargarte de esta asignación?
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            <Link
+              href={`/confirmar/${token}?r=si`}
+              className="flex items-center justify-center rounded-xl border border-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+            >
+              ✅ Sí, confirmo
+            </Link>
+            <Link
+              href={`/confirmar/${token}?r=no`}
+              className="flex items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50"
+            >
+              ❌ No podré, necesito reemplazo
+            </Link>
+          </div>
+        </>
       )}
-
-      <div className="mt-5 flex flex-col gap-2">
-        <Link
-          href={`/confirmar/${token}?r=si`}
-          className={
-            "flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors " +
-            (confirmed
-              ? "bg-emerald-600 text-white"
-              : "border border-emerald-600 text-emerald-700 hover:bg-emerald-50")
-          }
-        >
-          ✅ Sí, confirmo
-        </Link>
-        <Link
-          href={`/confirmar/${token}?r=no`}
-          className={
-            "flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors " +
-            (rejected
-              ? "bg-red-600 text-white"
-              : "border border-red-300 text-red-700 hover:bg-red-50")
-          }
-        >
-          ❌ No podré, necesito reemplazo
-        </Link>
-      </div>
-
-      <p className="mt-4 text-center text-xs text-muted">
-        Puedes cambiar tu respuesta tocando la otra opción.
-      </p>
     </Shell>
   );
 }
