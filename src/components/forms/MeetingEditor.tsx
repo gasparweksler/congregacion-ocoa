@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useActionState } from "react";
 import {
   saveMeetingAction,
@@ -121,6 +121,33 @@ export function MeetingEditor({
       tab: RESP_SECTIONS.includes(r.section) ? "resp" : "asig",
     })),
   );
+
+  // Tiempo real: cuando el servidor trae datos frescos (auto-refresco), sincroniza
+  // SOLO los estados de confirmación (por id), sin tocar nombres/títulos/notas que
+  // el administrador pueda estar editando en ese momento.
+  useEffect(() => {
+    setItems((prev) => {
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      let changed = false;
+      const next = prev.map((it) => {
+        const fresh = it.id ? byId.get(it.id) : undefined;
+        if (
+          fresh &&
+          (fresh.primaryStatus !== it.primaryStatus ||
+            fresh.secondaryStatus !== it.secondaryStatus)
+        ) {
+          changed = true;
+          return {
+            ...it,
+            primaryStatus: fresh.primaryStatus,
+            secondaryStatus: fresh.secondaryStatus,
+          };
+        }
+        return it;
+      });
+      return changed ? next : prev;
+    });
+  }, [rows]);
 
   const update = (key: string, patch: Partial<Item>) =>
     setItems((prev) =>

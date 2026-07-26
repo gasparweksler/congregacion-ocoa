@@ -3,6 +3,7 @@ import { requireMeetingsAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { meetingDayLabel, CONFIRM_STATUS, ROLES } from "@/lib/constants";
 import { ConfirmadorSelect } from "@/components/ConfirmadorSelect";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
@@ -42,6 +43,7 @@ export default async function ReunionesPage() {
 
   return (
     <>
+      <AutoRefresh seconds={8} />
       <PageHeader
         title="Reuniones de la Congregación"
         description="Organiza las asignaciones y responsabilidades de cada reunión y confirma la disponibilidad de los hermanos."

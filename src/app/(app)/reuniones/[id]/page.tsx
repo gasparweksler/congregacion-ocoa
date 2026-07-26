@@ -12,6 +12,7 @@ import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { LinkButton } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
 export default async function ReunionDetallePage({
   params,
@@ -57,6 +58,7 @@ export default async function ReunionDetallePage({
 
   return (
     <>
+      <AutoRefresh seconds={8} />
       <PageHeader
         title={`Reunión · ${meeting.weekLabel ?? formatDate(meeting.date)}`}
         description={`${meetingDayLabel(meeting.day)} · Creada ${formatDate(
