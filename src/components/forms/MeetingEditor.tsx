@@ -302,19 +302,26 @@ export function MeetingEditor({
         />
         {trimmed ? (
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!canSend}
-              onClick={() =>
-                window.open(
-                  `https://wa.me/?text=${encodeURIComponent(msg)}`,
-                  "_blank",
-                )
-              }
-              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              📲 WhatsApp
-            </button>
+            {canSend ? (
+              // Enlace directo (no window.open): en el teléfono el sistema abre
+              // WhatsApp nativamente y conserva mejor los emojis del mensaje.
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(msg)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+              >
+                📲 WhatsApp
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white opacity-50"
+              >
+                📲 WhatsApp
+              </button>
+            )}
             <button
               type="button"
               disabled={!canSend}
