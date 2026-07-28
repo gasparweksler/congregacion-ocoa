@@ -28,8 +28,8 @@ export function ExportPanel({
 
   const downloads = [
     {
-      title: "Informes mensuales",
-      desc: "Detalle de participación, cursos y horas del período elegido.",
+      title: "Informes de todos los publicadores",
+      desc: "Detalle de participación, cursos, horas y comentarios del período elegido.",
       href: q("informes"),
       icon: "📝",
     },

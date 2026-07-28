@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     switch (tipo) {
       case "informes":
         buffer = (await buildReportsWorkbook(year, month, grupo)) as ArrayBuffer;
-        filename = `informes_${monthName(month)}_${year}.xlsx`;
+        filename = `informes_de_todos_los_publicadores_${monthName(month)}_${year}.xlsx`;
         break;
       case "estadisticas":
         buffer = (await buildStatsWorkbook(year, month)) as ArrayBuffer;

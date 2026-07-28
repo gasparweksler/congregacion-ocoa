@@ -93,6 +93,7 @@ export async function buildReportsWorkbook(
     { header: "Participó", key: "participated", width: 12 },
     { header: "Cursos bíblicos", key: "studies", width: 16 },
     { header: "Horas", key: "hours", width: 10 },
+    { header: "Comentarios", key: "comment", width: 40 },
   ];
   styleHeader(ws.getRow(1));
 
@@ -114,14 +115,17 @@ export async function buildReportsWorkbook(
   });
 
   for (const r of reports) {
-    ws.addRow({
+    const row = ws.addRow({
       name: r.publisher.fullName,
       group: r.publisher.group?.name ?? "—",
       status: statusLabel(r.statusAtReport),
       participated: r.participated ? "Sí" : "No",
       studies: r.bibleStudies,
       hours: isPioneer(r.statusAtReport) ? (r.hours ?? 0) : "",
+      comment: r.comment ?? "",
     });
+    // El comentario puede ser largo: ajustar texto en la celda.
+    row.getCell("comment").alignment = { wrapText: true, vertical: "top" };
   }
 
   // Fila de totales.
@@ -135,7 +139,7 @@ export async function buildReportsWorkbook(
   });
   totalRow.font = { bold: true };
 
-  ws.autoFilter = { from: "A1", to: "F1" };
+  ws.autoFilter = { from: "A1", to: "G1" };
   return wb.xlsx.writeBuffer();
 }
 
