@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CONFIRM_STATUS, meetingDayLabel } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
+import { ConfirmAnswerButtons } from "@/components/ConfirmAnswerButtons";
 
 // Página pública (sin sesión): el hermano abre el enlace de WhatsApp y aquí se
 // registra su respuesta (Sí confirmo / No podré).
@@ -141,20 +141,7 @@ export default async function ConfirmarPage({
           <p className="mt-4 text-sm text-muted">
             ¿Puedes encargarte de esta asignación?
           </p>
-          <div className="mt-5 flex flex-col gap-2">
-            <Link
-              href={`/confirmar/${token}?r=si`}
-              className="flex items-center justify-center rounded-xl border border-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
-            >
-              ✅ Sí, confirmo
-            </Link>
-            <Link
-              href={`/confirmar/${token}?r=no`}
-              className="flex items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50"
-            >
-              ❌ No podré, necesito reemplazo
-            </Link>
-          </div>
+          <ConfirmAnswerButtons token={token} />
         </>
       )}
     </Shell>

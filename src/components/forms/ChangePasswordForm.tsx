@@ -6,7 +6,8 @@ import {
   logoutAction,
   type ActionState,
 } from "@/server/auth-actions";
-import { Label, Input, Alert } from "@/components/ui";
+import { Label, Alert } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { SubmitButton } from "@/components/SubmitButton";
 
 const initial: ActionState = {};
@@ -41,10 +42,9 @@ export function ChangePasswordForm() {
         <Label htmlFor="currentPassword" required>
           Contraseña actual
         </Label>
-        <Input
+        <PasswordInput
           id="currentPassword"
           name="currentPassword"
-          type="password"
           autoComplete="current-password"
           required
         />
@@ -53,10 +53,9 @@ export function ChangePasswordForm() {
         <Label htmlFor="newPassword" required>
           Nueva contraseña
         </Label>
-        <Input
+        <PasswordInput
           id="newPassword"
           name="newPassword"
-          type="password"
           autoComplete="new-password"
           required
         />
@@ -66,10 +65,9 @@ export function ChangePasswordForm() {
         <Label htmlFor="confirmPassword" required>
           Repetir nueva contraseña
         </Label>
-        <Input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           required
         />

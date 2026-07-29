@@ -227,6 +227,42 @@ export async function resetConfirmationAction(
 }
 
 /**
+ * Marca como CONFIRMADO a un hermano (principal o secundario) de una asignación,
+ * directamente desde el editor (el Responsable de Confirmaciones confirma por su
+ * cuenta las asignaciones pendientes). Persiste y sincroniza.
+ */
+export async function confirmAssignmentAction(
+  assignmentId: string,
+  who: "p" | "s",
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const assignment = await prisma.meetingAssignment.findUnique({
+    where: { id: assignmentId },
+    select: { id: true, meetingId: true },
+  });
+  if (!assignment) return;
+
+  await prisma.meetingAssignment.update({
+    where: { id: assignmentId },
+    data:
+      who === "p"
+        ? { primaryStatus: CONFIRM_STATUS.CONFIRMADO }
+        : { secondaryStatus: CONFIRM_STATUS.CONFIRMADO },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: assignment.meetingId,
+    details: "Asignación confirmada manualmente.",
+  });
+
+  revalidatePath(`/reuniones/${assignment.meetingId}`);
+  revalidatePath("/reuniones");
+}
+
+/**
  * Guarda el nuevo orden de las asignaciones (drag & drop). Recibe los IDs ya
  * existentes en el orden deseado y actualiza su campo `order`. Las asignaciones
  * nuevas (sin id) conservan su orden al guardar la reunión completa.

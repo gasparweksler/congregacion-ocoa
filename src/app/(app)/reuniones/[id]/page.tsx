@@ -10,9 +10,9 @@ import {
 } from "@/lib/constants";
 import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import { LinkButton } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { BackButton } from "@/components/BackButton";
 
 export default async function ReunionDetallePage({
   params,
@@ -64,11 +64,7 @@ export default async function ReunionDetallePage({
         description={`${meetingDayLabel(meeting.day)} · Creada ${formatDate(
           meeting.createdAt,
         )} · Última modificación ${formatDate(meeting.updatedAt)}`}
-        action={
-          <LinkButton href="/reuniones" variant="secondary">
-            ← Volver
-          </LinkButton>
-        }
+        action={<BackButton href="/reuniones" />}
       />
 
       <MeetingEditor

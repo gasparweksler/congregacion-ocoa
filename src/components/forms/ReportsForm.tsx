@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useActionState } from "react";
 import { saveReportsAction } from "@/server/report-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
@@ -82,6 +82,13 @@ export function ReportsForm({
 
   const openRow = rows.find((r) => r.id === openComment) ?? null;
 
+  // Al guardar con éxito: mostrar el banner arriba (desplazar a la vista).
+  useEffect(() => {
+    if (state.success) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [state.success]);
+
   return (
     <form
       action={action}
@@ -97,7 +104,19 @@ export function ReportsForm({
       <input type="hidden" name="ids" value={ids} />
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
-      {state.success ? <Alert tone="success">{state.success}</Alert> : null}
+      {state.success ? (
+        <div className="flex items-center gap-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3.5 text-emerald-800 shadow-sm">
+          <span aria-hidden className="text-2xl">
+            ✅
+          </span>
+          <div>
+            <p className="text-sm font-semibold">
+              ¡Informes guardados correctamente!
+            </p>
+            <p className="text-xs text-emerald-700">{state.success}</p>
+          </div>
+        </div>
+      ) : null}
 
       {submitted ? (
         <Alert tone="info">

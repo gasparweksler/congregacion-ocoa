@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { loginAction, type ActionState } from "@/server/auth-actions";
 import { Label, Input, Alert } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { SubmitButton } from "@/components/SubmitButton";
 
 const initial: ActionState = {};
@@ -32,10 +33,9 @@ export function LoginForm() {
         <Label htmlFor="password" required>
           Contraseña
         </Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           placeholder="••••••••"
           required

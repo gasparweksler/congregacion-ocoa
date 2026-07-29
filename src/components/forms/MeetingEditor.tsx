@@ -6,6 +6,7 @@ import {
   saveMeetingAction,
   deleteMeetingAction,
   resetConfirmationAction,
+  confirmAssignmentAction,
   reorderAssignmentsAction,
 } from "@/server/meeting-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
@@ -196,6 +197,20 @@ export function MeetingEditor({
     });
   };
 
+  // Confirmar manualmente una asignación pendiente (el propio Responsable).
+  const confirmNow = (it: Item, who: "p" | "s") => {
+    if (!it.id) return;
+    update(
+      it.key,
+      who === "p"
+        ? { primaryStatus: CONFIRM_STATUS.CONFIRMADO }
+        : { secondaryStatus: CONFIRM_STATUS.CONFIRMADO },
+    );
+    startTransition(() => {
+      void confirmAssignmentAction(it.id, who);
+    });
+  };
+
   // F2 · Cambiar categoría -> cambia la sección (y por tanto el color).
   const changeCategory = (it: Item, category: string) => {
     let section: string;
@@ -289,13 +304,25 @@ export function MeetingEditor({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-medium text-muted">{roleLabel}</span>
           {trimmed ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <StatusBadge status={status} />
+              {it.id && status === CONFIRM_STATUS.PENDIENTE ? (
+                <button
+                  type="button"
+                  onClick={() => confirmNow(it, who)}
+                  title="Confirmar esta asignación"
+                  aria-label="Confirmar esta asignación"
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-600 bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                  ✅ Confirmar
+                </button>
+              ) : null}
               {it.id && status !== CONFIRM_STATUS.PENDIENTE ? (
                 <button
                   type="button"
                   onClick={() => resetConfirm(it, who)}
                   title="Resetear el estado de confirmación a Pendiente"
+                  aria-label="Resetear a Pendiente"
                   className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-0.5 text-[0.7rem] font-medium text-muted transition-colors hover:bg-slate-50 hover:text-foreground"
                 >
                   ↺ Resetear
@@ -543,9 +570,10 @@ export function MeetingEditor({
                         remove(it.key);
                     }}
                     title="Eliminar esta asignación"
+                    aria-label="Eliminar esta asignación"
                     className="mt-6 rounded-lg border border-border px-2.5 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
                   >
-                    🗑️
+                    <span aria-hidden>🗑️</span>
                   </button>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
