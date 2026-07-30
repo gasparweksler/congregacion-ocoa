@@ -13,6 +13,7 @@ import {
   Badge,
 } from "@/components/ui";
 import { StatsTiles } from "@/components/StatsTiles";
+import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 
 export default async function PanelPage() {
   const user = await requireReportsAccess();
@@ -38,35 +39,35 @@ export default async function PanelPage() {
           <Card>
             <CardHeader title="Accesos rápidos" />
             <CardBody className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              <LinkButton href="/informes" variant="primary">
+              <LoadingLinkButton href="/informes" variant="primary">
                 📝 Subir informe
-              </LinkButton>
+              </LoadingLinkButton>
               {secretary ? (
                 <>
-                  <LinkButton href="/grupos" variant="secondary">
+                  <LoadingLinkButton href="/grupos" variant="secondary">
                     🗂️ Grupos
-                  </LinkButton>
-                  <LinkButton href="/usuarios" variant="secondary">
+                  </LoadingLinkButton>
+                  <LoadingLinkButton href="/usuarios" variant="secondary">
                     🔑 Usuarios
-                  </LinkButton>
-                  <LinkButton href="/estadisticas" variant="secondary">
+                  </LoadingLinkButton>
+                  <LoadingLinkButton href="/estadisticas" variant="secondary">
                     📊 Estadísticas
-                  </LinkButton>
-                  <LinkButton href="/reuniones" variant="secondary">
+                  </LoadingLinkButton>
+                  <LoadingLinkButton href="/reuniones" variant="secondary">
                     📅 Reuniones
-                  </LinkButton>
-                  <LinkButton href="/exportar" variant="secondary">
+                  </LoadingLinkButton>
+                  <LoadingLinkButton href="/exportar" variant="secondary">
                     ⬇️ Exportar
-                  </LinkButton>
+                  </LoadingLinkButton>
                 </>
               ) : (
                 <>
-                  <LinkButton href="/publicadores" variant="secondary">
+                  <LoadingLinkButton href="/publicadores" variant="secondary">
                     👥 Publicadores
-                  </LinkButton>
-                  <LinkButton href="/estadisticas" variant="secondary">
+                  </LoadingLinkButton>
+                  <LoadingLinkButton href="/estadisticas" variant="secondary">
                     📊 Estadísticas
-                  </LinkButton>
+                  </LoadingLinkButton>
                 </>
               )}
             </CardBody>

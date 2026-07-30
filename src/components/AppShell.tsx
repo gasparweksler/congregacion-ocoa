@@ -7,9 +7,8 @@
 //  Estilo limpio y espacioso inspirado en jw.org (identidad propia en teal).
 // ============================================================================
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { logoutAction } from "@/server/auth-actions";
 
@@ -26,33 +25,62 @@ export function AppShell({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  // Sección a la que se está navegando (para mostrar su spinner de carga).
+  const [navTarget, setNavTarget] = useState<string | null>(null);
+
+  // Al terminar la transición de navegación, limpiar el indicador.
+  useEffect(() => {
+    if (!isPending) setNavTarget(null);
+  }, [isPending]);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
+
+  const go = (href: string) => {
+    setOpen(false);
+    if (href === pathname) return;
+    setNavTarget(href);
+    startTransition(() => router.push(href));
+  };
 
   const nav = (
     <nav className="flex flex-col gap-1">
       <p className="px-3 pb-2 pt-1 text-[0.7rem] font-semibold uppercase tracking-wider text-white/40">
         Menú
       </p>
-      {navItems.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          onClick={() => setOpen(false)}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-            isActive(item.href)
-              ? "bg-white text-brand shadow-sm"
-              : "text-white/75 hover:bg-white/10 hover:text-white",
-          )}
-        >
-          <span aria-hidden className="w-5 text-center text-base">
-            {item.icon}
-          </span>
-          {item.label}
-        </Link>
-      ))}
+      {navItems.map((item) => {
+        const loading = navTarget === item.href;
+        return (
+          <button
+            key={item.href}
+            type="button"
+            onClick={() => go(item.href)}
+            aria-busy={loading}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
+              isActive(item.href)
+                ? "bg-white text-brand shadow-sm"
+                : "text-white/75 hover:bg-white/10 hover:text-white",
+            )}
+          >
+            <span aria-hidden className="flex w-5 items-center justify-center text-base">
+              {loading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                item.icon
+              )}
+            </span>
+            {item.label}
+            {loading ? (
+              <span className="ml-auto text-[0.7rem] font-normal opacity-70">
+                Cargando…
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
     </nav>
   );
 
