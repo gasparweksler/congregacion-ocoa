@@ -222,6 +222,10 @@ export default async function InformesPage({
         ) : (
           <CardBody>
             <ReportsForm
+              // Al cambiar de mes/año/grupo, se vuelve a montar para reiniciar
+              // las tarjetas: meses pasados muestran lo ya subido; un mes nuevo
+              // empieza de cero.
+              key={`${year}-${month}-${groupFilter ?? "all"}`}
               year={year}
               month={month}
               rows={rows}
