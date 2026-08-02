@@ -494,7 +494,9 @@ export function MeetingEditor({
                 onDrop={() => onDropOn(it.key)}
                 className={
                   "rounded-xl border border-border p-3 transition-shadow sm:p-4 " +
-                  (SECTION_STYLE[it.section]?.card ?? "") +
+                  // Con color de sección, o borde izquierdo gris neutro para "Otro".
+                  (SECTION_STYLE[it.section]?.card ??
+                    "border-l-4 border-l-slate-400") +
                   (dragKey === it.key ? " opacity-50" : "") +
                   (dragKey && dragKey !== it.key
                     ? " ring-1 ring-dashed ring-primary/40"
