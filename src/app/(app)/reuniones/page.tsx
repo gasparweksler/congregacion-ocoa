@@ -19,10 +19,16 @@ import {
 export default async function ReunionesPage() {
   await requireMeetingsAccess();
 
-  const meetings = await prisma.meeting.findMany({
-    orderBy: { date: "desc" },
+  const meetingsRaw = await prisma.meeting.findMany({
     include: { assignments: true },
   });
+  // Orden por cercanía a la fecha de hoy: la más cercana primero, la más lejana
+  // al final (sirve tanto para reuniones próximas como pasadas).
+  const now = Date.now();
+  const meetings = meetingsRaw.sort(
+    (a, b) =>
+      Math.abs(a.date.getTime() - now) - Math.abs(b.date.getTime() - now),
+  );
 
   // Responsables de Confirmación disponibles para el desplegable de cada reunión.
   const confirmadoresUsers = await prisma.user.findMany({

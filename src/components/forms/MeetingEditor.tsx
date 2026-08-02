@@ -75,6 +75,16 @@ function categoryOf(section: string): string {
   return "OTRO";
 }
 
+// Opciones fijas del desplegable "Responsabilidad" (pestaña Responsabilidades).
+const RESPONSIBILITY_OPTIONS = [
+  "Acomodador de Entrada",
+  "Acomodador de Auditorio",
+  "Pasa Micrófono",
+  "Acomodador de Plataforma",
+  "Audio",
+  "Video",
+];
+
 function StatusBadge({ status }: { status: string }) {
   if (status === CONFIRM_STATUS.CONFIRMADO)
     return <Badge tone="green">✅ Confirmado</Badge>;
@@ -116,11 +126,16 @@ export function MeetingEditor({
   const [dragKey, setDragKey] = useState<string | null>(null);
 
   const [items, setItems] = useState<Item[]>(() =>
-    rows.map((r) => ({
-      ...r,
-      key: r.id,
-      tab: RESP_SECTIONS.includes(r.section) ? "resp" : "asig",
-    })),
+    rows.map((r) => {
+      const isResp = RESP_SECTIONS.includes(r.section);
+      return {
+        ...r,
+        key: r.id,
+        tab: (isResp ? "resp" : "asig") as "asig" | "resp",
+        // Las responsabilidades son de un solo hermano (solo Responsable).
+        ...(isResp ? { allowTwo: false, equalPair: false } : {}),
+      };
+    }),
   );
 
   // Tiempo real: cuando el servidor trae datos frescos (auto-refresco), sincroniza
@@ -166,8 +181,10 @@ export function MeetingEditor({
         id: "",
         slotKey: "",
         section: t === "resp" ? "RESPONSABILIDADES" : "ASIGNACIONES",
-        label: "",
-        allowTwo: true,
+        // Responsabilidad nueva: primera opción por defecto; asignación: vacío.
+        label: t === "resp" ? RESPONSIBILITY_OPTIONS[0] : "",
+        // Responsabilidades: un solo hermano. Asignaciones: permiten dos.
+        allowTwo: t === "resp" ? false : true,
         equalPair: false,
         note: "",
         primaryName: "",
@@ -529,33 +546,61 @@ export function MeetingEditor({
                       {sectionLabels[it.section]}
                     </span>
                   ) : null}
-                  <label className="ml-auto flex items-center gap-1.5 text-[0.7rem] text-muted">
-                    Categoría
-                    <Select
-                      value={categoryOf(it.section)}
-                      onChange={(e) => changeCategory(it, e.target.value)}
-                      className="w-auto min-w-0 px-2 py-1 text-xs"
-                    >
-                      {CATEGORY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
+                  {it.tab !== "resp" ? (
+                    <label className="ml-auto flex items-center gap-1.5 text-[0.7rem] text-muted">
+                      Categoría
+                      <Select
+                        value={categoryOf(it.section)}
+                        onChange={(e) => changeCategory(it, e.target.value)}
+                        className="w-auto min-w-0 px-2 py-1 text-xs"
+                      >
+                        {CATEGORY_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                  ) : null}
                 </div>
                 <div className="mb-3 flex items-start gap-2">
                   <div className="flex-1">
                     <span className="mb-1 block text-xs font-medium text-muted">
-                      Título de la asignación
+                      {it.tab === "resp"
+                        ? "Responsabilidad"
+                        : "Título de la asignación"}
                     </span>
-                    <Input
-                      name={`lbl_${it.key}`}
-                      value={it.label}
-                      onChange={(e) => update(it.key, { label: e.target.value })}
-                      className="font-semibold"
-                      placeholder="Título de la asignación"
-                    />
+                    {it.tab === "resp" ? (
+                      <Select
+                        name={`lbl_${it.key}`}
+                        value={it.label}
+                        onChange={(e) =>
+                          update(it.key, { label: e.target.value })
+                        }
+                        className="font-semibold"
+                      >
+                        {/* Si el valor guardado no está en la lista, se conserva. */}
+                        {!RESPONSIBILITY_OPTIONS.includes(it.label) &&
+                        it.label ? (
+                          <option value={it.label}>{it.label}</option>
+                        ) : null}
+                        {RESPONSIBILITY_OPTIONS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Input
+                        name={`lbl_${it.key}`}
+                        value={it.label}
+                        onChange={(e) =>
+                          update(it.key, { label: e.target.value })
+                        }
+                        className="font-semibold"
+                        placeholder="Título de la asignación"
+                      />
+                    )}
                   </div>
                   <button
                     type="button"
@@ -580,21 +625,17 @@ export function MeetingEditor({
                   {renderPerson(
                     it,
                     "p",
-                    !it.allowTwo ? "Hermano" : it.equalPair ? "Hermano 1" : "Responsable",
+                    it.tab === "resp"
+                      ? "Responsable"
+                      : !it.allowTwo
+                        ? "Hermano"
+                        : it.equalPair
+                          ? "Hermano 1"
+                          : "Responsable",
                   )}
                   {it.allowTwo
                     ? renderPerson(it, "s", it.equalPair ? "Hermano 2" : "Auxiliar")
                     : null}
-                </div>
-                <div className="mt-3">
-                  <Label htmlFor={`n_${it.key}`}>Anotación (opcional)</Label>
-                  <Input
-                    id={`n_${it.key}`}
-                    name={`n_${it.key}`}
-                    value={it.note}
-                    onChange={(e) => update(it.key, { note: e.target.value })}
-                    placeholder="Ej. tema, lección, detalle…"
-                  />
                 </div>
               </div>
             ))
@@ -605,7 +646,7 @@ export function MeetingEditor({
             onClick={() => add(tab)}
             className="w-full rounded-xl border border-dashed border-primary/50 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
           >
-            ➕ Agregar asignación
+            ➕ {tab === "resp" ? "Agregar responsabilidad" : "Agregar asignación"}
           </button>
         </div>
 
