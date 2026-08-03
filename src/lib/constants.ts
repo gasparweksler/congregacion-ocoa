@@ -237,7 +237,8 @@ export type MonthlyResponsibility = {
 export const MONTHLY_RESPONSIBILITIES: MonthlyResponsibility[] = [
   { key: "r_acom_entrada", label: "Acomodador de Entrada", kind: "publisher" },
   { key: "r_acom_auditorio", label: "Acomodador de Auditorio", kind: "publisher" },
-  { key: "r_microfono", label: "Pasa Micrófono", kind: "publisher" },
+  { key: "r_microfono", label: "Pasa Micrófono 1", kind: "publisher" },
+  { key: "r_microfono_2", label: "Pasa Micrófono 2", kind: "publisher" },
   { key: "r_acom_plataforma", label: "Acomodador de Plataforma", kind: "publisher" },
   { key: "r_audio", label: "Audio", kind: "publisher" },
   { key: "r_video", label: "Video", kind: "publisher" },

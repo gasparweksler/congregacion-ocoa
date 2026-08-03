@@ -70,7 +70,10 @@ export async function GET(request: Request) {
       dateCol(r),
       r.values.r_audio?.name || "",
       r.values.r_video?.name || "",
-      r.values.r_microfono?.name || "",
+      // Dos "Pasa Micrófono" combinados (nombre1 / nombre2), como el impreso.
+      [r.values.r_microfono?.name, r.values.r_microfono_2?.name]
+        .filter((n) => n && n.trim())
+        .join(" / "),
       r.values.r_acom_plataforma?.name || "",
     ]),
     styles: {
