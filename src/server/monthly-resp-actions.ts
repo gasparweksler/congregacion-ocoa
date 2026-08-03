@@ -24,10 +24,47 @@ function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
-function sameDay(a: Date, y: number, m: number, d: number): boolean {
-  return (
-    a.getFullYear() === y && a.getMonth() === m - 1 && a.getDate() === d
+// Clave de la semana (lunes) de una fecha, como YYYY-MM-DD. Se usa para
+// emparejar un jueves/sábado calculado con una reunión ya creada de esa MISMA
+// semana, aunque la reunión guarde su fecha en otro día del rango (p. ej. el
+// lunes: "3-9 de Agosto" guarda 2026-08-03).
+function weekKey(date: Date): string {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const offsetToMonday = (d.getDay() + 6) % 7; // Dom=0 -> 6, Lun=1 -> 0, ...
+  d.setDate(d.getDate() - offsetToMonday);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+type MeetingLike = { id: string; date: Date; day: string; weekLabel?: string | null };
+
+/**
+ * Encuentra la reunión ya creada que corresponde a una fecha (jueves/sábado)
+ * calculada: misma semana y mismo tipo de día. Prefiere la reunión con rango
+ * (weekLabel), luego la de fecha exacta, luego la más antigua.
+ */
+function findWeekMeeting<T extends MeetingLike>(
+  meetings: T[],
+  date: Date,
+  day: string,
+): T | undefined {
+  const wk = weekKey(date);
+  const candidates = meetings.filter(
+    (m) => m.day === day && weekKey(m.date) === wk,
   );
+  if (candidates.length <= 1) return candidates[0];
+  const exactISO = date.toDateString();
+  return candidates.sort((a, b) => {
+    // 1º: con rango (weekLabel). 2º: fecha exacta. 3º: más antigua.
+    const aw = a.weekLabel ? 0 : 1;
+    const bw = b.weekLabel ? 0 : 1;
+    if (aw !== bw) return aw - bw;
+    const ae = a.date.toDateString() === exactISO ? 0 : 1;
+    const be = b.date.toDateString() === exactISO ? 0 : 1;
+    if (ae !== be) return ae - be;
+    return a.date.getTime() - b.date.getTime();
+  })[0];
 }
 
 export type RespCell = {
@@ -50,8 +87,10 @@ export async function getMonthlyResponsibilities(
 ): Promise<MonthlyMeetingRow[]> {
   await requireMeetingsAccess();
 
-  const first = new Date(year, month - 1, 1, 0, 0, 0);
-  const last = new Date(year, month, 1, 0, 0, 0);
+  // Ventana amplia (±8 días) para captar reuniones de rango cuya fecha guardada
+  // caiga en semanas de borde del mes.
+  const first = new Date(year, month - 1, 1 - 8, 0, 0, 0);
+  const last = new Date(year, month, 1 + 8, 0, 0, 0);
   const meetings = await prisma.meeting.findMany({
     where: { date: { gte: first, lt: last } },
     include: { assignments: true },
@@ -59,9 +98,7 @@ export async function getMonthlyResponsibilities(
 
   const dates = meetingDatesInMonth(year, month);
   return dates.map(({ date, day }) => {
-    const meeting = meetings.find((m) =>
-      sameDay(m.date, year, month, date.getDate()),
-    );
+    const meeting = findWeekMeeting(meetings, date, day);
     const values: Record<string, RespCell> = {};
     for (const r of MONTHLY_RESPONSIBILITIES) {
       const a = meeting?.assignments.find((x) => x.slotKey === r.key);
@@ -144,15 +181,15 @@ export async function setMonthlyResponsibility(
   const date = new Date(y, m - 1, d, 12, 0, 0);
   const clean = value.trim();
 
-  // Buscar reunión existente en esa fecha; si no, crearla perezosamente.
-  const first = new Date(y, m - 1, 1, 0, 0, 0);
-  const last = new Date(y, m, 1, 0, 0, 0);
+  // Buscar reunión ya creada de la MISMA semana y día (aunque su fecha sea el
+  // lunes del rango). Si no existe, crearla perezosamente.
+  const first = new Date(y, m - 1, d - 8, 0, 0, 0);
+  const last = new Date(y, m - 1, d + 8, 0, 0, 0);
   const existing = await prisma.meeting.findMany({
     where: { date: { gte: first, lt: last } },
-    select: { id: true, date: true },
+    select: { id: true, date: true, day: true, weekLabel: true },
   });
-  let meetingId =
-    existing.find((mm) => sameDay(mm.date, y, m, d))?.id ?? null;
+  let meetingId = findWeekMeeting(existing, date, day)?.id ?? null;
 
   if (!meetingId) {
     // Si se está limpiando un valor vacío y no hay reunión, no crear nada.
