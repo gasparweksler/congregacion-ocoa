@@ -223,6 +223,30 @@ export const JUEVES_SECTION_ORDER = [
 export const SABADO_SECTION_ORDER = ["SAB_ASIGNACIONES", "SAB_RESPONSABILIDADES"];
 
 // ---------------------------------------------------------------------------
+//  RESPONSABILIDADES MENSUALES (planificación desde una sola pantalla)
+//  Se guardan como MeetingAssignment con estos slotKey canónicos (sección
+//  RESPONSABILIDADES). "Limpieza por Grupos" guarda el nombre del grupo en vez
+//  de un publicador.
+// ---------------------------------------------------------------------------
+export type MonthlyResponsibility = {
+  key: string; // slotKey canónico
+  label: string;
+  kind: "publisher" | "group";
+};
+
+export const MONTHLY_RESPONSIBILITIES: MonthlyResponsibility[] = [
+  { key: "r_acom_entrada", label: "Acomodador de Entrada", kind: "publisher" },
+  { key: "r_acom_auditorio", label: "Acomodador de Auditorio", kind: "publisher" },
+  { key: "r_microfono", label: "Pasa Micrófono", kind: "publisher" },
+  { key: "r_acom_plataforma", label: "Acomodador de Plataforma", kind: "publisher" },
+  { key: "r_audio", label: "Audio", kind: "publisher" },
+  { key: "r_video", label: "Video", kind: "publisher" },
+  { key: "r_limpieza", label: "Limpieza por Grupos", kind: "group" },
+];
+
+export const MONTHLY_RESP_KEYS = MONTHLY_RESPONSIBILITIES.map((r) => r.key);
+
+// ---------------------------------------------------------------------------
 //  ESTADO DE CONFIRMACIÓN (asignaciones de reuniones)
 // ---------------------------------------------------------------------------
 export const CONFIRM_STATUS = {

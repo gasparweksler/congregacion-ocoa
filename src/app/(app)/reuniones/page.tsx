@@ -11,6 +11,7 @@ import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EnterMeetingButton } from "@/components/EnterMeetingButton";
+import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 import {
   deleteMeetingAction,
   deleteAllMeetingsAction,
@@ -53,6 +54,11 @@ export default async function ReunionesPage() {
       <PageHeader
         title="Reuniones de la Congregación"
         description="Organiza las asignaciones y responsabilidades de cada reunión y confirma la disponibilidad de los hermanos."
+        action={
+          <LoadingLinkButton href="/reuniones/responsabilidades" variant="primary">
+            🗓️ Todas las Responsabilidades del mes
+          </LoadingLinkButton>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

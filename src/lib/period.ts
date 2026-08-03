@@ -23,6 +23,25 @@ export function yearOptions(startYear = 2024): number[] {
   return years;
 }
 
+/**
+ * Todas las fechas de reunión (jueves y sábados) de un mes, en orden.
+ * Devuelve la fecha (mediodía local) y el día de reunión (JUEVES | SABADO).
+ */
+export function meetingDatesInMonth(
+  year: number,
+  month: number,
+): Array<{ date: Date; day: "JUEVES" | "SABADO" }> {
+  const out: Array<{ date: Date; day: "JUEVES" | "SABADO" }> = [];
+  const daysInMonth = new Date(year, month, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month - 1, d, 12, 0, 0);
+    const wd = date.getDay(); // 0=Dom ... 4=Jue, 6=Sáb
+    if (wd === 4) out.push({ date, day: "JUEVES" });
+    else if (wd === 6) out.push({ date, day: "SABADO" });
+  }
+  return out;
+}
+
 /** Normaliza y valida un período proveniente de la URL. */
 export function parsePeriod(
   yearStr?: string,

@@ -7,6 +7,8 @@ import {
   SABADO_SECTION_ORDER,
   MEETING_SECTION_LABELS,
   MEETING_DAYS,
+  MONTHLY_RESPONSIBILITIES,
+  MONTHLY_RESP_KEYS,
 } from "@/lib/constants";
 import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
@@ -40,21 +42,44 @@ export default async function ReunionDetallePage({
       ? SABADO_SECTION_ORDER
       : JUEVES_SECTION_ORDER;
 
-  const rows = meeting.assignments.map((a) => ({
-    id: a.id,
-    slotKey: a.slotKey,
-    section: a.section,
-    label: a.label,
-    allowTwo: a.allowTwo,
-    equalPair: a.equalPair,
-    note: a.note ?? "",
-    primaryName: a.primaryName ?? "",
-    primaryToken: a.primaryToken,
-    primaryStatus: a.primaryStatus,
-    secondaryName: a.secondaryName ?? "",
-    secondaryToken: a.secondaryToken,
-    secondaryStatus: a.secondaryStatus,
-  }));
+  // Las RESPONSABILIDADES se administran en la vista mensual; aquí solo se
+  // muestran (bloqueadas). Se separan de las asignaciones editables.
+  const isResp = (a: { section: string; slotKey: string }) =>
+    a.section === "RESPONSABILIDADES" ||
+    a.section === "SAB_RESPONSABILIDADES" ||
+    MONTHLY_RESP_KEYS.includes(a.slotKey);
+
+  const rows = meeting.assignments
+    .filter((a) => !isResp(a))
+    .map((a) => ({
+      id: a.id,
+      slotKey: a.slotKey,
+      section: a.section,
+      label: a.label,
+      allowTwo: a.allowTwo,
+      equalPair: a.equalPair,
+      note: a.note ?? "",
+      primaryName: a.primaryName ?? "",
+      primaryToken: a.primaryToken,
+      primaryStatus: a.primaryStatus,
+      secondaryName: a.secondaryName ?? "",
+      secondaryToken: a.secondaryToken,
+      secondaryStatus: a.secondaryStatus,
+    }));
+
+  // Responsabilidades canónicas (leídas de la planificación mensual).
+  const responsibilities = MONTHLY_RESPONSIBILITIES.map((r) => {
+    const a = meeting.assignments.find((x) => x.slotKey === r.key);
+    return {
+      key: r.key,
+      label: r.label,
+      kind: r.kind,
+      assignmentId: a?.id ?? null,
+      name: a?.primaryName ?? "",
+      token: a?.primaryToken ?? null,
+      status: a?.primaryStatus ?? "PENDIENTE",
+    };
+  });
 
   return (
     <>
@@ -80,6 +105,7 @@ export default async function ReunionDetallePage({
         sectionOrder={sectionOrder}
         sectionLabels={MEETING_SECTION_LABELS}
         hermanos={hermanos}
+        responsibilities={responsibilities}
       />
     </>
   );

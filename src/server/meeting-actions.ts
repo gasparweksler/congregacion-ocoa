@@ -11,7 +11,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess } from "@/lib/access";
-import { slotsForDay, MEETING_DAYS, CONFIRM_STATUS } from "@/lib/constants";
+import {
+  slotsForDay,
+  MEETING_DAYS,
+  CONFIRM_STATUS,
+  MONTHLY_RESP_KEYS,
+} from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
 
@@ -158,9 +163,15 @@ export async function saveMeetingAction(
     }
   }
 
-  // Eliminar las asignaciones que se quitaron en la pantalla.
+  // Eliminar las asignaciones que se quitaron en la pantalla. Las
+  // RESPONSABILIDADES no se tocan aquí (solo se administran desde la vista
+  // mensual "Todas las Responsabilidades del mes").
+  const isResponsibility = (a: { section: string; slotKey: string }) =>
+    a.section === "RESPONSABILIDADES" ||
+    a.section === "SAB_RESPONSABILIDADES" ||
+    MONTHLY_RESP_KEYS.includes(a.slotKey);
   const toDelete = meeting.assignments
-    .filter((a) => !submittedIds.has(a.id))
+    .filter((a) => !submittedIds.has(a.id) && !isResponsibility(a))
     .map((a) => a.id);
   if (toDelete.length) {
     await prisma.meetingAssignment.deleteMany({

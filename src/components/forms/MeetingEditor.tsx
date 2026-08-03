@@ -22,6 +22,10 @@ import {
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CONFIRM_STATUS } from "@/lib/constants";
+import {
+  MeetingResponsibilities,
+  type RespItem,
+} from "@/components/forms/MeetingResponsibilities";
 
 type Row = {
   id: string;
@@ -104,6 +108,7 @@ export function MeetingEditor({
   rows,
   sectionLabels,
   hermanos,
+  responsibilities,
 }: {
   meetingId: string;
   day: string;
@@ -117,6 +122,7 @@ export function MeetingEditor({
   sectionOrder: string[];
   sectionLabels: Record<string, string>;
   hermanos: string[];
+  responsibilities: RespItem[];
 }) {
   const [state, action] = useActionState(saveMeetingAction, EMPTY_FORM_STATE);
   const [tab, setTab] = useState<"asig" | "resp">("asig");
@@ -479,6 +485,13 @@ export function MeetingEditor({
           </button>
         </div>
 
+        {tab === "resp" ? (
+          <MeetingResponsibilities
+            dayLabel={dayLabel}
+            dateLabel={dateLabel}
+            items={responsibilities}
+          />
+        ) : (
         <div className="space-y-4">
           {visible.length === 0 ? (
             <p className="text-sm text-muted">
@@ -645,12 +658,13 @@ export function MeetingEditor({
 
           <button
             type="button"
-            onClick={() => add(tab)}
+            onClick={() => add("asig")}
             className="w-full rounded-xl border border-dashed border-primary/50 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
           >
-            ➕ {tab === "resp" ? "Agregar responsabilidad" : "Agregar asignación"}
+            ➕ Agregar asignación
           </button>
         </div>
+        )}
 
         <div className="flex justify-end border-t border-border pt-4">
           <SubmitButton pendingText="Guardando…">Guardar reunión</SubmitButton>
