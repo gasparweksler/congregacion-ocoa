@@ -1,34 +1,45 @@
 # ============================================================================
 #  Keep-alive de la base de datos (GitHub Actions)
-#  GitHub llama a /api/keep-alive cada ~10 minutos para que la base de datos
-#  de Supabase (plan gratuito) no se enfríe ni se pause. Así los hermanos
-#  entran sin la espera del "arranque en frío". No requiere configurar nada
-#  externo: GitHub lo ejecuta solo mientras el repositorio esté activo.
+#  Llama a /api/keep-alive para que la base de datos de Supabase (plan
+#  gratuito) no se pause por inactividad.
+#
+#  Nota: GitHub Actions ESTRANGULA los crons muy frecuentes en repos de bajo
+#  uso (un "*/10" real corría ~cada 2 h y cancelaba ejecuciones encoladas,
+#  generando correos de fallo). Por eso se usa cada 30 min, fuera de la hora
+#  en punto (alta carga), y el job nunca falla por errores transitorios.
+#  Para mantener la base "caliente" (sin arranque en frío) de forma fiable,
+#  un pinger externo (UptimeRobot cada 5 min) es más efectivo.
 # ============================================================================
 
 name: keep-alive
 
 on:
   schedule:
-    # Cada 10 minutos (GitHub programa "en la medida de lo posible").
-    - cron: "*/10 * * * *"
-  # Permite ejecutarlo a mano desde la pestaña Actions de GitHub.
+    # Cada 30 min, en :13 y :43 (evita la hora en punto, de alta carga).
+    - cron: "13,43 * * * *"
   workflow_dispatch:
+
+# Evita que ejecuciones solapadas se cancelen entre sí.
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Despertar la base de datos
         run: |
           echo "Pingeando keep-alive..."
           code=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
-            --max-time 90 \
-            https://congregacion-ocoa.vercel.app/api/keep-alive)
+            --max-time 120 \
+            https://congregacion-ocoa.vercel.app/api/keep-alive || echo "000")
           echo "HTTP $code"
-          cat /tmp/body.txt
-          # Falla el job solo si no fue 2xx (para verlo en el historial).
+          cat /tmp/body.txt || true
+          # Solo un aviso (no falla el job): así no llegan correos por
+          # respuestas lentas o de arranque en frío. La consulta ya "despertó"
+          # la base aunque la respuesta tarde o no sea 2xx.
           if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
-            echo "::error::keep-alive respondió $code"
-            exit 1
+            echo "::warning::keep-alive respondió $code (no crítico)"
           fi
