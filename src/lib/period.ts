@@ -15,6 +15,13 @@ export function previousPeriod(p: Period = currentPeriod()): Period {
     : { year: p.year, month: p.month - 1 };
 }
 
+/** Período del mes siguiente. */
+export function nextPeriod(p: Period = currentPeriod()): Period {
+  return p.month === 12
+    ? { year: p.year + 1, month: 1 }
+    : { year: p.year, month: p.month + 1 };
+}
+
 /** Lista de años para selectores (desde startYear hasta el año actual + 1). */
 export function yearOptions(startYear = 2024): number[] {
   const end = new Date().getFullYear() + 1;

@@ -229,3 +229,25 @@ model AuditLog {
   @@index([createdAt])
   @@index([entity])
 }
+
+// ----------------------------------------------------------------------------
+//  INSCRIPCIONES DE PRECURSOR AUXILIAR (por mes)
+//  El hermano se inscribe desde un enlace público (sin sesión). El período
+//  (año/mes) viaja en el enlace que arma el Administrador, para que la
+//  inscripción quede en el mes elegido y no en el mes actual.
+// ----------------------------------------------------------------------------
+model AuxiliaryPioneerSignup {
+  id      String @id @default(cuid())
+  name    String // nombre tal cual lo escribió el hermano
+  nameKey String // nombre normalizado (para evitar duplicados por mes)
+  hours   Int // 15 | 30
+  year    Int
+  month   Int // 1..12
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Una sola inscripción por persona y período (se actualiza si repite).
+  @@unique([nameKey, year, month])
+  @@index([year, month])
+}

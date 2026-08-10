@@ -56,6 +56,7 @@ export default async function AppLayout({
     icon: "📅",
   };
   const secretaryItems: NavItem[] = [
+    { href: "/precursores-auxiliares", label: "Precursores Auxiliares", icon: "🙋" },
     { href: "/grupos", label: "Grupos", icon: "🗂️" },
     { href: "/usuarios", label: "Usuarios", icon: "🔑" },
     { href: "/credenciales", label: "Ver Credenciales", icon: "👁️" },
