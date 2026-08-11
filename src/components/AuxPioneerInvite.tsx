@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { setAllow15hAction } from "@/server/aux-pioneer-actions";
 
 export type InvitePeriod = {
   year: number;
   month: number;
   label: string; // "Septiembre 2026"
   monthLower: string; // "septiembre"
+  allow15: boolean; // ¿se permite inscripción de 15 horas ese mes?
 };
 
 // Genera el mensaje de invitación para el mes elegido (curso o siguiente) y
@@ -21,7 +23,21 @@ export function AuxPioneerInvite({
 }) {
   const [which, setWhich] = useState<"curso" | "siguiente">("curso");
   const [copied, setCopied] = useState(false);
+  const [, startTransition] = useTransition();
+  // Estado local del switch de 15 horas por mes (curso/siguiente).
+  const [allow15, setAllow15] = useState<{ curso: boolean; siguiente: boolean }>(
+    { curso: curso.allow15, siguiente: siguiente.allow15 },
+  );
   const period = which === "curso" ? curso : siguiente;
+  const fifteenOn = allow15[which];
+
+  const toggleFifteen = () => {
+    const next = !fifteenOn;
+    setAllow15((prev) => ({ ...prev, [which]: next }));
+    startTransition(() => {
+      void setAllow15hAction(period.year, period.month, next);
+    });
+  };
 
   const buildMessage = () => {
     const origin =
@@ -87,6 +103,39 @@ export function AuxPioneerInvite({
         Gestionando inscripciones para:{" "}
         <strong className="text-primary">{period.label}</strong>
       </p>
+
+      {/* Switch: activar/desactivar la opción de 15 horas para este mes */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            Permitir inscripción de 15 horas
+          </p>
+          <p className="text-xs text-muted">
+            {fifteenOn
+              ? "Los hermanos pueden elegir 15 o 30 horas."
+              : "Este mes solo se podrán inscribir a 30 horas."}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={fifteenOn}
+          aria-label="Permitir inscripción de 15 horas"
+          onClick={toggleFifteen}
+          className={
+            "relative h-6 w-11 shrink-0 rounded-full transition-colors " +
+            (fifteenOn ? "bg-primary" : "bg-slate-300")
+          }
+        >
+          <span
+            aria-hidden
+            className={
+              "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform " +
+              (fifteenOn ? "translate-x-5" : "")
+            }
+          />
+        </button>
+      </div>
 
       {/* Vista previa del mensaje */}
       <textarea

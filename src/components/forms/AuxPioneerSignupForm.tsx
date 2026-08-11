@@ -11,10 +11,12 @@ export function AuxPioneerSignupForm({
   year,
   month,
   periodLabel,
+  allow15,
 }: {
   year: number;
   month: number;
   periodLabel: string;
+  allow15: boolean;
 }) {
   const [state, formAction] = useActionState(
     signupAuxiliaryPioneerAction,
@@ -59,13 +61,25 @@ export function AuxPioneerSignupForm({
         <Label htmlFor="hours" required>
           Horas
         </Label>
-        <Select id="hours" name="hours" defaultValue="" required>
-          <option value="" disabled>
-            — Selecciona —
-          </option>
-          <option value="15">15 Horas</option>
+        <Select
+          id="hours"
+          name="hours"
+          defaultValue={allow15 ? "" : "30"}
+          required
+        >
+          {allow15 ? (
+            <option value="" disabled>
+              — Selecciona —
+            </option>
+          ) : null}
+          {allow15 ? <option value="15">15 Horas</option> : null}
           <option value="30">30 Horas</option>
         </Select>
+        {!allow15 ? (
+          <p className="mt-1 text-xs text-muted">
+            Para este mes solo está disponible la opción de 30 horas.
+          </p>
+        ) : null}
       </div>
 
       <SubmitButton pendingText="Registrando inscripción…" className="w-full">

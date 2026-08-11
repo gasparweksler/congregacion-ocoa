@@ -14,6 +14,7 @@ import {
   EmptyState,
 } from "@/components/ui";
 import { AuxPioneerInvite } from "@/components/AuxPioneerInvite";
+import { isFifteenAllowed } from "@/server/aux-pioneer-actions";
 import {
   AuxPeriodViewSelector,
   type ViewOption,
@@ -58,11 +59,20 @@ export default async function PrecursoresAuxiliaresPage({
     (a, b) => b.year - a.year || b.month - a.month,
   );
 
-  const invite = (p: { year: number; month: number }) => ({
+  const [allow15Curso, allow15Sig] = await Promise.all([
+    isFifteenAllowed(curso.year, curso.month),
+    isFifteenAllowed(siguiente.year, siguiente.month),
+  ]);
+
+  const invite = (
+    p: { year: number; month: number },
+    allow15: boolean,
+  ) => ({
     year: p.year,
     month: p.month,
     label: `${monthName(p.month)} ${p.year}`,
     monthLower: monthName(p.month).toLowerCase(),
+    allow15,
   });
 
   return (
@@ -80,8 +90,8 @@ export default async function PrecursoresAuxiliaresPage({
         />
         <CardBody>
           <AuxPioneerInvite
-            curso={invite(curso)}
-            siguiente={invite(siguiente)}
+            curso={invite(curso, allow15Curso)}
+            siguiente={invite(siguiente, allow15Sig)}
           />
         </CardBody>
       </Card>

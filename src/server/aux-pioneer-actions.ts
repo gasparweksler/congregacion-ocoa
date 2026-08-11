@@ -9,8 +9,37 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireSecretary } from "@/lib/access";
 
 export type SignupState = { error?: string; success?: string };
+
+// ¿Está permitida la inscripción de 15 horas para ese período? (por defecto sí)
+export async function isFifteenAllowed(
+  year: number,
+  month: number,
+): Promise<boolean> {
+  const s = await prisma.auxPioneerSetting.findUnique({
+    where: { year_month: { year, month } },
+    select: { allow15h: true },
+  });
+  return s?.allow15h ?? true;
+}
+
+// El Administrador activa/desactiva la opción de 15 horas para un período.
+export async function setAllow15hAction(
+  year: number,
+  month: number,
+  allow: boolean,
+): Promise<void> {
+  await requireSecretary();
+  await prisma.auxPioneerSetting.upsert({
+    where: { year_month: { year, month } },
+    update: { allow15h: allow },
+    create: { year, month, allow15h: allow },
+  });
+  revalidatePath("/precursores-auxiliares");
+  revalidatePath("/precursor-auxiliar");
+}
 
 // Normaliza el nombre para detectar duplicados (sin acentos, minúsculas).
 function normalizeName(s: string): string {
@@ -45,6 +74,13 @@ export async function signupAuxiliaryPioneerAction(
     year > 2100
   ) {
     return { error: "El período de la invitación no es válido." };
+  }
+
+  // Si el Administrador desactivó las 15 horas para este mes, no se permite.
+  if (hours === 15 && !(await isFifteenAllowed(year, month))) {
+    return {
+      error: "Para este mes solo está disponible la opción de 30 horas.",
+    };
   }
 
   const nameKey = normalizeName(name);

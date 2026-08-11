@@ -1,5 +1,6 @@
 import { monthName } from "@/lib/constants";
 import { parsePeriod } from "@/lib/period";
+import { isFifteenAllowed } from "@/server/aux-pioneer-actions";
 import { AuxPioneerSignupForm } from "@/components/forms/AuxPioneerSignupForm";
 
 // Página pública (sin sesión): el hermano abre el enlace de WhatsApp y se
@@ -38,6 +39,7 @@ export default async function PrecursorAuxiliarPage({
   // El período viene en el enlace; si falta o es inválido, usa el mes actual.
   const { year, month } = parsePeriod(sp.anio, sp.mes);
   const periodLabel = `${monthName(month)} ${year}`;
+  const allow15 = await isFifteenAllowed(year, month);
 
   return (
     <Shell>
@@ -53,6 +55,7 @@ export default async function PrecursorAuxiliarPage({
           year={year}
           month={month}
           periodLabel={periodLabel}
+          allow15={allow15}
         />
       </div>
     </Shell>

@@ -251,3 +251,16 @@ model AuxiliaryPioneerSignup {
   @@unique([nameKey, year, month])
   @@index([year, month])
 }
+
+// Configuración por período de las inscripciones de Precursor Auxiliar.
+// allow15h=false -> ese mes solo admite inscripción de 30 horas.
+model AuxPioneerSetting {
+  id       String  @id @default(cuid())
+  year     Int
+  month    Int
+  allow15h Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
+}
