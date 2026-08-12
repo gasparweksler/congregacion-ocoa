@@ -45,13 +45,18 @@ export function AuxPioneerInvite({
     const cp = String.fromCodePoint;
     const E = {
       smile: cp(0x1f60a), wave: cp(0x1f44b), pray: cp(0x1f64f),
-      point: cp(0x1f449), heart: cp(0x1f49a),
+      point: cp(0x1f449), heart: cp(0x1f49a), happy: cp(0x1f603),
     };
     const link = `${origin}/precursor-auxiliar?anio=${period.year}&mes=${period.month}`;
+    // Si el mes admite 15 horas, se agrega el recordatorio de 30 o 15 horas.
+    const reminder = fifteenOn
+      ? `Recuerda que por este mes puedes realizar el Precursorado por 30 o 15 Horas ${E.happy}\n\n`
+      : "";
     return (
       `Hola querido Hermano ${E.smile}${E.wave}\n\n` +
       `Queremos invitarte a considerar servir como *Precursor Auxiliar* durante ` +
       `*${period.label}*. ${E.pray}\n\n` +
+      reminder +
       `Si deseas inscribirte, toca el siguiente enlace:\n` +
       `${E.point} Sí, deseo ser Precursor Auxiliar durante ${period.monthLower}:\n` +
       `${link}\n\n` +
