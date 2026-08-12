@@ -59,6 +59,17 @@ export function HistoryFilters({
           </option>
         ))}
       </Select>
+      <Select
+        className="w-auto"
+        value={sp.get("tipo") ?? ""}
+        onChange={(e) => set("tipo", e.target.value)}
+        aria-label="Filtrar por tipo de publicador"
+      >
+        <option value="">Todos los publicadores</option>
+        <option value="precursores">Solo precursores</option>
+        <option value="regular">Precursores Regulares</option>
+        <option value="auxiliar">Precursores Auxiliares</option>
+      </Select>
     </div>
   );
 }
