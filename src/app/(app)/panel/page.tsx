@@ -1,7 +1,11 @@
 import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { roleLabel, monthName } from "@/lib/constants";
 import { previousPeriod } from "@/lib/period";
-import { getPeriodStats, getPendingCountByGroup } from "@/lib/stats";
+import {
+  getPeriodStats,
+  getPendingCountByGroup,
+  getPendingPublishers,
+} from "@/lib/stats";
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -10,10 +14,10 @@ import {
   Alert,
   LinkButton,
   EmptyState,
-  Badge,
 } from "@/components/ui";
 import { StatsTiles } from "@/components/StatsTiles";
 import { LoadingLinkButton } from "@/components/LoadingLinkButton";
+import { PendingGroupRow } from "@/components/PendingGroupRow";
 
 export default async function PanelPage() {
   const user = await requireReportsAccess();
@@ -103,9 +107,21 @@ async function PendingByGroup({
   month: number;
   periodLabel: string;
 }) {
-  const pending = await getPendingCountByGroup(year, month);
+  const [pending, pendingPublishers] = await Promise.all([
+    getPendingCountByGroup(year, month),
+    getPendingPublishers(null, year, month),
+  ]);
   const groupsWithPending = pending.filter((g) => g.pending > 0);
   const totalGroups = pending.length;
+
+  // Nombres de publicadores pendientes, agrupados por nombre de grupo.
+  const namesByGroup = new Map<string, string[]>();
+  for (const p of pendingPublishers) {
+    const key = p.groupName ?? "—";
+    const list = namesByGroup.get(key) ?? [];
+    list.push(p.fullName);
+    namesByGroup.set(key, list);
+  }
 
   return (
     <Card>
@@ -128,17 +144,13 @@ async function PendingByGroup({
         ) : (
           <ul className="space-y-2">
             {groupsWithPending.map((g) => (
-              <li
+              <PendingGroupRow
                 key={g.groupId}
-                className="flex items-center justify-between rounded-lg border border-border px-4 py-2"
-              >
-                <span className="font-medium text-foreground">
-                  {g.groupName}
-                </span>
-                <Badge tone="amber">
-                  {g.pending} de {g.total} pendientes
-                </Badge>
-              </li>
+                groupName={g.groupName}
+                pending={g.pending}
+                total={g.total}
+                names={namesByGroup.get(g.groupName) ?? []}
+              />
             ))}
           </ul>
         )}
