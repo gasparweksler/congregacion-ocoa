@@ -114,12 +114,12 @@ async function PendingByGroup({
   const groupsWithPending = pending.filter((g) => g.pending > 0);
   const totalGroups = pending.length;
 
-  // Nombres de publicadores pendientes, agrupados por nombre de grupo.
-  const namesByGroup = new Map<string, string[]>();
+  // Publicadores pendientes (id + nombre), agrupados por nombre de grupo.
+  const namesByGroup = new Map<string, { id: string; fullName: string }[]>();
   for (const p of pendingPublishers) {
     const key = p.groupName ?? "—";
     const list = namesByGroup.get(key) ?? [];
-    list.push(p.fullName);
+    list.push({ id: p.id, fullName: p.fullName });
     namesByGroup.set(key, list);
   }
 
@@ -146,10 +146,13 @@ async function PendingByGroup({
             {groupsWithPending.map((g) => (
               <PendingGroupRow
                 key={g.groupId}
+                groupId={g.groupId}
                 groupName={g.groupName}
                 pending={g.pending}
                 total={g.total}
-                names={namesByGroup.get(g.groupName) ?? []}
+                year={year}
+                month={month}
+                publishers={namesByGroup.get(g.groupName) ?? []}
               />
             ))}
           </ul>

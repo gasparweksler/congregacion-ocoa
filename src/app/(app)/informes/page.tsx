@@ -19,7 +19,12 @@ import { ReportsForm, type ReportRow } from "@/components/forms/ReportsForm";
 export default async function InformesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string; grupo?: string }>;
+  searchParams: Promise<{
+    anio?: string;
+    mes?: string;
+    grupo?: string;
+    pub?: string;
+  }>;
 }) {
   const user = await requireReportsAccess();
   const secretary = isSecretary(user);
@@ -29,6 +34,9 @@ export default async function InformesPage({
 
   const scope = scopedGroupId(user); // null si secretario
   const groupFilter = secretary ? sp.grupo : (scope ?? undefined);
+  // Publicador puntual (desde "Subir Informe" de un pendiente): se muestra solo
+  // su tarjeta y el formulario queda editable de inmediato.
+  const pub = sp.pub || undefined;
 
   // ¿El período mostrado ya tiene informes? Si sí, se muestra quién los subió y
   // el formulario inicia bloqueado (hasta pulsar "Editar informe").
@@ -44,12 +52,14 @@ export default async function InformesPage({
     orderBy: { updatedAt: "desc" },
     select: { updatedAt: true, submittedBy: { select: { name: true } } },
   });
-  const submitted = periodReport
-    ? {
-        by: periodReport.submittedBy?.name ?? "—",
-        at: formatDate(periodReport.updatedAt),
-      }
-    : null;
+  // Al subir el informe de UN pendiente puntual, no se bloquea el formulario.
+  const submitted =
+    pub || !periodReport
+      ? null
+      : {
+          by: periodReport.submittedBy?.name ?? "—",
+          at: formatDate(periodReport.updatedAt),
+        };
 
   const groups = secretary
     ? await prisma.group.findMany({
@@ -74,6 +84,7 @@ export default async function InformesPage({
 
   const publishers = await prisma.publisher.findMany({
     where: {
+      ...(pub ? { id: pub } : {}),
       ...(scope ? { groupId: scope } : {}),
       ...(groupFilter ? { groupId: groupFilter } : {}),
     },
