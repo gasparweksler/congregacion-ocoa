@@ -2,12 +2,24 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui";
+import type { NameEntry } from "@/lib/stats";
 
 type Row = {
   label: string;
   value: number;
-  names: string[];
+  names: NameEntry[];
 };
+
+// Agrupa las entradas por grupo, preservando el orden ya ordenado.
+function groupByGroup(names: NameEntry[]): { group: string; items: string[] }[] {
+  const out: { group: string; items: string[] }[] = [];
+  for (const n of names) {
+    const last = out[out.length - 1];
+    if (last && last.group === n.group) last.items.push(n.name);
+    else out.push({ group: n.group, items: [n.name] });
+  }
+  return out;
+}
 
 // Recuadro "Total Publicadores": número grande + filas con un ojo que despliega
 // los nombres de los publicadores de esa categoría.
@@ -54,25 +66,32 @@ export function TotalPublishersTile({
                 </dd>
               </div>
               {isOpen ? (
-                <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2">
+                <div className="mt-2 space-y-2 rounded-lg bg-slate-50 px-3 py-2">
                   {r.names.length === 0 ? (
                     <p className="text-xs text-muted">
                       Nadie en esta categoría.
                     </p>
                   ) : (
-                    <ol className="space-y-1">
-                      {r.names.map((n, j) => (
-                        <li
-                          key={j}
-                          className="flex items-center gap-2 text-sm text-foreground"
-                        >
-                          <span className="w-6 shrink-0 text-right tabular-nums text-muted">
-                            {j + 1}.
-                          </span>
-                          {n}
-                        </li>
-                      ))}
-                    </ol>
+                    groupByGroup(r.names).map((g, gi) => (
+                      <div key={gi}>
+                        <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-primary">
+                          {g.group}
+                        </p>
+                        <ol className="mt-0.5 space-y-1">
+                          {g.items.map((n, j) => (
+                            <li
+                              key={j}
+                              className="flex items-center gap-2 text-sm text-foreground"
+                            >
+                              <span className="w-6 shrink-0 text-right tabular-nums text-muted">
+                                {j + 1}.
+                              </span>
+                              {n}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ))
                   )}
                 </div>
               ) : null}

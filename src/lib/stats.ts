@@ -39,16 +39,19 @@ export type PeriodStats = {
     names: string[];
   };
   // Nombres por categoría (para el "ojo" del recuadro Total Publicadores).
+  // Cada entrada incluye el grupo, para poder agruparlos al desplegar.
   names: {
-    inactivos: string[];
-    activos: string[];
-    bautizados: string[];
-    noBautizados: string[];
-    participaron: string[];
-    noParticiparon: string[];
-    cursos: string[]; // solo quienes tienen 1 o más cursos ("Nombre (N)")
+    inactivos: NameEntry[];
+    activos: NameEntry[];
+    bautizados: NameEntry[];
+    noBautizados: NameEntry[];
+    participaron: NameEntry[];
+    noParticiparon: NameEntry[];
+    cursos: NameEntry[]; // solo quienes tienen 1 o más cursos ("Nombre (N)")
   };
 };
+
+export type NameEntry = { name: string; group: string };
 
 function emptyByStatus(): Record<PublisherStatus, number> {
   const obj = {} as Record<PublisherStatus, number>;
@@ -71,7 +74,12 @@ export async function getPeriodStats(
   const publishers = await prisma.publisher.findMany({
     where: { ...(where.groupId ? { groupId: where.groupId } : {}) },
     orderBy: { fullName: "asc" },
-    select: { id: true, status: true, fullName: true },
+    select: {
+      id: true,
+      status: true,
+      fullName: true,
+      group: { select: { name: true } },
+    },
   });
 
   const reports = await prisma.monthlyReport.findMany({
@@ -168,34 +176,53 @@ export async function getPeriodStats(
   const coursesById = new Map<string, number>();
   for (const r of reports) coursesById.set(r.publisherId, r.bibleStudies);
 
+  // Ordena por grupo y luego por nombre, y adjunta el grupo a cada entrada.
+  const byGroupThenName = (
+    filter: (p: (typeof publishers)[number]) => boolean,
+    label: (p: (typeof publishers)[number]) => string,
+  ): NameEntry[] =>
+    publishers
+      .filter(filter)
+      .map((p) => ({ name: label(p), group: p.group?.name ?? "Sin grupo" }))
+      .sort(
+        (a, b) =>
+          a.group.localeCompare(b.group, "es") ||
+          a.name.localeCompare(b.name, "es"),
+      );
+
   const names = {
-    inactivos: publishers
-      .filter((p) => p.status === PUBLISHER_STATUS.INACTIVO)
-      .map((p) => p.fullName),
-    activos: publishers
-      .filter((p) => p.status !== PUBLISHER_STATUS.INACTIVO)
-      .map((p) => p.fullName),
-    bautizados: publishers
-      .filter((p) => p.status === PUBLISHER_STATUS.BAUTIZADO)
-      .map((p) => p.fullName),
-    noBautizados: publishers
-      .filter((p) => p.status === PUBLISHER_STATUS.NO_BAUTIZADO)
-      .map((p) => p.fullName),
-    participaron: publishers
-      .filter((p) => participatedIds.has(p.id))
-      .map((p) => p.fullName),
-    noParticiparon: publishers
-      .filter((p) => !participatedIds.has(p.id))
-      .map((p) => p.fullName),
+    inactivos: byGroupThenName(
+      (p) => p.status === PUBLISHER_STATUS.INACTIVO,
+      (p) => p.fullName,
+    ),
+    activos: byGroupThenName(
+      (p) => p.status !== PUBLISHER_STATUS.INACTIVO,
+      (p) => p.fullName,
+    ),
+    bautizados: byGroupThenName(
+      (p) => p.status === PUBLISHER_STATUS.BAUTIZADO,
+      (p) => p.fullName,
+    ),
+    noBautizados: byGroupThenName(
+      (p) => p.status === PUBLISHER_STATUS.NO_BAUTIZADO,
+      (p) => p.fullName,
+    ),
+    participaron: byGroupThenName(
+      (p) => participatedIds.has(p.id),
+      (p) => p.fullName,
+    ),
+    noParticiparon: byGroupThenName(
+      (p) => !participatedIds.has(p.id),
+      (p) => p.fullName,
+    ),
     // Solo publicadores Bautizados y No Bautizados (sin precursores), con >=1.
-    cursos: publishers
-      .filter(
-        (p) =>
-          (coursesById.get(p.id) ?? 0) >= 1 &&
-          (p.status === PUBLISHER_STATUS.BAUTIZADO ||
-            p.status === PUBLISHER_STATUS.NO_BAUTIZADO),
-      )
-      .map((p) => `${p.fullName} (${coursesById.get(p.id)})`),
+    cursos: byGroupThenName(
+      (p) =>
+        (coursesById.get(p.id) ?? 0) >= 1 &&
+        (p.status === PUBLISHER_STATUS.BAUTIZADO ||
+          p.status === PUBLISHER_STATUS.NO_BAUTIZADO),
+      (p) => `${p.fullName} (${coursesById.get(p.id)})`,
+    ),
   };
 
   return {
