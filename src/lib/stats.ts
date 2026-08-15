@@ -187,8 +187,14 @@ export async function getPeriodStats(
     noParticiparon: publishers
       .filter((p) => !participatedIds.has(p.id))
       .map((p) => p.fullName),
+    // Solo publicadores Bautizados y No Bautizados (sin precursores), con >=1.
     cursos: publishers
-      .filter((p) => (coursesById.get(p.id) ?? 0) >= 1)
+      .filter(
+        (p) =>
+          (coursesById.get(p.id) ?? 0) >= 1 &&
+          (p.status === PUBLISHER_STATUS.BAUTIZADO ||
+            p.status === PUBLISHER_STATUS.NO_BAUTIZADO),
+      )
       .map((p) => `${p.fullName} (${coursesById.get(p.id)})`),
   };
 
