@@ -3,9 +3,21 @@
 import { useState } from "react";
 import { Card, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import type { NameEntry } from "@/lib/stats";
+
+// Agrupa las entradas por grupo, preservando el orden ya ordenado.
+function groupByGroup(names: NameEntry[]): { group: string; items: string[] }[] {
+  const out: { group: string; items: string[] }[] = [];
+  for (const n of names) {
+    const last = out[out.length - 1];
+    if (last && last.group === n.group) last.items.push(n.name);
+    else out.push({ group: n.group, items: [n.name] });
+  }
+  return out;
+}
 
 // Recuadro de precursores con título clicable que abre un modal con la lista
-// de nombres. Mantiene el mismo estilo visual que el resto de los recuadros.
+// de nombres agrupados por grupo. Mismo estilo que el resto de los recuadros.
 export function PioneerTile({
   label,
   count,
@@ -18,7 +30,7 @@ export function PioneerTile({
   count: number;
   hours: number;
   bibleStudies: number;
-  names: string[];
+  names: NameEntry[];
   tone?: "violet" | "amber";
 }) {
   const [open, setOpen] = useState(false);
@@ -72,25 +84,34 @@ export function PioneerTile({
                 {count} publicador(es)
               </p>
             </div>
-            <div className="max-h-[55vh] overflow-y-auto px-5 py-3">
+            <div className="max-h-[55vh] space-y-3 overflow-y-auto px-5 py-3">
               {names.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted">
                   No hay publicadores en esta categoría.
                 </p>
               ) : (
-                <ol className="space-y-1">
-                  {names.map((n, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm odd:bg-slate-50"
-                    >
-                      <span className="w-6 shrink-0 text-right tabular-nums text-muted">
-                        {i + 1}.
-                      </span>
-                      <span className="font-medium text-foreground">{n}</span>
-                    </li>
-                  ))}
-                </ol>
+                groupByGroup(names).map((g, gi) => (
+                  <div key={gi}>
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-primary">
+                      {g.group}
+                    </p>
+                    <ol className="mt-0.5 space-y-1">
+                      {g.items.map((n, i) => (
+                        <li
+                          key={i}
+                          className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm odd:bg-slate-50"
+                        >
+                          <span className="w-6 shrink-0 text-right tabular-nums text-muted">
+                            {i + 1}.
+                          </span>
+                          <span className="font-medium text-foreground">
+                            {n}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ))
               )}
             </div>
             <div className="flex justify-end border-t border-border px-5 py-3">

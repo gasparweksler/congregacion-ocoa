@@ -30,13 +30,13 @@ export type PeriodStats = {
     count: number;
     hours: number;
     bibleStudies: number;
-    names: string[];
+    names: NameEntry[];
   };
   auxiliaryPioneers: {
     count: number;
     hours: number;
     bibleStudies: number;
-    names: string[];
+    names: NameEntry[];
   };
   // Nombres por categoría (para el "ojo" del recuadro Total Publicadores).
   // Cada entrada incluye el grupo, para poder agruparlos al desplegar.
@@ -120,6 +120,20 @@ export async function getPeriodStats(
   // Mapa estado actual por publicador (para desgloses por categoría).
   const statusById = new Map(publishers.map((p) => [p.id, p.status]));
 
+  // Ordena por grupo y luego por nombre, y adjunta el grupo a cada entrada.
+  const byGroupThenName = (
+    filter: (p: (typeof publishers)[number]) => boolean,
+    label: (p: (typeof publishers)[number]) => string,
+  ): NameEntry[] =>
+    publishers
+      .filter(filter)
+      .map((p) => ({ name: label(p), group: p.group?.name ?? "Sin grupo" }))
+      .sort(
+        (a, b) =>
+          a.group.localeCompare(b.group, "es") ||
+          a.name.localeCompare(b.name, "es"),
+      );
+
   // Cursos bíblicos SOLO de Bautizados y No Bautizados (sin precursores).
   const publisherBibleStudies = reports.reduce((a, r) => {
     const st = statusById.get(r.publisherId);
@@ -140,9 +154,10 @@ export async function getPeriodStats(
     count: byStatus[PUBLISHER_STATUS.PRECURSOR_REGULAR],
     hours: 0,
     bibleStudies: 0,
-    names: publishers
-      .filter((p) => p.status === PUBLISHER_STATUS.PRECURSOR_REGULAR)
-      .map((p) => p.fullName),
+    names: byGroupThenName(
+      (p) => p.status === PUBLISHER_STATUS.PRECURSOR_REGULAR,
+      (p) => p.fullName,
+    ),
   };
   const auxiliaryPioneers = {
     count:
@@ -150,13 +165,12 @@ export async function getPeriodStats(
       byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO],
     hours: 0,
     bibleStudies: 0,
-    names: publishers
-      .filter(
-        (p) =>
-          p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
-          p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO,
-      )
-      .map((p) => p.fullName),
+    names: byGroupThenName(
+      (p) =>
+        p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
+        p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO,
+      (p) => p.fullName,
+    ),
   };
   for (const r of reports) {
     const st = statusById.get(r.publisherId);
@@ -175,20 +189,6 @@ export async function getPeriodStats(
   // Cursos bíblicos por publicador (para listar quiénes tienen 1 o más).
   const coursesById = new Map<string, number>();
   for (const r of reports) coursesById.set(r.publisherId, r.bibleStudies);
-
-  // Ordena por grupo y luego por nombre, y adjunta el grupo a cada entrada.
-  const byGroupThenName = (
-    filter: (p: (typeof publishers)[number]) => boolean,
-    label: (p: (typeof publishers)[number]) => string,
-  ): NameEntry[] =>
-    publishers
-      .filter(filter)
-      .map((p) => ({ name: label(p), group: p.group?.name ?? "Sin grupo" }))
-      .sort(
-        (a, b) =>
-          a.group.localeCompare(b.group, "es") ||
-          a.name.localeCompare(b.name, "es"),
-      );
 
   const names = {
     inactivos: byGroupThenName(
