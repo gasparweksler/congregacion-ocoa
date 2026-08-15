@@ -1,53 +1,9 @@
 // Mosaicos de estadísticas para un período (reutilizable en panel/estadísticas).
-import type { ReactNode } from "react";
-import { Card, StatTile } from "@/components/ui";
+import { StatTile } from "@/components/ui";
 import { PUBLISHER_STATUS, PUBLISHER_STATUS_LABELS } from "@/lib/constants";
 import type { PeriodStats } from "@/lib/stats";
-import { cn } from "@/lib/cn";
 import { PioneerTile } from "@/components/PioneerTile";
-
-// Recuadro enriquecido: título, número grande y una lista de sub-datos.
-// Mantiene el mismo estilo visual de tarjeta que el resto de la página.
-function RichTile({
-  label,
-  value,
-  tone = "slate",
-  rows,
-}: {
-  label: string;
-  value: ReactNode;
-  tone?: "slate" | "green" | "blue" | "amber" | "violet";
-  rows: { k: string; v: ReactNode }[];
-}) {
-  const accent: Record<string, string> = {
-    slate: "text-slate-700",
-    green: "text-emerald-600",
-    blue: "text-blue-600",
-    amber: "text-amber-600",
-    violet: "text-violet-600",
-  };
-  return (
-    <Card className="p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={cn("mt-1 text-2xl font-bold tabular-nums", accent[tone])}>
-        {value}
-      </p>
-      <dl className="mt-3 divide-y divide-border border-t border-border text-sm">
-        {rows.map((r, i) => (
-          <div
-            key={i}
-            className="flex items-baseline justify-between gap-3 py-2"
-          >
-            <dt className="text-muted">{r.k}</dt>
-            <dd className="font-semibold tabular-nums text-foreground">
-              {r.v}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </Card>
-  );
-}
+import { TotalPublishersTile } from "@/components/TotalPublishersTile";
 
 export function StatsTiles({
   stats,
@@ -91,28 +47,45 @@ export function StatsTiles({
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-      {/* 1. Total Publicadores */}
-      <RichTile
-        label="Total Publicadores"
-        value={stats.totalPublishers}
-        tone="slate"
+      {/* 1. Total Publicadores (cada fila con ojo para ver nombres) */}
+      <TotalPublishersTile
+        total={stats.totalPublishers}
         rows={[
-          { k: "Total de Inactivos", v: s[PUBLISHER_STATUS.INACTIVO] },
           {
-            k: "Publicadores Activos",
-            v: stats.totalPublishers - s[PUBLISHER_STATUS.INACTIVO],
+            label: "Total de Inactivos",
+            value: s[PUBLISHER_STATUS.INACTIVO],
+            names: stats.names.inactivos,
           },
           {
-            k: PUBLISHER_STATUS_LABELS.BAUTIZADO,
-            v: s[PUBLISHER_STATUS.BAUTIZADO],
+            label: "Publicadores Activos",
+            value: stats.totalPublishers - s[PUBLISHER_STATUS.INACTIVO],
+            names: stats.names.activos,
           },
           {
-            k: PUBLISHER_STATUS_LABELS.NO_BAUTIZADO,
-            v: s[PUBLISHER_STATUS.NO_BAUTIZADO],
+            label: PUBLISHER_STATUS_LABELS.BAUTIZADO,
+            value: s[PUBLISHER_STATUS.BAUTIZADO],
+            names: stats.names.bautizados,
           },
-          { k: "✅ Participaron", v: stats.reported },
-          { k: "❌ No participaron", v: notReported },
-          { k: "Cursos bíblicos", v: stats.publisherBibleStudies },
+          {
+            label: PUBLISHER_STATUS_LABELS.NO_BAUTIZADO,
+            value: s[PUBLISHER_STATUS.NO_BAUTIZADO],
+            names: stats.names.noBautizados,
+          },
+          {
+            label: "✅ Participaron",
+            value: stats.reported,
+            names: stats.names.participaron,
+          },
+          {
+            label: "❌ No participaron",
+            value: notReported,
+            names: stats.names.noParticiparon,
+          },
+          {
+            label: "Cursos bíblicos",
+            value: stats.publisherBibleStudies,
+            names: stats.names.cursos,
+          },
         ]}
       />
 

@@ -1,7 +1,7 @@
 import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName } from "@/lib/constants";
-import { parsePeriod } from "@/lib/period";
+import { parsePeriod, previousPeriod } from "@/lib/period";
 import {
   getPeriodStats,
   getCongregationStats,
@@ -31,7 +31,8 @@ export default async function EstadisticasPage({
   const user = await requireReportsAccess();
   const secretary = isSecretary(user);
   const sp = await searchParams;
-  const { year, month } = parsePeriod(sp.anio, sp.mes);
+  // Por defecto se muestra el mes anterior (el que ya se informó).
+  const { year, month } = parsePeriod(sp.anio, sp.mes, previousPeriod());
 
   const scope = scopedGroupId(user); // null si secretario
   // Grupo objetivo: super/aux -> el suyo; secretario -> filtro opcional.

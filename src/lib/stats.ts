@@ -38,6 +38,16 @@ export type PeriodStats = {
     bibleStudies: number;
     names: string[];
   };
+  // Nombres por categoría (para el "ojo" del recuadro Total Publicadores).
+  names: {
+    inactivos: string[];
+    activos: string[];
+    bautizados: string[];
+    noBautizados: string[];
+    participaron: string[];
+    noParticiparon: string[];
+    cursos: string[]; // solo quienes tienen 1 o más cursos ("Nombre (N)")
+  };
 };
 
 function emptyByStatus(): Record<PublisherStatus, number> {
@@ -154,6 +164,34 @@ export async function getPeriodStats(
     }
   }
 
+  // Cursos bíblicos por publicador (para listar quiénes tienen 1 o más).
+  const coursesById = new Map<string, number>();
+  for (const r of reports) coursesById.set(r.publisherId, r.bibleStudies);
+
+  const names = {
+    inactivos: publishers
+      .filter((p) => p.status === PUBLISHER_STATUS.INACTIVO)
+      .map((p) => p.fullName),
+    activos: publishers
+      .filter((p) => p.status !== PUBLISHER_STATUS.INACTIVO)
+      .map((p) => p.fullName),
+    bautizados: publishers
+      .filter((p) => p.status === PUBLISHER_STATUS.BAUTIZADO)
+      .map((p) => p.fullName),
+    noBautizados: publishers
+      .filter((p) => p.status === PUBLISHER_STATUS.NO_BAUTIZADO)
+      .map((p) => p.fullName),
+    participaron: publishers
+      .filter((p) => participatedIds.has(p.id))
+      .map((p) => p.fullName),
+    noParticiparon: publishers
+      .filter((p) => !participatedIds.has(p.id))
+      .map((p) => p.fullName),
+    cursos: publishers
+      .filter((p) => (coursesById.get(p.id) ?? 0) >= 1)
+      .map((p) => `${p.fullName} (${coursesById.get(p.id)})`),
+  };
+
   return {
     totalPublishers,
     byStatus,
@@ -165,6 +203,7 @@ export async function getPeriodStats(
     reported,
     totalBibleStudies,
     totalHours,
+    names,
     participationPct:
       totalPublishers > 0
         ? Math.round((reported / totalPublishers) * 100)
