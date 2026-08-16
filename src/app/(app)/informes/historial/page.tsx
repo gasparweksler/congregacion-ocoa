@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { requireSecretary } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { monthName, statusLabel, PUBLISHER_STATUS } from "@/lib/constants";
+import { monthName, statusLabel } from "@/lib/constants";
 import type { Prisma } from "@prisma/client";
+import { reportTypeWhere } from "@/lib/report-filters";
 import { yearOptions } from "@/lib/period";
 import { statusTone } from "@/lib/ui-helpers";
 import { PageHeader } from "@/components/PageHeader";
@@ -39,40 +40,11 @@ export default async function HistorialInformesPage({
   const grupo = sp.grupo || undefined;
   const tipo = sp.tipo || undefined;
 
-  // Filtro por tipo de precursor (según el estado al momento del informe y si
-  // hizo precursorado auxiliar ese mes). Consistente con las Estadísticas.
-  const AUX = {
-    OR: [
-      {
-        statusAtReport: {
-          in: [
-            PUBLISHER_STATUS.PRECURSOR_AUXILIAR,
-            PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO,
-          ],
-        },
-      },
-      { auxiliaryPioneer: true },
-    ],
-  };
-  const tipoWhere: Prisma.MonthlyReportWhereInput =
-    tipo === "regular"
-      ? { statusAtReport: PUBLISHER_STATUS.PRECURSOR_REGULAR }
-      : tipo === "auxiliar"
-        ? AUX
-        : tipo === "precursores"
-          ? {
-              OR: [
-                { statusAtReport: PUBLISHER_STATUS.PRECURSOR_REGULAR },
-                ...AUX.OR,
-              ],
-            }
-          : {};
-
   const where: Prisma.MonthlyReportWhereInput = {
     ...(!isNaN(year) ? { year } : {}),
     ...(!isNaN(month) ? { month } : {}),
     ...(grupo ? { publisher: { groupId: grupo } } : {}),
-    ...tipoWhere,
+    ...reportTypeWhere(tipo),
   };
 
   const [groups, reports] = await Promise.all([

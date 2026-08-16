@@ -18,17 +18,25 @@ import {
 import { statusTone } from "@/lib/ui-helpers";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { GroupFilter } from "@/components/GroupFilter";
+import { ReportTypeFilter } from "@/components/ReportTypeFilter";
+import { reportTypeWhere } from "@/lib/report-filters";
 import { AnnualChart } from "@/components/charts/AnnualChart";
 
 export default async function HistorialPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string; grupo?: string }>;
+  searchParams: Promise<{
+    anio?: string;
+    mes?: string;
+    grupo?: string;
+    tipo?: string;
+  }>;
 }) {
   const user = await requireReportsAccess();
   const secretary = isSecretary(user);
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);
+  const tipo = sp.tipo || undefined;
 
   const scope = scopedGroupId(user);
   const targetGroupId = secretary ? sp.grupo || null : scope;
@@ -46,6 +54,7 @@ export default async function HistorialPage({
       year,
       month,
       ...(targetGroupId ? { publisher: { groupId: targetGroupId } } : {}),
+      ...reportTypeWhere(tipo),
     },
     orderBy: { publisher: { fullName: "asc" } },
     select: {
@@ -75,9 +84,12 @@ export default async function HistorialPage({
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <PeriodSelector year={year} month={month} />
-        {secretary ? (
-          <GroupFilter groups={groups} current={sp.grupo ?? ""} />
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {secretary ? (
+            <GroupFilter groups={groups} current={sp.grupo ?? ""} />
+          ) : null}
+          <ReportTypeFilter current={sp.tipo ?? ""} />
+        </div>
       </div>
 
       <Card className="mb-6">
