@@ -21,6 +21,7 @@ export function PeriodSelector({
     const params = new URLSearchParams(searchParams.toString());
     params.set(key, value);
     router.push(`${pathname}?${params.toString()}`);
+    router.refresh();
   }
 
   return (

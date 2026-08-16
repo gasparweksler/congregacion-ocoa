@@ -22,6 +22,7 @@ export function GroupFilter({
     if (value) params.set(paramName, value);
     else params.delete(paramName);
     router.push(`${pathname}?${params.toString()}`);
+    router.refresh();
   }
 
   return (

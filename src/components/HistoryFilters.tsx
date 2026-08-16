@@ -19,6 +19,8 @@ export function HistoryFilters({
     if (value) params.set(key, value);
     else params.delete(key);
     router.push(`/informes/historial?${params.toString()}`);
+    // Fuerza recargar los datos del servidor (evita resultados en caché).
+    router.refresh();
   };
 
   return (

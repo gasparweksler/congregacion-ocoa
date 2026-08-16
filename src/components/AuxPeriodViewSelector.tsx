@@ -28,6 +28,7 @@ export function AuxPeriodViewSelector({
       onChange={(e) => {
         const [y, m] = e.target.value.split("-");
         router.push(`${pathname}?anio=${y}&mes=${m}`);
+        router.refresh();
       }}
     >
       {options.map((o) => (
