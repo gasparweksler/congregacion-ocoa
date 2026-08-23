@@ -147,6 +147,56 @@ export async function updatePublisherAction(
   return { success: "Publicador actualizado." };
 }
 
+/**
+ * Cambio rápido de grupo desde la lista de publicadores (sin abrir "Editar").
+ * Solo cambia el grupo; el resto de los datos queda intacto.
+ */
+export async function changePublisherGroupAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const groupId = String(formData.get("groupId") ?? "").trim();
+  if (!id) return { error: "Publicador no especificado." };
+  if (!groupId) return { error: "Selecciona un grupo." };
+
+  const current = await prisma.publisher.findUnique({
+    where: { id },
+    select: { fullName: true, groupId: true },
+  });
+  if (!current) return { error: "Publicador no encontrado." };
+
+  // Acceso al grupo actual y al grupo destino (solo el Administrador puede
+  // mover a un grupo distinto del suyo).
+  assertGroupAccess(user, current.groupId);
+  assertGroupAccess(user, groupId);
+
+  if (groupId === current.groupId) {
+    return { success: "El publicador ya pertenece a ese grupo." };
+  }
+
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { name: true },
+  });
+  if (!group) return { error: "El grupo seleccionado no existe." };
+
+  await prisma.publisher.update({ where: { id }, data: { groupId } });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Publicador",
+    entityId: id,
+    details: `Cambio de grupo: ${current.fullName} → ${group.name}`,
+  });
+
+  revalidatePath("/publicadores");
+  revalidatePath(`/publicadores/${id}`);
+  return { success: `${current.fullName} ahora es del ${group.name}.` };
+}
+
 export async function deletePublisherAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");

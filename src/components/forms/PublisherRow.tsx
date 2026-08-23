@@ -5,9 +5,10 @@ import { useActionState, useEffect, useState } from "react";
 import {
   updatePublisherAction,
   deletePublisherAction,
+  changePublisherGroupAction,
 } from "@/server/publisher-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
-import { Alert, Badge, Button } from "@/components/ui";
+import { Alert, Badge, Button, Select } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import {
@@ -40,9 +41,20 @@ export function PublisherRow({
     EMPTY_FORM_STATE,
   );
 
+  // Cambio rápido de grupo (sin abrir el formulario completo de "Editar").
+  const [changingGroup, setChangingGroup] = useState(false);
+  const [groupState, groupAction] = useActionState(
+    changePublisherGroupAction,
+    EMPTY_FORM_STATE,
+  );
+
   useEffect(() => {
     if (state.success) setEditing(false);
   }, [state.success]);
+
+  useEffect(() => {
+    if (groupState.success) setChangingGroup(false);
+  }, [groupState.success]);
 
   if (editing) {
     return (
@@ -79,8 +91,57 @@ export function PublisherRow({
             {statusLabel(publisher.status)}
           </Badge>
         </div>
-        {showGroup && publisher.groupName ? (
-          <p className="text-sm text-muted">{publisher.groupName}</p>
+        {showGroup ? (
+          changingGroup ? (
+            // Cambio rápido: elegir grupo y guardar.
+            <form
+              action={groupAction}
+              className="mt-1.5 flex flex-wrap items-center gap-2"
+            >
+              <input type="hidden" name="id" value={publisher.id} />
+              <Select
+                name="groupId"
+                defaultValue={publisher.groupId ?? ""}
+                aria-label={`Nuevo grupo de ${publisher.fullName}`}
+                className="w-auto min-w-0 py-1.5 text-sm"
+              >
+                <option value="" disabled>
+                  — Elegir grupo —
+                </option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </Select>
+              <SubmitButton pendingText="Guardando…" className="px-3 py-1.5 text-sm">
+                Guardar
+              </SubmitButton>
+              <button
+                type="button"
+                onClick={() => setChangingGroup(false)}
+                className="rounded-md px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted">
+                {publisher.groupName ?? "Sin grupo"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setChangingGroup(true)}
+                className="rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted transition-colors hover:bg-slate-50 hover:text-foreground"
+              >
+                🔄 Cambiar Grupo
+              </button>
+            </div>
+          )
+        ) : null}
+        {groupState.error ? (
+          <p className="mt-1 text-xs text-red-600">{groupState.error}</p>
         ) : null}
       </div>
       <div className="flex items-center gap-1">
