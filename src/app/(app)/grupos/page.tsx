@@ -21,6 +21,15 @@ export default async function GruposPage() {
       id: true,
       name: true,
       _count: { select: { publishers: true, users: true } },
+      // Integrantes y usuarios, para desplegarlos con el "ojo" de cada fila.
+      publishers: {
+        orderBy: { fullName: "asc" },
+        select: { id: true, fullName: true, status: true },
+      },
+      users: {
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, role: true, active: true },
+      },
     },
   });
 
@@ -72,6 +81,17 @@ export default async function GruposPage() {
                           name: g.name,
                           publisherCount: g._count.publishers,
                           userCount: g._count.users,
+                          publishers: g.publishers.map((p) => ({
+                            id: p.id,
+                            name: p.fullName,
+                            status: p.status,
+                          })),
+                          users: g.users.map((u) => ({
+                            id: u.id,
+                            name: u.name,
+                            role: u.role,
+                            active: u.active,
+                          })),
                         }}
                       />
                     ))}
