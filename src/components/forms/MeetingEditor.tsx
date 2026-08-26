@@ -21,7 +21,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { CONFIRM_STATUS } from "@/lib/constants";
+import { CONFIRM_STATUS, sectionAllowsSecondary } from "@/lib/constants";
 import {
   MeetingResponsibilities,
   type RespItem,
@@ -134,12 +134,16 @@ export function MeetingEditor({
   const [items, setItems] = useState<Item[]>(() =>
     rows.map((r) => {
       const isResp = RESP_SECTIONS.includes(r.section);
+      // Responsabilidades: un solo hermano. "Nuestra Vida Cristiana": sin
+      // Auxiliar (también en reuniones antiguas creadas con Auxiliar).
+      const noSecondary = isResp || !sectionAllowsSecondary(r.section);
       return {
         ...r,
         key: r.id,
         tab: (isResp ? "resp" : "asig") as "asig" | "resp",
-        // Las responsabilidades son de un solo hermano (solo Responsable).
-        ...(isResp ? { allowTwo: false, equalPair: false } : {}),
+        ...(noSecondary
+          ? { allowTwo: false, equalPair: false, secondaryName: "" }
+          : {}),
       };
     }),
   );
@@ -242,7 +246,25 @@ export function MeetingEditor({
     } else {
       section = category; // TESOROS | SMM | VC
     }
-    update(it.key, { section });
+    // "Nuestra Vida Cristiana" no lleva Auxiliar: se quita al cambiar a VC.
+    const patch: Partial<Item> = sectionAllowsSecondary(section)
+      ? { section }
+      : { section, allowTwo: false, equalPair: false, secondaryName: "" };
+    update(it.key, patch);
+  };
+
+  // Auxiliar manual (solo "Seamos Mejores Maestros").
+  const addAuxiliar = (it: Item) =>
+    update(it.key, { allowTwo: true, equalPair: false });
+  const removeAuxiliar = (it: Item) => {
+    if (
+      it.secondaryName.trim() &&
+      !window.confirm(
+        `¿Eliminar al Auxiliar "${it.secondaryName.trim()}" de esta asignación?`,
+      )
+    )
+      return;
+    update(it.key, { allowTwo: false, equalPair: false, secondaryName: "" });
   };
 
   // F3 · Reordenar por arrastrar y soltar. Al soltar, persiste el nuevo orden.
@@ -652,6 +674,29 @@ export function MeetingEditor({
                     ? renderPerson(it, "s", it.equalPair ? "Hermano 2" : "Auxiliar")
                     : null}
                 </div>
+
+                {/* Auxiliar manual: solo en "Seamos Mejores Maestros". */}
+                {it.section === "SMM" ? (
+                  <div className="mt-3">
+                    {it.allowTwo ? (
+                      <button
+                        type="button"
+                        onClick={() => removeAuxiliar(it)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        ➖ Eliminar Auxiliar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => addAuxiliar(it)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-dashed border-primary/50 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/5"
+                      >
+                        ➕ Agregar Auxiliar
+                      </button>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ))
           )}

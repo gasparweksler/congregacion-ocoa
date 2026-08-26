@@ -13,7 +13,12 @@ import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess } from "@/lib/access";
-import { slotsForDay, MEETING_DAYS, CONFIRM_STATUS } from "@/lib/constants";
+import {
+  slotsForDay,
+  MEETING_DAYS,
+  CONFIRM_STATUS,
+  sectionAllowsSecondary,
+} from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
 
@@ -256,7 +261,9 @@ export async function importMeetingsAction(
       .map((s, i) => {
         const d = data[s.key] ?? {};
         const primaryName = d.p || null;
-        const secondaryName = s.allowTwo ? d.s || null : null;
+        // "Nuestra Vida Cristiana" nunca crea Auxiliar.
+        const allowsSecondary = s.allowTwo && sectionAllowsSecondary(s.section);
+        const secondaryName = allowsSecondary ? d.s || null : null;
         // Solo se crean las asignaciones con datos del Excel (título o nombre);
         // las que quedarían vacías no se crean.
         if (!d.label && !primaryName && !secondaryName) return null;
@@ -265,7 +272,7 @@ export async function importMeetingsAction(
           section: s.section,
           label: d.label ?? s.label,
           order: i,
-          allowTwo: s.allowTwo,
+          allowTwo: allowsSecondary,
           equalPair: !!s.equalPair,
           primaryName,
           primaryToken: primaryName ? newToken() : null,

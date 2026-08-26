@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { requireMeetingsAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { meetingDayLabel, CONFIRM_STATUS, ROLES } from "@/lib/constants";
+import {
+  meetingDayLabel,
+  CONFIRM_STATUS,
+  ROLES,
+  MONTHLY_RESP_KEYS,
+} from "@/lib/constants";
 import { ConfirmadorSelect } from "@/components/ConfirmadorSelect";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { formatDate } from "@/lib/dates";
@@ -108,10 +113,19 @@ export default async function ReunionesPage() {
                   let confirmed = 0,
                     rejected = 0,
                     pending = 0,
-                    assigned = 0;
+                    asignaciones = 0,
+                    responsabilidades = 0;
                   for (const a of m.assignments) {
+                    // Las responsabilidades se cuentan aparte de las
+                    // asignaciones del programa de la reunión.
+                    const esResponsabilidad =
+                      a.section === "RESPONSABILIDADES" ||
+                      a.section === "SAB_RESPONSABILIDADES" ||
+                      MONTHLY_RESP_KEYS.includes(a.slotKey);
+                    if (esResponsabilidad) responsabilidades++;
+                    else asignaciones++;
+
                     if (a.primaryName) {
-                      assigned++;
                       if (a.primaryStatus === CONFIRM_STATUS.CONFIRMADO)
                         confirmed++;
                       else if (a.primaryStatus === CONFIRM_STATUS.RECHAZADO)
@@ -119,7 +133,6 @@ export default async function ReunionesPage() {
                       else pending++;
                     }
                     if (a.secondaryName) {
-                      assigned++;
                       if (a.secondaryStatus === CONFIRM_STATUS.CONFIRMADO)
                         confirmed++;
                       else if (a.secondaryStatus === CONFIRM_STATUS.RECHAZADO)
@@ -145,7 +158,9 @@ export default async function ReunionesPage() {
                               <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
                             </div>
                             <p className="mt-0.5 text-sm text-muted">
-                              {assigned} asignación(es)
+                              Total de asignaciones: {asignaciones}
+                              <span className="mx-1.5 text-border">·</span>
+                              Total de responsabilidades: {responsabilidades}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5">

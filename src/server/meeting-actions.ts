@@ -16,6 +16,7 @@ import {
   MEETING_DAYS,
   CONFIRM_STATUS,
   MONTHLY_RESP_KEYS,
+  sectionAllowsSecondary,
 } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
@@ -105,8 +106,11 @@ export async function saveMeetingAction(
       String(formData.get(`lbl_${key}`) ?? "").trim() || "Asignación";
     const section =
       String(formData.get(`sec_${key}`) ?? "").trim() || "ASIGNACIONES";
-    const allowTwo = formData.get(`two_${key}`) === "1";
-    const equalPair = formData.get(`eq_${key}`) === "1";
+    // "Nuestra Vida Cristiana" nunca lleva Auxiliar, aunque venga del
+    // formulario o de una reunión antigua creada con Auxiliar.
+    const allowTwo =
+      formData.get(`two_${key}`) === "1" && sectionAllowsSecondary(section);
+    const equalPair = formData.get(`eq_${key}`) === "1" && allowTwo;
     const note = String(formData.get(`n_${key}`) ?? "").trim() || null;
     const pName = String(formData.get(`p_${key}`) ?? "").trim() || null;
     const sName = allowTwo

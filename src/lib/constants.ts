@@ -175,8 +175,9 @@ export const JUEVES_SLOTS: MeetingSlot[] = [
   { key: "j_smm_discurso", label: "Discurso", section: "SMM", allowTwo: false },
   { key: "j_smm_discipulos", label: "Haga discípulos", section: "SMM", allowTwo: true },
   { key: "j_smm_creencias", label: "Explique sus creencias", section: "SMM", allowTwo: true },
-  { key: "j_vc_discurso1", label: "Discurso", section: "VC", allowTwo: true },
-  { key: "j_vc_discurso2", label: "Discurso", section: "VC", allowTwo: true },
+  // "Nuestra Vida Cristiana" no lleva Auxiliar (solo un hermano).
+  { key: "j_vc_discurso1", label: "Discurso", section: "VC", allowTwo: false },
+  { key: "j_vc_discurso2", label: "Discurso", section: "VC", allowTwo: false },
   { key: "j_vc_conductor", label: "Conductor del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_vc_lector", label: "Lector del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_oracion_final", label: "Oración Final", section: "ORACION_FINAL", allowTwo: false },
@@ -200,6 +201,17 @@ export const SABADO_SLOTS: MeetingSlot[] = [
   { key: "s_video", label: "Video", section: "SAB_RESPONSABILIDADES", allowTwo: false },
   { key: "s_plataforma", label: "Plataforma", section: "SAB_RESPONSABILIDADES", allowTwo: false },
 ];
+
+/**
+ * Secciones que NUNCA llevan Auxiliar (segundo hermano).
+ * "Nuestra Vida Cristiana" se asigna a un solo hermano.
+ */
+export const SECTIONS_WITHOUT_SECONDARY = ["VC"];
+
+/** ¿La sección admite un Auxiliar (segundo hermano)? */
+export function sectionAllowsSecondary(section: string): boolean {
+  return !SECTIONS_WITHOUT_SECONDARY.includes(section);
+}
 
 /** Devuelve las casillas (slots) de una reunión según el día. */
 export function slotsForDay(day: string): MeetingSlot[] {
