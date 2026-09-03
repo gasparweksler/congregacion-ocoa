@@ -5,7 +5,8 @@
       "name": "ocoa",
       "runtimeExecutable": "C:/Program Files/nodejs/npm.cmd",
       "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "port": 3100,
+      "autoPort": true
     }
   ]
 }
