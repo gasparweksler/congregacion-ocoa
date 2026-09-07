@@ -9,6 +9,7 @@
     "postinstall": "prisma generate",
     "lint": "eslint",
     "test:pdf": "tsx scripts/test-resp-pdf.mts",
+    "test:pdf-nocanvas": "tsx scripts/test-pdf-nocanvas.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

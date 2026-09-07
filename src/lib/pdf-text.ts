@@ -6,6 +6,7 @@
 // ============================================================================
 
 import type { PdfItem } from "@/lib/resp-pdf-parser";
+import { installPdfNodePolyfills } from "@/lib/pdf-node-polyfills";
 
 type TextItemLike = {
   str?: string;
@@ -13,26 +14,11 @@ type TextItemLike = {
   transform?: number[];
 };
 
-// pdfjs 5 usa Promise.withResolvers, que no existe en Node 20. El entorno de
-// producción puede estar en Node 20 aunque aquí se compile con uno más nuevo,
-// así que se rellena antes de cargar la librería.
-function ensurePromiseWithResolvers(): void {
-  const P = Promise as unknown as { withResolvers?: unknown };
-  if (typeof P.withResolvers === "function") return;
-  P.withResolvers = function <T>() {
-    let resolve!: (value: T | PromiseLike<T>) => void;
-    let reject!: (reason?: unknown) => void;
-    const promise = new Promise<T>((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
-    return { promise, resolve, reject };
-  };
-}
-
 /** Devuelve todos los fragmentos de texto del PDF con su posición. */
 export async function extractPdfItems(data: Uint8Array): Promise<PdfItem[]> {
-  ensurePromiseWithResolvers();
+  // Debe ejecutarse ANTES de cargar pdfjs: la librería usa DOMMatrix al
+  // evaluarse y en producción no aplica sus propios rellenos de Node.
+  installPdfNodePolyfills();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   const doc = await pdfjs.getDocument({
