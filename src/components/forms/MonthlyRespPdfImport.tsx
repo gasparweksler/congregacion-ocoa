@@ -118,21 +118,26 @@ export function MonthlyRespPdfImport({
 
   return (
     <div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="hidden"
-        onChange={onFile}
-      />
-      <button
-        type="button"
-        disabled={reading || saving}
-        onClick={() => fileRef.current?.click()}
-        className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60"
+      {/* El campo se activa con un <label> y no con un botón + .click() sobre
+          un input `display:none`: en Safari/iOS y en varios navegadores de
+          Android ese truco no abre el selector de archivos. Aquí el input está
+          presente pero invisible, y la etiqueta lo abre de forma nativa. */}
+      <label
+        className={
+          "inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-slate-50 " +
+          (reading || saving ? "pointer-events-none opacity-60" : "")
+        }
       >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          disabled={reading || saving}
+          onChange={onFile}
+          className="absolute h-px w-px overflow-hidden opacity-0"
+        />
         {reading ? "⏳ Procesando PDF…" : "📥 Cargar desde PDF"}
-      </button>
+      </label>
 
       {error ? (
         <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

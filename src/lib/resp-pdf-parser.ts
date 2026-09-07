@@ -143,19 +143,27 @@ function findTables(lines: Line[]): Table[] {
   type Band = { page: number; topY: number; bottomY: number; cols: Column[] };
   const bands: Band[] = [];
 
+  // Los encabezados se reparten en varios renglones muy juntos:
+  //   "ACOMODADOR   ACOMODADOR"      (sin palabra distintiva)
+  //   "DIA/MES              LIMPIEZA POR GRUPOS"
+  //   "ENTRADA      AUDITORIO"
+  // Por eso NO se exige que un renglón traiga dos columnas: se agrupan todos
+  // los renglones con palabras de columna que estén muy cerca en vertical, y
+  // recién la banda completa debe reunir dos o más columnas.
   for (const line of lines) {
     const hits: Column[] = [];
     for (const it of line.items) {
+      // Los títulos ("ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO") también
+      // contienen palabras de columna: se descartan por su longitud.
+      if (norm(it.text).length > 24) continue;
       const slotKey = keywordOf(it.text);
       if (slotKey) hits.push({ slotKey, x: centerX(it) });
     }
     if (hits.length === 0) continue;
-    // Una línea de encabezado real trae al menos dos columnas conocidas, o
-    // continúa la banda inmediatamente anterior (encabezado en dos renglones).
+
     const prev = bands[bands.length - 1];
     const continues =
       prev && prev.page === line.page && prev.bottomY - line.y <= 22;
-    if (hits.length < 2 && !continues) continue;
 
     if (continues) {
       prev.bottomY = line.y;
@@ -190,8 +198,13 @@ function findTables(lines: Line[]): Table[] {
     }
   }
 
-  return bands.map((b, i) => {
-    const next = bands[i + 1];
+  // Una tabla real reúne al menos dos columnas conocidas.
+  const real = bands.filter(
+    (b) => new Set(b.cols.map((c) => c.slotKey)).size >= 2,
+  );
+
+  return real.map((b, i) => {
+    const next = real[i + 1];
     const sameePage = next && next.page === b.page;
     return {
       page: b.page,

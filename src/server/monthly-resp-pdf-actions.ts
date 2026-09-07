@@ -96,10 +96,14 @@ export async function previewResponsibilitiesPdfAction(
   let items;
   try {
     items = await extractPdfItems(new Uint8Array(await file.arrayBuffer()));
-  } catch {
+  } catch (e) {
+    // Se incluye el motivo real: si falla en el servidor y no en las pruebas,
+    // el mensaje dice exactamente qué pasó en vez de "archivo inválido".
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("[responsabilidades-pdf] error al leer el PDF:", e);
     return {
       ok: false,
-      error: "No se pudo leer el archivo. Debe ser un PDF válido (no una imagen escaneada).",
+      error: `No se pudo leer el PDF (${detail}).`,
       ...EMPTY,
     };
   }
