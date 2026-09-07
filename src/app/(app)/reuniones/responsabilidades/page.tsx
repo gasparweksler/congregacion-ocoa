@@ -8,6 +8,7 @@ import { Card, CardHeader, CardBody } from "@/components/ui";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { BackButton } from "@/components/BackButton";
 import { MonthlyResponsibilities } from "@/components/forms/MonthlyResponsibilities";
+import { MonthlyRespPdfImport } from "@/components/forms/MonthlyRespPdfImport";
 
 export default async function ResponsabilidadesMensualPage({
   searchParams,
@@ -49,6 +50,11 @@ export default async function ResponsabilidadesMensualPage({
         >
           📄 Descargar PDF
         </a>
+      </div>
+
+      {/* Carga masiva desde el PDF del programa del mes (con vista previa). */}
+      <div className="mb-4">
+        <MonthlyRespPdfImport year={year} month={month} />
       </div>
 
       <Card>
