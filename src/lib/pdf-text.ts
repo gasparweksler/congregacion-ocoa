@@ -14,12 +14,30 @@ type TextItemLike = {
   transform?: number[];
 };
 
+/**
+ * Entrega el worker a pdfjs a través de `globalThis.pdfjsWorker`.
+ *
+ * En Node pdfjs trabaja siempre con un "worker falso" que carga con
+ * `import(this.workerSrc)`, una ruta dinámica que el empaquetador no puede
+ * analizar: por eso Vercel no copia pdf.worker.mjs al despliegue y falla con
+ * "Setting up fake worker failed: Cannot find module .../pdf.worker.mjs".
+ * Importándolo aquí con una ruta literal, el archivo sí entra en el paquete y
+ * pdfjs lo usa directamente, sin resolver nada en tiempo de ejecución.
+ */
+async function ensureWorker(): Promise<void> {
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (g.pdfjsWorker) return;
+  g.pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+}
+
 /** Devuelve todos los fragmentos de texto del PDF con su posición. */
 export async function extractPdfItems(data: Uint8Array): Promise<PdfItem[]> {
   // Debe ejecutarse ANTES de cargar pdfjs: la librería usa DOMMatrix al
   // evaluarse y en producción no aplica sus propios rellenos de Node.
   installPdfNodePolyfills();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // Antes del primer getDocument: pdfjs memoriza cómo obtuvo el worker.
+  await ensureWorker();
 
   const doc = await pdfjs.getDocument({
     data,
