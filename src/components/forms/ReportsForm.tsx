@@ -130,8 +130,10 @@ export function ReportsForm({
 
       {/* Mobile-first: cada publicador es una tarjeta con campos verticales.
           Nunca hay scroll horizontal; se completa haciendo scroll vertical.
-          Un <fieldset disabled> bloquea todos los campos cuando está bloqueado. */}
-      <fieldset disabled={locked} className="min-w-0 border-0 p-0">
+          En cada tarjeta un <fieldset disabled> bloquea los campos cuando el
+          informe está guardado; el botón de comentario queda FUERA de ese
+          bloqueo para poder leer el comentario sin editarlo. */}
+      <div className="min-w-0">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((r) => {
             const hoursEnabled = r.isPioneer || aux[r.id];
@@ -154,6 +156,10 @@ export function ReportsForm({
                 </div>
 
                 <div className="space-y-3">
+                  <fieldset
+                    disabled={locked}
+                    className="min-w-0 space-y-3 border-0 p-0"
+                  >
                   {/* Participó (switch Sí/No) */}
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-medium text-foreground">
@@ -227,8 +233,9 @@ export function ReportsForm({
                       </p>
                     ) : null}
                   </div>
+                  </fieldset>
 
-                  {/* Comentarios */}
+                  {/* Comentarios (fuera del bloqueo: siempre se puede leer) */}
                   <div>
                     <input
                       type="hidden"
@@ -238,14 +245,23 @@ export function ReportsForm({
                     <button
                       type="button"
                       onClick={() => setOpenComment(r.id)}
+                      // Guardado y sin comentario: no hay nada que mostrar.
+                      disabled={locked && !hasComment}
                       className={
-                        "flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors " +
+                        "flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
                         (hasComment
                           ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
                           : "border-border text-muted hover:bg-slate-50")
                       }
                     >
-                      💬 {hasComment ? "Ver / editar comentario" : "Añadir comentario"}
+                      💬{" "}
+                      {locked
+                        ? hasComment
+                          ? "Ver comentario"
+                          : "Sin comentario"
+                        : hasComment
+                          ? "Ver / editar comentario"
+                          : "Añadir comentario"}
                     </button>
                   </div>
                 </div>
@@ -253,7 +269,7 @@ export function ReportsForm({
             );
           })}
         </div>
-      </fieldset>
+      </div>
 
       <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
         {locked ? (
@@ -277,25 +293,39 @@ export function ReportsForm({
               Comentario
             </h3>
             <p className="mt-0.5 text-sm text-muted">{openRow.fullName}</p>
-            <textarea
-              autoFocus
-              value={comments[openRow.id] ?? ""}
-              onChange={(e) =>
-                setComments((prev) => ({
-                  ...prev,
-                  [openRow.id]: e.target.value,
-                }))
-              }
-              rows={4}
-              placeholder="Escribe un comentario opcional…"
-              className="mt-3 w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
-            />
-            <p className="mt-1 text-xs text-muted">
-              El comentario es opcional. Se guardará al pulsar “Guardar
-              informes”.
-            </p>
+            {locked ? (
+              // Informe guardado: el comentario solo se lee, no se edita.
+              <>
+                <p className="mt-3 whitespace-pre-wrap break-words rounded-xl border border-border bg-slate-50 px-3.5 py-2.5 text-sm text-foreground">
+                  {comments[openRow.id]}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  Solo lectura. Para modificarlo pulsa “Editar informe”.
+                </p>
+              </>
+            ) : (
+              <>
+                <textarea
+                  autoFocus
+                  value={comments[openRow.id] ?? ""}
+                  onChange={(e) =>
+                    setComments((prev) => ({
+                      ...prev,
+                      [openRow.id]: e.target.value,
+                    }))
+                  }
+                  rows={4}
+                  placeholder="Escribe un comentario opcional…"
+                  className="mt-3 w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
+                />
+                <p className="mt-1 text-xs text-muted">
+                  El comentario es opcional. Se guardará al pulsar “Guardar
+                  informes”.
+                </p>
+              </>
+            )}
             <div className="mt-4 flex justify-end gap-2">
-              {comments[openRow.id] ? (
+              {!locked && comments[openRow.id] ? (
                 <Button
                   variant="ghost"
                   onClick={() =>
@@ -306,7 +336,7 @@ export function ReportsForm({
                 </Button>
               ) : null}
               <Button variant="primary" onClick={() => setOpenComment(null)}>
-                Listo
+                {locked ? "Cerrar" : "Listo"}
               </Button>
             </div>
           </div>
