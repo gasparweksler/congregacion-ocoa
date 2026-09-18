@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useActionState } from "react";
-import { saveReportsAction } from "@/server/report-actions";
-import { EMPTY_FORM_STATE } from "@/server/actions-shared";
+import { useRouter } from "next/navigation";
+import {
+  saveReportsAction,
+  type ReportsFormState,
+} from "@/server/report-actions";
 import { Alert, Badge, Button } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { statusLabel } from "@/lib/constants";
@@ -65,10 +68,23 @@ export function ReportsForm({
   rows: ReportRow[];
   submitted: { by: string; at: string } | null;
 }) {
-  const [state, action] = useActionState(saveReportsAction, EMPTY_FORM_STATE);
+  const router = useRouter();
+  const [state, action] = useActionState<ReportsFormState, FormData>(
+    saveReportsAction,
+    {},
+  );
   const ids = rows.map((r) => r.id).join(",");
   // Si el período ya tiene informes, el formulario inicia BLOQUEADO.
   const [locked, setLocked] = useState(!!submitted);
+  // Quién subió el informe (se actualiza al guardar, sin recargar la página).
+  const [info, setInfo] = useState(submitted);
+
+  // Datos mostrados. Arrancan con los del servidor y, tras guardar, se
+  // reemplazan por los que la acción vuelve a LEER de la base de datos.
+  const [data, setData] = useState<ReportRow[]>(rows);
+  // Cambiar esta versión remonta las tarjetas: así los campos no controlados
+  // (cursos, horas, "¿Participó?") toman los valores recién guardados.
+  const [version, setVersion] = useState(0);
 
   // Estado por fila: "Precursor Auxiliar" (controla habilitar Horas) y comentario.
   const [aux, setAux] = useState<Record<string, boolean>>(
@@ -80,14 +96,50 @@ export function ReportsForm({
   // Fila cuya modal de comentario está abierta (o null).
   const [openComment, setOpenComment] = useState<string | null>(null);
 
-  const openRow = rows.find((r) => r.id === openComment) ?? null;
+  const openRow = data.find((r) => r.id === openComment) ?? null;
 
-  // Al guardar con éxito: mostrar el banner arriba (desplazar a la vista).
-  useEffect(() => {
-    if (state.success) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  // Guardado confirmado: se adopta, durante el render, lo que la acción volvió
+  // a LEER de la base de datos. Así el mensaje de éxito y los datos nuevos
+  // aparecen en la misma pintada: nunca se ve información antigua.
+  const [applied, setApplied] = useState<ReportsFormState | null>(null);
+  if (state.success && state !== applied) {
+    setApplied(state);
+    if (state.rows?.length) {
+      const saved = new Map(state.rows.map((r) => [r.id, r] as const));
+      setData((prev) =>
+        prev.map((r) => {
+          const s = saved.get(r.id);
+          return s ? { ...r, ...s } : r;
+        }),
+      );
+      setAux((prev) => {
+        const next = { ...prev };
+        for (const s of saved.values()) next[s.id] = s.auxiliaryPioneer;
+        return next;
+      });
+      setComments((prev) => {
+        const next = { ...prev };
+        for (const s of saved.values()) next[s.id] = s.comment;
+        return next;
+      });
+      // Remonta las tarjetas para que los campos no controlados tomen los
+      // valores guardados.
+      setVersion((v) => v + 1);
     }
-  }, [state.success]);
+    if (state.submittedBy && state.submittedAt) {
+      setInfo({ by: state.submittedBy, at: state.submittedAt });
+    }
+    // Vuelve a quedar bloqueado, como un informe ya subido.
+    setLocked(true);
+  }
+
+  // Refresca el resto de la página (seguimiento de entrega) sin recargar la
+  // aplicación: solo se vuelven a pedir los datos al servidor.
+  useEffect(() => {
+    if (!state.success) return;
+    router.refresh();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [state, router]);
 
   return (
     <form
@@ -110,18 +162,17 @@ export function ReportsForm({
             ✅
           </span>
           <div>
-            <p className="text-sm font-semibold">
-              ¡Informes guardados correctamente!
-            </p>
-            <p className="text-xs text-emerald-700">{state.success}</p>
+            <p className="text-sm font-semibold">{state.success}</p>
+            {state.detail ? (
+              <p className="text-xs text-emerald-700">{state.detail}</p>
+            ) : null}
           </div>
         </div>
       ) : null}
 
-      {submitted ? (
+      {info ? (
         <Alert tone="info">
-          📌 Informe subido por <strong>{submitted.by}</strong> el{" "}
-          {submitted.at}.
+          📌 Informe subido por <strong>{info.by}</strong> el {info.at}.
           {locked
             ? " Está bloqueado para evitar cambios; pulsa “Editar informe” para modificarlo."
             : " Modo edición activado."}
@@ -135,14 +186,16 @@ export function ReportsForm({
           bloqueo para poder leer el comentario sin editarlo. */}
       <div className="min-w-0">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((r) => {
+          {data.map((r) => {
             const hoursEnabled = r.isPioneer || aux[r.id];
             const hasComment = (comments[r.id] ?? "").trim().length > 0;
             const fieldInput =
               "w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
             return (
               <div
-                key={r.id}
+                // La versión fuerza el remontaje tras guardar, para que los
+                // campos no controlados muestren los valores guardados.
+                key={`${r.id}-${version}`}
                 className="rounded-2xl border-2 border-border bg-surface p-4 shadow-sm"
               >
                 {/* Nombre del publicador */}

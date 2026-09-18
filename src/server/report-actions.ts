@@ -16,6 +16,7 @@ import {
   scopedGroupId,
 } from "@/lib/access";
 import { isPioneer } from "@/lib/constants";
+import { formatDate } from "@/lib/dates";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
 
@@ -230,10 +231,32 @@ export async function deleteReportsPeriodAction(
   );
 }
 
+/** Valores de un informe tal como quedaron GUARDADOS en la base de datos. */
+export type SavedReportRow = {
+  id: string; // publisherId
+  participated: boolean;
+  bibleStudies: number;
+  hours: number | null;
+  auxiliaryPioneer: boolean;
+  comment: string;
+};
+
+/**
+ * Estado que devuelve "Guardar informes". Además del mensaje, entrega los
+ * informes RELEÍDOS de la base de datos tras la escritura, para que la pantalla
+ * muestre exactamente lo guardado y no lo que había cargado antes.
+ */
+export type ReportsFormState = FormState & {
+  detail?: string;
+  rows?: SavedReportRow[];
+  submittedBy?: string;
+  submittedAt?: string;
+};
+
 export async function saveReportsAction(
-  _prev: FormState,
+  _prev: ReportsFormState,
   formData: FormData,
-): Promise<FormState> {
+): Promise<ReportsFormState> {
   const user = await requireUser();
 
   const year = parseInt(String(formData.get("year") ?? ""), 10);
@@ -263,6 +286,7 @@ export async function saveReportsAction(
   });
 
   let saved = 0;
+  const savedIds: string[] = [];
   for (const p of publishers) {
     // Seguridad: nunca guardar informes de un grupo ajeno.
     if (!canAccessGroup(user, p.groupId)) continue;
@@ -303,6 +327,7 @@ export async function saveReportsAction(
       },
     });
     saved++;
+    savedIds.push(p.id);
   }
 
   await logAudit({
@@ -312,8 +337,41 @@ export async function saveReportsAction(
     details: `Informes guardados para ${month}/${year}: ${saved} publicador(es).`,
   });
 
+  // Confirmada la escritura, se vuelven a CONSULTAR los informes guardados y se
+  // devuelven a la pantalla: así se muestra exactamente lo que quedó en la base
+  // de datos, sin recargar la aplicación entera.
+  const stored = await prisma.monthlyReport.findMany({
+    where: { year, month, publisherId: { in: savedIds } },
+    select: {
+      publisherId: true,
+      participated: true,
+      bibleStudies: true,
+      hours: true,
+      auxiliaryPioneer: true,
+      comment: true,
+      updatedAt: true,
+      submittedBy: { select: { name: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const rows: SavedReportRow[] = stored.map((r) => ({
+    id: r.publisherId,
+    participated: r.participated,
+    bibleStudies: r.bibleStudies,
+    hours: r.hours,
+    auxiliaryPioneer: r.auxiliaryPioneer,
+    comment: r.comment ?? "",
+  }));
+
   revalidatePath("/informes");
   revalidatePath("/estadisticas");
   revalidatePath("/panel");
-  return { success: `Se guardaron los informes de ${saved} publicador(es).` };
+  return {
+    success: "Sus informes se guardaron correctamente",
+    detail: `Se guardaron los informes de ${saved} publicador(es).`,
+    rows,
+    submittedBy: stored[0]?.submittedBy?.name ?? user.name ?? "—",
+    submittedAt: formatDate(stored[0]?.updatedAt ?? new Date()),
+  };
 }
