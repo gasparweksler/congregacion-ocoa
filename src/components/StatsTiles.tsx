@@ -106,6 +106,18 @@ export function StatsTiles({
         hours={stats.auxiliaryPioneers.hours}
         bibleStudies={stats.auxiliaryPioneers.bibleStudies}
         names={stats.auxiliaryPioneers.names}
+        sections={[
+          {
+            label: "Auxiliares Indefinidos",
+            value: stats.auxiliaryPioneers.indefinidos.count,
+            names: stats.auxiliaryPioneers.indefinidos.names,
+          },
+          {
+            label: "Auxiliares por este mes",
+            value: stats.auxiliaryPioneers.esteMes.count,
+            names: stats.auxiliaryPioneers.esteMes.names,
+          },
+        ]}
         tone="amber"
       />
     </div>

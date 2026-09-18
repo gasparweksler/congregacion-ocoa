@@ -37,6 +37,9 @@ export type PeriodStats = {
     hours: number;
     bibleStudies: number;
     names: NameEntry[];
+    // División del recuadro: por estado permanente y por el mes informado.
+    indefinidos: { count: number; names: NameEntry[] };
+    esteMes: { count: number; names: NameEntry[] };
   };
   // Nombres por categoría (para el "ojo" del recuadro Total Publicadores).
   // Cada entrada incluye el grupo, para poder agruparlos al desplegar.
@@ -93,6 +96,8 @@ export async function getPeriodStats(
       participated: true,
       bibleStudies: true,
       hours: true,
+      // Interruptor "Precursor Auxiliar" marcado en el informe del período.
+      auxiliaryPioneer: true,
     },
   });
 
@@ -159,28 +164,41 @@ export async function getPeriodStats(
       (p) => p.fullName,
     ),
   };
+  // Precursores Auxiliares, divididos en dos conjuntos DISJUNTOS que suman el
+  // total del recuadro:
+  //  - Indefinidos: su estado permanente es "Precursor Auxiliar Indefinido".
+  //  - Por este mes: marcaron el interruptor "Precursor Auxiliar" en el informe
+  //    del período (o su estado es el de auxiliar del mes).
+  const auxSwitchIds = new Set(
+    reports.filter((r) => r.auxiliaryPioneer).map((r) => r.publisherId),
+  );
+  type Pub = (typeof publishers)[number];
+  const isIndefinido = (p: Pub) =>
+    p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO;
+  const isAuxThisMonth = (p: Pub) =>
+    !isIndefinido(p) &&
+    p.status !== PUBLISHER_STATUS.PRECURSOR_REGULAR &&
+    (auxSwitchIds.has(p.id) ||
+      p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR);
+  const isAnyAux = (p: Pub) => isIndefinido(p) || isAuxThisMonth(p);
+
+  const auxIds = new Set(publishers.filter(isAnyAux).map((p) => p.id));
+  const indefinidoNames = byGroupThenName(isIndefinido, (p) => p.fullName);
+  const esteMesNames = byGroupThenName(isAuxThisMonth, (p) => p.fullName);
   const auxiliaryPioneers = {
-    count:
-      byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR] +
-      byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO],
+    count: auxIds.size,
     hours: 0,
     bibleStudies: 0,
-    names: byGroupThenName(
-      (p) =>
-        p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
-        p.status === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO,
-      (p) => p.fullName,
-    ),
+    names: byGroupThenName(isAnyAux, (p) => p.fullName),
+    indefinidos: { count: indefinidoNames.length, names: indefinidoNames },
+    esteMes: { count: esteMesNames.length, names: esteMesNames },
   };
   for (const r of reports) {
     const st = statusById.get(r.publisherId);
     if (st === PUBLISHER_STATUS.PRECURSOR_REGULAR) {
       regularPioneers.hours += r.hours ?? 0;
       regularPioneers.bibleStudies += r.bibleStudies;
-    } else if (
-      st === PUBLISHER_STATUS.PRECURSOR_AUXILIAR ||
-      st === PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO
-    ) {
+    } else if (auxIds.has(r.publisherId)) {
       auxiliaryPioneers.hours += r.hours ?? 0;
       auxiliaryPioneers.bibleStudies += r.bibleStudies;
     }

@@ -24,6 +24,7 @@ export function PioneerTile({
   hours,
   bibleStudies,
   names,
+  sections,
   tone = "violet",
 }: {
   label: string;
@@ -31,9 +32,13 @@ export function PioneerTile({
   hours: number;
   bibleStudies: number;
   names: NameEntry[];
+  /** División opcional del recuadro: cada fila con su propio ojo. */
+  sections?: { label: string; value: number; names: NameEntry[] }[];
   tone?: "violet" | "amber";
 }) {
   const [open, setOpen] = useState(false);
+  // Fila de la división cuyos nombres están desplegados (o null).
+  const [openSection, setOpenSection] = useState<number | null>(null);
   const accent = tone === "amber" ? "text-amber-600" : "text-violet-600";
 
   return (
@@ -65,6 +70,67 @@ export function PioneerTile({
             {bibleStudies}
           </dd>
         </div>
+
+        {/* División del recuadro: cada fila despliega sus nombres con el ojo. */}
+        {(sections ?? []).map((s, i) => {
+          const isOpen = openSection === i;
+          return (
+            <div key={i} className="py-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-muted">{s.label}</dt>
+                <dd className="flex items-center gap-2">
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {s.value}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOpenSection(isOpen ? null : i)}
+                    aria-expanded={isOpen}
+                    aria-label={
+                      isOpen
+                        ? `Ocultar nombres de ${s.label}`
+                        : `Ver nombres de ${s.label}`
+                    }
+                    title={isOpen ? "Ocultar nombres" : "Ver nombres"}
+                    className="rounded-md border border-border px-1.5 py-0.5 text-xs text-muted transition-colors hover:bg-slate-50 hover:text-foreground"
+                  >
+                    <span aria-hidden>{isOpen ? "🙈" : "👁️"}</span>
+                  </button>
+                </dd>
+              </div>
+              {isOpen ? (
+                <div className="mt-2 space-y-2 rounded-lg bg-slate-50 px-3 py-2">
+                  {s.names.length === 0 ? (
+                    <p className="text-xs text-muted">
+                      Nadie en esta categoría.
+                    </p>
+                  ) : (
+                    groupByGroup(s.names).map((g, gi) => (
+                      <div key={gi}>
+                        <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-primary">
+                          {g.group}
+                        </p>
+                        <ol className="mt-0.5 space-y-1">
+                          {g.items.map((n, j) => (
+                            <li
+                              key={j}
+                              className="flex items-center gap-2 text-sm text-foreground"
+                            >
+                              <span className="w-6 shrink-0 text-right tabular-nums text-muted">
+                                {j + 1}.
+                              </span>
+                              {n}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </dl>
 
       {open ? (
