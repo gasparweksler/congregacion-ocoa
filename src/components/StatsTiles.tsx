@@ -96,6 +96,8 @@ export function StatsTiles({
         hours={stats.regularPioneers.hours}
         bibleStudies={stats.regularPioneers.bibleStudies}
         names={stats.regularPioneers.names}
+        hoursDetail={stats.regularPioneers.hoursDetail}
+        coursesDetail={stats.regularPioneers.coursesDetail}
         tone="violet"
       />
 
@@ -106,6 +108,8 @@ export function StatsTiles({
         hours={stats.auxiliaryPioneers.hours}
         bibleStudies={stats.auxiliaryPioneers.bibleStudies}
         names={stats.auxiliaryPioneers.names}
+        hoursDetail={stats.auxiliaryPioneers.hoursDetail}
+        coursesDetail={stats.auxiliaryPioneers.coursesDetail}
         sections={[
           {
             label: "Auxiliares Indefinidos",

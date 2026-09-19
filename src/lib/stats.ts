@@ -26,17 +26,22 @@ export type PeriodStats = {
   totalHours: number;
   participationPct: number; // reported / totalPublishers * 100
   // Desgloses por categoría de precursor (según estado actual del publicador).
+  // hoursDetail / coursesDetail: cuánto aportó cada hermano a esos totales.
   regularPioneers: {
     count: number;
     hours: number;
     bibleStudies: number;
     names: NameEntry[];
+    hoursDetail: NameEntry[];
+    coursesDetail: NameEntry[];
   };
   auxiliaryPioneers: {
     count: number;
     hours: number;
     bibleStudies: number;
     names: NameEntry[];
+    hoursDetail: NameEntry[];
+    coursesDetail: NameEntry[];
     // División del recuadro: por estado permanente y por el mes informado.
     indefinidos: { count: number; names: NameEntry[] };
     esteMes: { count: number; names: NameEntry[] };
@@ -54,7 +59,8 @@ export type PeriodStats = {
   };
 };
 
-export type NameEntry = { name: string; group: string };
+/** Una persona en una lista desplegable; `value` se muestra a la derecha. */
+export type NameEntry = { name: string; group: string; value?: string };
 
 function emptyByStatus(): Record<PublisherStatus, number> {
   const obj = {} as Record<PublisherStatus, number>;
@@ -129,10 +135,15 @@ export async function getPeriodStats(
   const byGroupThenName = (
     filter: (p: (typeof publishers)[number]) => boolean,
     label: (p: (typeof publishers)[number]) => string,
+    value?: (p: (typeof publishers)[number]) => string,
   ): NameEntry[] =>
     publishers
       .filter(filter)
-      .map((p) => ({ name: label(p), group: p.group?.name ?? "Sin grupo" }))
+      .map((p) => ({
+        name: label(p),
+        group: p.group?.name ?? "Sin grupo",
+        ...(value ? { value: value(p) } : {}),
+      }))
       .sort(
         (a, b) =>
           a.group.localeCompare(b.group, "es") ||
@@ -147,14 +158,28 @@ export async function getPeriodStats(
   // Agregados de horas/cursos por categoría de precursor, según el estado
   // actual del publicador. Los auxiliares agrupan ambos tipos (auxiliar y
   // auxiliar indefinido). Los nombres se listan (orden alfabético) para el modal.
+  // Desglose por hermano de las horas y cursos de un recuadro de precursores.
+  // Usa EXACTAMENTE el mismo filtro que el total, así la suma coincide; quien
+  // aún no entregó su informe aparece como "sin informe" (aporta 0).
+  const reportById = new Map(reports.map((r) => [r.publisherId, r]));
+  const perBrother = (
+    filter: (p: (typeof publishers)[number]) => boolean,
+    pick: (r: (typeof reports)[number]) => number,
+  ): NameEntry[] =>
+    byGroupThenName(filter, (p) => p.fullName, (p) => {
+      const r = reportById.get(p.id);
+      return r ? String(pick(r)) : "sin informe";
+    });
+
+  const isRegular = (p: (typeof publishers)[number]) =>
+    p.status === PUBLISHER_STATUS.PRECURSOR_REGULAR;
   const regularPioneers = {
     count: byStatus[PUBLISHER_STATUS.PRECURSOR_REGULAR],
     hours: 0,
     bibleStudies: 0,
-    names: byGroupThenName(
-      (p) => p.status === PUBLISHER_STATUS.PRECURSOR_REGULAR,
-      (p) => p.fullName,
-    ),
+    names: byGroupThenName(isRegular, (p) => p.fullName),
+    hoursDetail: perBrother(isRegular, (r) => r.hours ?? 0),
+    coursesDetail: perBrother(isRegular, (r) => r.bibleStudies),
   };
   // Precursores Auxiliares, divididos en dos conjuntos DISJUNTOS que suman el
   // total del recuadro:
@@ -182,6 +207,8 @@ export async function getPeriodStats(
     hours: 0,
     bibleStudies: 0,
     names: byGroupThenName(isAnyAux, (p) => p.fullName),
+    hoursDetail: perBrother(isAnyAux, (r) => r.hours ?? 0),
+    coursesDetail: perBrother(isAnyAux, (r) => r.bibleStudies),
     indefinidos: { count: indefinidoNames.length, names: indefinidoNames },
     esteMes: { count: esteMesNames.length, names: esteMesNames },
   };
