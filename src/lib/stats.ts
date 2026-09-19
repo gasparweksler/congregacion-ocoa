@@ -139,14 +139,6 @@ export async function getPeriodStats(
           a.name.localeCompare(b.name, "es"),
       );
 
-  // Cursos bíblicos SOLO de Bautizados y No Bautizados (sin precursores).
-  const publisherBibleStudies = reports.reduce((a, r) => {
-    const st = statusById.get(r.publisherId);
-    return st === PUBLISHER_STATUS.BAUTIZADO ||
-      st === PUBLISHER_STATUS.NO_BAUTIZADO
-      ? a + r.bibleStudies
-      : a;
-  }, 0);
   const totalPrecursores =
     byStatus[PUBLISHER_STATUS.PRECURSOR_REGULAR] +
     byStatus[PUBLISHER_STATUS.PRECURSOR_AUXILIAR] +
@@ -204,6 +196,23 @@ export async function getPeriodStats(
     }
   }
 
+  // Cursos bíblicos del recuadro Publicadores: SOLO Bautizados y No Bautizados
+  // que NO son precursores de ningún tipo. Se excluyen también los que este mes
+  // marcaron "Precursor Auxiliar" en su informe: sus cursos ya se muestran en
+  // el recuadro Precursores Auxiliares y no deben contarse dos veces.
+  const isPlainPublisher = (id: string) => {
+    const st = statusById.get(id);
+    return (
+      (st === PUBLISHER_STATUS.BAUTIZADO ||
+        st === PUBLISHER_STATUS.NO_BAUTIZADO) &&
+      !auxIds.has(id)
+    );
+  };
+  const publisherBibleStudies = reports.reduce(
+    (a, r) => (isPlainPublisher(r.publisherId) ? a + r.bibleStudies : a),
+    0,
+  );
+
   // Cursos bíblicos por publicador (para listar quiénes tienen 1 o más).
   const coursesById = new Map<string, number>();
   for (const r of reports) coursesById.set(r.publisherId, r.bibleStudies);
@@ -233,12 +242,10 @@ export async function getPeriodStats(
       (p) => !participatedIds.has(p.id),
       (p) => p.fullName,
     ),
-    // Solo publicadores Bautizados y No Bautizados (sin precursores), con >=1.
+    // Mismo criterio que el total: publicadores sin ningún tipo de precursor
+    // (tampoco auxiliares de este mes), con 1 o más cursos.
     cursos: byGroupThenName(
-      (p) =>
-        (coursesById.get(p.id) ?? 0) >= 1 &&
-        (p.status === PUBLISHER_STATUS.BAUTIZADO ||
-          p.status === PUBLISHER_STATUS.NO_BAUTIZADO),
+      (p) => (coursesById.get(p.id) ?? 0) >= 1 && isPlainPublisher(p.id),
       (p) => `${p.fullName} (${coursesById.get(p.id)})`,
     ),
   };
