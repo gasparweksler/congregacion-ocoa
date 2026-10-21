@@ -36,6 +36,8 @@ export async function createPublisherAction(
     sex: formData.get("sex") || null,
     birthDate: formData.get("birthDate"),
     baptismDate: formData.get("baptismDate"),
+    hope: formData.get("hope") || null,
+    privilege: formData.get("privilege") || null,
     status: formData.get("status"),
     // Para super/aux se ignora el groupId del formulario y se usa el suyo.
     groupId: isSecretary(user)
@@ -56,6 +58,8 @@ export async function createPublisherAction(
       sex: data.sex ?? null,
       birthDate: toDate(data.birthDate),
       baptismDate: toDate(data.baptismDate),
+      hope: data.hope ?? null,
+      privilege: data.privilege ?? null,
       status: data.status,
       groupId: data.groupId,
       // Registro inicial del estado en el historial.
@@ -96,6 +100,8 @@ export async function updatePublisherAction(
     sex: formData.get("sex") || null,
     birthDate: formData.get("birthDate"),
     baptismDate: formData.get("baptismDate"),
+    hope: formData.get("hope") || null,
+    privilege: formData.get("privilege") || null,
     status: formData.get("status"),
     // Solo el Secretario puede mover de grupo; el resto conserva el suyo.
     groupId: isSecretary(user)
@@ -119,6 +125,8 @@ export async function updatePublisherAction(
       sex: data.sex ?? null,
       birthDate: toDate(data.birthDate),
       baptismDate: toDate(data.baptismDate),
+      hope: data.hope ?? null,
+      privilege: data.privilege ?? null,
       status: data.status,
       groupId: data.groupId,
       // Solo se añade al historial si el estado realmente cambió.

@@ -24,7 +24,8 @@ export type CardData = {
   birthDate: string | null; // DD-MM-YYYY tal cual viene en el PDF
   baptismDate: string | null;
   sex: "M" | "F" | null;
-  anointed: boolean; // Ungido (si no, "Otras ovejas")
+  otherSheep: boolean; // Otras ovejas
+  anointed: boolean; // Ungido
   elder: boolean;
   ministerialServant: boolean;
   regularPioneer: boolean;
@@ -88,6 +89,7 @@ export async function extractCards(root: string): Promise<CardData[]> {
       birthDate: clean(val(2)),
       baptismDate: clean(val(5)),
       sex: sexo,
+      otherSheep: checked(6),
       anointed: checked(7),
       elder: checked(8),
       ministerialServant: checked(9),

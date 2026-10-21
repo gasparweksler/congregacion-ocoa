@@ -10,6 +10,8 @@ import {
   ROLE_VALUES,
   GROUP_ROLES,
   SEX,
+  HOPE_VALUES,
+  PRIVILEGE_VALUES,
 } from "@/lib/constants";
 
 // --- Login -----------------------------------------------------------------
@@ -106,6 +108,11 @@ export const publisherSchema = z.object({
   sex: z.enum([SEX.M, SEX.F]).optional().nullable(),
   birthDate: optionalDate,
   baptismDate: optionalDate,
+  hope: z.enum(HOPE_VALUES as [string, ...string[]]).optional().nullable(),
+  privilege: z
+    .enum(PRIVILEGE_VALUES as [string, ...string[]])
+    .optional()
+    .nullable(),
   status: z.enum(PUBLISHER_STATUS_VALUES as [string, ...string[]]),
   groupId: z.string().min(1, "Selecciona el grupo"),
 });

@@ -90,6 +90,45 @@ export const SEX_LABELS: Record<Sex, string> = {
 };
 
 // ---------------------------------------------------------------------------
+//  ESPERANZA Y PRIVILEGIO  (casillas de la tarjeta S-21, opcionales)
+// ---------------------------------------------------------------------------
+export const HOPE = {
+  OTRAS_OVEJAS: "OTRAS_OVEJAS",
+  UNGIDO: "UNGIDO",
+} as const;
+
+export type Hope = (typeof HOPE)[keyof typeof HOPE];
+export const HOPE_VALUES = Object.values(HOPE) as Hope[];
+
+export const HOPE_LABELS: Record<Hope, string> = {
+  OTRAS_OVEJAS: "Otras ovejas",
+  UNGIDO: "Ungido",
+};
+
+export const PRIVILEGE = {
+  ANCIANO: "ANCIANO",
+  SIERVO_MINISTERIAL: "SIERVO_MINISTERIAL",
+} as const;
+
+export type Privilege = (typeof PRIVILEGE)[keyof typeof PRIVILEGE];
+export const PRIVILEGE_VALUES = Object.values(PRIVILEGE) as Privilege[];
+
+export const PRIVILEGE_LABELS: Record<Privilege, string> = {
+  ANCIANO: "Anciano",
+  SIERVO_MINISTERIAL: "Siervo ministerial",
+};
+
+export function hopeLabel(hope: string | null): string {
+  if (!hope) return "—";
+  return HOPE_LABELS[hope as Hope] ?? hope;
+}
+
+export function privilegeLabel(privilege: string | null): string {
+  if (!privilege) return "—";
+  return PRIVILEGE_LABELS[privilege as Privilege] ?? privilege;
+}
+
+// ---------------------------------------------------------------------------
 //  MESES (para selectores y exportaciones)
 // ---------------------------------------------------------------------------
 export const MONTH_NAMES = [

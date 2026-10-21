@@ -86,6 +86,9 @@ model Publisher {
   sex         String? // M | F  (opcional)
   birthDate   DateTime? // opcional
   baptismDate DateTime? // si aplica
+  // Casillas de la tarjeta S-21 (opcionales):
+  hope      String? // OTRAS_OVEJAS | UNGIDO
+  privilege String? // ANCIANO | SIERVO_MINISTERIAL
   status      String // ver PUBLISHER_STATUSES en constants.ts
   active      Boolean   @default(true)
 

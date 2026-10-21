@@ -2,7 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser, canAccessGroup } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { statusLabel, monthName, isPioneer } from "@/lib/constants";
+import {
+  statusLabel,
+  monthName,
+  isPioneer,
+  hopeLabel,
+  privilegeLabel,
+} from "@/lib/constants";
 import { statusTone } from "@/lib/ui-helpers";
 import { formatDate, ageFrom } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
@@ -78,6 +84,8 @@ export default async function PublisherDetailPage({
               {age !== null ? ` (${age} años)` : ""}
             </Info>
             <Info label="Bautismo">{formatDate(publisher.baptismDate)}</Info>
+            <Info label="Esperanza">{hopeLabel(publisher.hope)}</Info>
+            <Info label="Privilegio">{privilegeLabel(publisher.privilege)}</Info>
           </CardBody>
         </Card>
 

@@ -7,6 +7,12 @@ import {
   PUBLISHER_STATUS_LABELS,
   SEX,
   SEX_LABELS,
+  HOPE_VALUES,
+  HOPE_LABELS,
+  PRIVILEGE_VALUES,
+  PRIVILEGE_LABELS,
+  type Hope,
+  type Privilege,
 } from "@/lib/constants";
 
 export type GroupOption = { id: string; name: string };
@@ -16,6 +22,8 @@ export type PublisherDefaults = {
   sex?: string | null;
   birthDate?: string | null; // yyyy-mm-dd
   baptismDate?: string | null; // yyyy-mm-dd
+  hope?: string | null;
+  privilege?: string | null;
   status?: string;
   groupId?: string | null;
 };
@@ -69,6 +77,31 @@ export function PublisherFields({
           name="baptismDate"
           defaultValue={d.baptismDate ?? ""}
         />
+      </div>
+
+      {/* Casillas de la tarjeta: "Otras ovejas / Ungido" y el privilegio. */}
+      <div>
+        <Label>Esperanza (opcional)</Label>
+        <Select name="hope" defaultValue={d.hope ?? ""}>
+          <option value="">— Sin especificar —</option>
+          {HOPE_VALUES.map((h: Hope) => (
+            <option key={h} value={h}>
+              {HOPE_LABELS[h]}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <Label>Privilegio (opcional)</Label>
+        <Select name="privilege" defaultValue={d.privilege ?? ""}>
+          <option value="">— Ninguno —</option>
+          {PRIVILEGE_VALUES.map((p: Privilege) => (
+            <option key={p} value={p}>
+              {PRIVILEGE_LABELS[p]}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {showGroup ? (

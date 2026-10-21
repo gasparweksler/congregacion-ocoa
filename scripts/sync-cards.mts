@@ -16,6 +16,16 @@ import type { CardData } from "./extract-cards.mts";
 
 const prisma = new PrismaClient();
 
+// Personas cuya tarjeta está a nombre de otra variante del mismo nombre.
+// Confirmadas una a una por el secretario (oct-2026): no se deducen solas,
+// porque un cruce equivocado metería los datos de alguien en otra ficha.
+// Clave: nombre en la base de datos. Valor: nombre del archivo de la tarjeta.
+const ALIAS: Record<string, string> = {
+  "Emelinda Espinoza": "Ermelina Espinoza",
+  "Juan Ernesto Avilés": "Ernesto Avilés",
+  "Lucy de Avilés": "Lucila De Avilés",
+};
+
 const norm = (s: string) =>
   s
     .normalize("NFD")
@@ -63,6 +73,8 @@ async function main() {
       sex: true,
       birthDate: true,
       baptismDate: true,
+      hope: true,
+      privilege: true,
       status: true,
       group: { select: { name: true } },
     },
@@ -72,6 +84,14 @@ async function main() {
   // base de datos), 2º por contención de palabras en el nombre completo.
   const used = new Set<string>();
   const pairFor = (p: (typeof publishers)[number]) => {
+    const alias = ALIAS[p.fullName];
+    if (alias) {
+      const byAlias = cards.find(
+        (c) =>
+          !used.has(c.file) && norm(basename(c.file, ".pdf")) === norm(alias),
+      );
+      if (byAlias) return byAlias;
+    }
     const target = norm(p.fullName);
     const byFile = cards.find(
       (c) => !used.has(c.file) && norm(basename(c.file, ".pdf")) === target,
@@ -91,7 +111,13 @@ async function main() {
     group: string;
     file: string;
     sets: string[];
-    data: { sex?: string; birthDate?: Date; baptismDate?: Date };
+    data: {
+      sex?: string;
+      birthDate?: Date;
+      baptismDate?: Date;
+      hope?: string;
+      privilege?: string;
+    };
     conflicts: string[];
   };
   const changes: Change[] = [];
@@ -130,6 +156,32 @@ async function main() {
         data.baptismDate = baptism;
         sets.push(`bautismo: — → ${iso(baptism)}`);
       } else conflicts.push(`bautismo: BD ${iso(p.baptismDate)} vs PDF ${iso(baptism)}`);
+    }
+
+    // Esperanza: solo si alguna de las dos casillas está marcada.
+    const hope = card.anointed
+      ? "UNGIDO"
+      : card.otherSheep
+        ? "OTRAS_OVEJAS"
+        : null;
+    if (hope && p.hope !== hope) {
+      if (!p.hope) {
+        data.hope = hope;
+        sets.push(`esperanza: — → ${hope}`);
+      } else conflicts.push(`esperanza: BD ${p.hope} vs PDF ${hope}`);
+    }
+
+    // Privilegio: en las tarjetas nunca vienen las dos casillas marcadas.
+    const privilege = card.elder
+      ? "ANCIANO"
+      : card.ministerialServant
+        ? "SIERVO_MINISTERIAL"
+        : null;
+    if (privilege && p.privilege !== privilege) {
+      if (!p.privilege) {
+        data.privilege = privilege;
+        sets.push(`privilegio: — → ${privilege}`);
+      } else conflicts.push(`privilegio: BD ${p.privilege} vs PDF ${privilege}`);
     }
 
     if (sets.length || conflicts.length) {
