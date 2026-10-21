@@ -6,6 +6,8 @@ import { Card, CardHeader, EmptyState } from "@/components/ui";
 import { PublisherCreateForm } from "@/components/forms/PublisherCreateForm";
 import { PublisherList } from "@/components/forms/PublisherList";
 import { GroupFilter } from "@/components/GroupFilter";
+import { CardsDownload } from "@/components/forms/CardsDownload";
+import { currentServiceYear } from "@/lib/publisher-card";
 
 export default async function PublicadoresPage({
   searchParams,
@@ -19,6 +21,10 @@ export default async function PublicadoresPage({
   // Alcance: super/aux limitados a su grupo; secretario puede filtrar.
   const scope = scopedGroupId(user); // null si secretario
   const groupFilter = secretary ? grupo : (scope ?? undefined);
+
+  // Años de servicio ofrecidos: el actual y los tres anteriores.
+  const serviceYear = currentServiceYear();
+  const serviceYears = [0, 1, 2, 3].map((n) => serviceYear - n);
 
   const groups = secretary
     ? await prisma.group.findMany({
@@ -61,11 +67,17 @@ export default async function PublicadoresPage({
         }
       />
 
-      {secretary ? (
-        <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        {secretary ? (
           <GroupFilter groups={groups} current={grupo ?? ""} />
-        </div>
-      ) : null}
+        ) : null}
+        <CardsDownload
+          groups={groups}
+          showGroup={secretary}
+          serviceYears={serviceYears}
+          defaultServiceYear={serviceYear}
+        />
+      </div>
 
       <Card>
         <CardHeader

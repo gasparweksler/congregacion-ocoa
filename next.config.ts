@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     "/**": [
       "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
       "./node_modules/pdfjs-dist/standard_fonts/**",
+      // Plantilla del formulario S-21 que se rellena para las tarjetas.
+      "./src/assets/**",
     ],
   },
   experimental: {

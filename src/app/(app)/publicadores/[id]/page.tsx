@@ -10,6 +10,7 @@ import {
   privilegeLabel,
 } from "@/lib/constants";
 import { statusTone } from "@/lib/ui-helpers";
+import { currentServiceYear } from "@/lib/publisher-card";
 import { formatDate, ageFrom } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -45,6 +46,7 @@ export default async function PublisherDetailPage({
   if (!canAccessGroup(user, publisher.groupId)) notFound();
 
   const age = ageFrom(publisher.birthDate);
+  const serviceYear = currentServiceYear();
 
   return (
     <>
@@ -52,12 +54,21 @@ export default async function PublisherDetailPage({
         title={publisher.fullName}
         description="Ficha e historial del publicador."
         action={
-          <Link
-            href="/publicadores"
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            ← Volver
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Tarjeta S-21 del año de servicio en curso. */}
+            <a
+              href={`/api/tarjetas?pub=${publisher.id}&anio=${serviceYear}`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-slate-50"
+            >
+              🗂️ Descargar Tarjeta
+            </a>
+            <Link
+              href="/publicadores"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              ← Volver
+            </Link>
+          </div>
         }
       />
 
