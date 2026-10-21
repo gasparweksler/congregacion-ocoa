@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import {
   updatePublisherAction,
   deletePublisherAction,
@@ -48,13 +48,10 @@ export function PublisherRow({
     EMPTY_FORM_STATE,
   );
 
-  useEffect(() => {
-    if (state.success) setEditing(false);
-  }, [state.success]);
-
-  useEffect(() => {
-    if (groupState.success) setChangingGroup(false);
-  }, [groupState.success]);
+  // Al guardar con éxito se cierra el formulario. Se ajusta durante el render
+  // (no en un efecto) para no provocar un segundo repintado en cascada.
+  if (state.success && editing) setEditing(false);
+  if (groupState.success && changingGroup) setChangingGroup(false);
 
   if (editing) {
     return (
@@ -149,7 +146,7 @@ export function PublisherRow({
           href={`/publicadores/${publisher.id}`}
           className="rounded-md px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
         >
-          Historial
+          Ver Tarjeta
         </Link>
         <button
           type="button"

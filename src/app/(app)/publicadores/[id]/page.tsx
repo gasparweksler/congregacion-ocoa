@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser, canAccessGroup } from "@/lib/access";
+import { requireUser, canAccessGroup, isSecretary } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   statusLabel,
@@ -11,8 +11,9 @@ import {
 } from "@/lib/constants";
 import { statusTone } from "@/lib/ui-helpers";
 import { currentServiceYear } from "@/lib/publisher-card";
-import { formatDate, ageFrom } from "@/lib/dates";
+import { formatDate, ageFrom, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
+import { PublisherCardEdit } from "@/components/forms/PublisherCardEdit";
 import {
   Card,
   CardHeader,
@@ -47,12 +48,20 @@ export default async function PublisherDetailPage({
 
   const age = ageFrom(publisher.birthDate);
   const serviceYear = currentServiceYear();
+  const secretary = isSecretary(user);
+  // Solo el Secretario puede mover de grupo, así que solo él ve ese campo.
+  const groups = secretary
+    ? await prisma.group.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      })
+    : [];
 
   return (
     <>
       <PageHeader
         title={publisher.fullName}
-        description="Ficha e historial del publicador."
+        description="Tarjeta del publicador: datos personales e historial de informes."
         action={
           <div className="flex flex-wrap items-center gap-3">
             {/* Tarjeta S-21 del año de servicio en curso. */}
@@ -97,6 +106,25 @@ export default async function PublisherDetailPage({
             <Info label="Bautismo">{formatDate(publisher.baptismDate)}</Info>
             <Info label="Esperanza">{hopeLabel(publisher.hope)}</Info>
             <Info label="Privilegio">{privilegeLabel(publisher.privilege)}</Info>
+
+            {/* Edición de los datos de la tarjeta, sin salir de la ficha. */}
+            <div className="border-t border-border pt-3">
+              <PublisherCardEdit
+                id={publisher.id}
+                showGroup={secretary}
+                groups={groups}
+                defaults={{
+                  fullName: publisher.fullName,
+                  sex: publisher.sex,
+                  birthDate: toInputDate(publisher.birthDate),
+                  baptismDate: toInputDate(publisher.baptismDate),
+                  hope: publisher.hope,
+                  privilege: publisher.privilege,
+                  status: publisher.status,
+                  groupId: publisher.groupId,
+                }}
+              />
+            </div>
           </CardBody>
         </Card>
 
