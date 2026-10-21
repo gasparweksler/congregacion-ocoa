@@ -89,6 +89,15 @@ export default async function HistorialPage({
             <GroupFilter groups={groups} current={sp.grupo ?? ""} />
           ) : null}
           <ReportTypeFilter current={sp.tipo ?? ""} />
+          {/* Descarga el historial con los filtros que estén aplicados. */}
+          <a
+            href={`/api/historial-excel?anio=${year}&mes=${month}${
+              secretary && sp.grupo ? `&grupo=${sp.grupo}` : ""
+            }${tipo ? `&tipo=${tipo}` : ""}`}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)]"
+          >
+            📥 Descargar Historial
+          </a>
         </div>
       </div>
 

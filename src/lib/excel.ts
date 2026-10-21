@@ -16,6 +16,7 @@ import {
 } from "@/lib/constants";
 import { getCongregationStats } from "@/lib/stats";
 import { formatDate } from "@/lib/dates";
+import { reportTypeWhere } from "@/lib/report-filters";
 
 const HEADER_FILL: ExcelJS.Fill = {
   type: "pattern",
@@ -288,5 +289,92 @@ export async function buildStatsWorkbook(
   });
   tr.font = { bold: true };
 
+  return wb.xlsx.writeBuffer();
+}
+
+/**
+ * Libro: historial de informes de un período, con los MISMOS filtros que la
+ * pantalla "Historial" (grupo y tipo de publicador). Es una exportación de solo
+ * lectura: no modifica ningún informe.
+ */
+export async function buildHistoryWorkbook(
+  year: number | null,
+  month: number | null,
+  groupId: string | null,
+  tipo?: string,
+): Promise<ExcelJS.Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Sistema Ocoa";
+  const periodo =
+    year && month ? `${monthName(month)} ${year}` : year ? `Año ${year}` : "Historial";
+  const ws = wb.addWorksheet(periodo);
+
+  // Sin período fijo se añaden Año y Mes para distinguir cada informe.
+  const periodCols = year && month
+    ? []
+    : [
+        { header: "Año", key: "year", width: 8 },
+        { header: "Mes", key: "month", width: 14 },
+      ];
+
+  ws.columns = [
+    ...periodCols,
+    { header: "Publicador", key: "name", width: 30 },
+    { header: "Grupo", key: "group", width: 22 },
+    { header: "Estado", key: "status", width: 24 },
+    { header: "Participó", key: "participated", width: 12 },
+    { header: "Cursos bíblicos", key: "studies", width: 16 },
+    { header: "Horas", key: "hours", width: 10 },
+    { header: "Precursor auxiliar", key: "aux", width: 18 },
+    { header: "Comentarios", key: "comment", width: 40 },
+  ];
+  styleHeader(ws.getRow(1));
+
+  const reports = await prisma.monthlyReport.findMany({
+    where: {
+      ...(year ? { year } : {}),
+      ...(month ? { month } : {}),
+      ...(groupId ? { publisher: { groupId } } : {}),
+      ...reportTypeWhere(tipo),
+    },
+    orderBy: [
+      { year: "desc" },
+      { month: "desc" },
+      { publisher: { group: { name: "asc" } } },
+      { publisher: { fullName: "asc" } },
+    ],
+    include: {
+      publisher: {
+        select: { fullName: true, group: { select: { name: true } } },
+      },
+    },
+  });
+
+  for (const r of reports) {
+    const row = ws.addRow({
+      year: r.year,
+      month: monthName(r.month),
+      name: r.publisher.fullName,
+      group: r.publisher.group?.name ?? "—",
+      status: statusLabel(r.statusAtReport),
+      participated: r.participated ? "Sí" : "No",
+      studies: r.bibleStudies,
+      hours: isPioneer(r.statusAtReport) || r.auxiliaryPioneer ? (r.hours ?? 0) : "",
+      aux: r.auxiliaryPioneer ? "Sí" : "No",
+      comment: r.comment ?? "",
+    });
+    row.getCell("comment").alignment = { wrapText: true, vertical: "top" };
+  }
+
+  const totalRow = ws.addRow({
+    name: "TOTALES",
+    participated: `${reports.filter((r) => r.participated).length} informaron`,
+    studies: reports.reduce((a, r) => a + r.bibleStudies, 0),
+    hours: reports.reduce((a, r) => a + (r.hours ?? 0), 0),
+  });
+  totalRow.font = { bold: true };
+
+  const lastCol = String.fromCharCode(64 + ws.columns.length);
+  ws.autoFilter = { from: "A1", to: `${lastCol}1` };
   return wb.xlsx.writeBuffer();
 }

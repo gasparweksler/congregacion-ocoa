@@ -89,6 +89,18 @@ export default async function HistorialInformesPage({
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <HistoryFilters years={yearOptions()} groups={groups} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Descarga lo que muestran los filtros (incluido "todos"). */}
+          <a
+            href={`/api/historial-excel?todos=1${
+              !isNaN(year) ? `&anio=${year}` : ""
+            }${!isNaN(month) ? `&mes=${month}` : ""}${
+              grupo ? `&grupo=${grupo}` : ""
+            }${tipo ? `&tipo=${tipo}` : ""}`}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)]"
+          >
+            📥 Descargar Historial
+          </a>
         {reports.length > 0 ? (
           <ConfirmButton
             action={deleteAllReportsAction}
@@ -97,6 +109,7 @@ export default async function HistorialInformesPage({
             🗑️ Eliminar Historial
           </ConfirmButton>
         ) : null}
+        </div>
       </div>
 
       <div className="mb-4">
