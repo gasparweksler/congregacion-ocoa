@@ -45,6 +45,8 @@ const ALLOW: Record<string, string> = {
   "src/app/api/keep-alive/route.ts": "solo cuenta filas para despertar la base",
   "src/app/confirmar/[token]/page.tsx":
     "se accede por un token único e irrepetible",
+  "src/server/platform-actions.ts":
+    "panel del Superadministrador: actúa sobre varias congregaciones a propósito (todo el archivo exige requireSuperadmin)",
 };
 
 const files: string[] = [];

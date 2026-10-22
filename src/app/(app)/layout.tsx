@@ -34,7 +34,10 @@ export default async function AppLayout({
     redirect("/cambiar-contrasena?obligatorio=1");
   }
 
-  const isSecretary = user.role === ROLES.SECRETARIO;
+  const isSuperadmin = user.role === ROLES.SUPERADMIN;
+  // El Superadmin trabaja en su congregación con el mismo alcance que un
+  // Administrador, además de tener el panel de plataforma.
+  const isSecretary = user.role === ROLES.SECRETARIO || isSuperadmin;
   // Responsable de Confirmaciones "puro" (su único rol).
   const isPureConfirmador =
     user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
@@ -66,14 +69,22 @@ export default async function AppLayout({
   const accountItems: NavItem[] = [
     { href: "/cambiar-contrasena", label: "Mi contraseña", icon: "⚙️" },
   ];
+  // Solo el Superadministrador ve el panel de plataforma.
+  const platformItems: NavItem[] = isSuperadmin
+    ? [{ href: "/plataforma", label: "Plataforma", icon: "🌐" }]
+    : [];
 
   let navItems: NavItem[];
-  if (isPureConfirmador) {
+  if (isSuperadmin && !user.congregationId) {
+    // Superadmin sin congregación propia: solo administra la plataforma.
+    navItems = [...platformItems, ...accountItems];
+  } else if (isPureConfirmador) {
     // Solo la sección Reuniones.
     navItems = [meetingsItem, ...accountItems];
   } else if (isSecretary) {
     // Acceso completo: Informes + Reuniones + administración.
     navItems = [
+      ...platformItems,
       ...reportsItems,
       meetingsItem,
       ...secretaryItems,
