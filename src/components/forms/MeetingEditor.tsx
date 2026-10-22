@@ -308,16 +308,21 @@ export function MeetingEditor({
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
     const cp = String.fromCodePoint;
+    // Los emojis se arman por código (no literales) para que el empaquetado
+    // no los rompa al enviarse desde el teléfono.
     const E = {
       hug: cp(0x1f917), cal: cp(0x1f4c5), clip: cp(0x1f4cb),
       pray: cp(0x1f64f), smile: cp(0x1f60a), point: cp(0x1f449),
+      tie: cp(0x1f454), dress: cp(0x1f457), check: cp(0x2705),
     };
     return (
       `Hola querido Hermano/a *${name}* ${E.hug}\n\n` +
       `Le comento que para la reunión del día ${E.cal} *${dayLabel} ${dateLabel}* ` +
       `tiene la siguiente asignación: ${E.clip} *${label}*.\n\n` +
-      `Por favor, haga click en el siguiente enlace para confirmar o rechazar ` +
-      `la asignación. ¡Muchísimas gracias! ${E.pray}${E.smile}\n\n` +
+      `${E.tie} Recuerde que para su asignación la vestimenta debe ser con ` +
+      `chaqueta y corbata (varones) y falda o vestido (mujeres) ${E.dress}\n\n` +
+      `${E.check} Por favor, haga click en el siguiente enlace para confirmar o ` +
+      `rechazar la asignación. ¡Muchísimas gracias! ${E.pray}${E.smile}\n\n` +
       `${E.point} ${origin}/confirmar/${token}`
     );
   }
