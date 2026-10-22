@@ -7,10 +7,11 @@
 //  Estilo limpio y espacioso inspirado en jw.org (identidad propia en teal).
 // ============================================================================
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { logoutAction } from "@/server/auth-actions";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export type NavItem = { href: string; label: string; icon: string };
 
@@ -30,10 +31,9 @@ export function AppShell({
   // Sección a la que se está navegando (para mostrar su spinner de carga).
   const [navTarget, setNavTarget] = useState<string | null>(null);
 
-  // Al terminar la transición de navegación, limpiar el indicador.
-  useEffect(() => {
-    if (!isPending) setNavTarget(null);
-  }, [isPending]);
+  // Al terminar la transición de navegación, limpiar el indicador. Se ajusta
+  // durante el render (no en un efecto) para no encadenar un repintado extra.
+  if (!isPending && navTarget) setNavTarget(null);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -90,6 +90,7 @@ export function AppShell({
       <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-brand to-brand-2 px-4 py-6 lg:flex">
         <Brand />
         <div className="mt-8 flex-1">{nav}</div>
+        <ThemeToggle />
         <UserBox user={user} />
       </aside>
 
@@ -110,6 +111,7 @@ export function AppShell({
       {open ? (
         <div className="bg-brand px-4 pb-5 pt-2 shadow-lg lg:hidden">
           {nav}
+          <ThemeToggle />
           <div className="mt-4">
             <UserBox user={user} />
           </div>

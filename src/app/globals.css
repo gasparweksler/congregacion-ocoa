@@ -88,3 +88,177 @@ select,
 textarea {
   max-width: 100%;
 }
+
+/* ==========================================================================
+   MODO OSCURO
+   Se activa con data-theme="dark" en <html> (lo pone el interruptor del menú).
+   Estilo tipo Office: grises oscuros con un matiz teal, nunca negro puro, para
+   que el texto descanse y las superficies sigan distinguiéndose entre sí.
+   ========================================================================== */
+
+:root[data-theme="dark"] {
+  --background: #15191a; /* lienzo */
+  --surface: #1f2526; /* tarjetas y campos */
+  --surface-2: #272e2f; /* filas alternas, zonas hundidas */
+  --surface-3: #313a3b; /* hover */
+  --foreground: #e7edec;
+  --muted: #a3b2b0;
+  --border: #3b4546;
+
+  /* El primario se mantiene oscuro para que el texto blanco encima siga
+     legible; para TEXTO en primario se usa un teal claro (más abajo). */
+  --primary: #0f766e;
+  --primary-hover: #0b5f59;
+  --primary-text: #5eead4;
+
+  /* Navegación: casi negro con matiz teal. */
+  --brand: #0d1716;
+  --brand-2: #14211f;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark; /* calendarios, listas y barras nativas en oscuro */
+}
+
+/* --- Remapeo de las utilidades neutras fijas -----------------------------
+   La aplicación usa bg-white / bg-slate-* en muchos sitios. En vez de tocar
+   decenas de archivos (y arriesgar el modo claro), se reinterpretan dentro
+   del tema oscuro. */
+:root[data-theme="dark"] .bg-white {
+  background-color: var(--surface);
+}
+:root[data-theme="dark"] .bg-slate-50,
+:root[data-theme="dark"] .odd\:bg-slate-50:nth-child(odd) {
+  background-color: var(--surface-2);
+}
+:root[data-theme="dark"] .bg-slate-100 {
+  background-color: var(--surface-3);
+}
+:root[data-theme="dark"] .bg-slate-200 {
+  background-color: #3b4546;
+}
+:root[data-theme="dark"] .bg-slate-300 {
+  background-color: #4a5556;
+}
+:root[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: var(--surface);
+}
+:root[data-theme="dark"] .hover\:bg-slate-50:hover {
+  background-color: var(--surface-3);
+}
+:root[data-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: var(--surface-3);
+}
+:root[data-theme="dark"] .text-slate-400 {
+  color: #8b9a98;
+}
+:root[data-theme="dark"] .text-slate-600,
+:root[data-theme="dark"] .text-slate-700 {
+  color: var(--foreground);
+}
+:root[data-theme="dark"] .placeholder\:text-slate-400::placeholder {
+  color: #7d8c8a;
+}
+:root[data-theme="dark"] .disabled\:bg-slate-50:disabled {
+  background-color: #191e1f;
+}
+
+/* Texto y bordes en primario: versión clara para que contraste con el fondo. */
+:root[data-theme="dark"] .text-primary {
+  color: var(--primary-text);
+}
+:root[data-theme="dark"] .border-primary {
+  border-color: var(--primary-text);
+}
+:root[data-theme="dark"] .border-primary\/30 {
+  border-color: color-mix(in srgb, var(--primary-text) 35%, transparent);
+}
+:root[data-theme="dark"] .bg-primary\/10 {
+  background-color: color-mix(in srgb, var(--primary-text) 12%, transparent);
+}
+:root[data-theme="dark"] .hover\:bg-primary\/15:hover {
+  background-color: color-mix(in srgb, var(--primary-text) 20%, transparent);
+}
+
+/* --- Tintes de color (insignias, alertas, avisos) -------------------------
+   Los fondos muy claros (…-50/100) pasan a tintes oscuros translúcidos y los
+   textos oscuros (…-600/700/800/900) a tonos claros del mismo color. */
+:root[data-theme="dark"] .bg-emerald-50,
+:root[data-theme="dark"] .bg-emerald-100 {
+  background-color: color-mix(in srgb, #34d399 16%, transparent);
+}
+:root[data-theme="dark"] .bg-red-50,
+:root[data-theme="dark"] .bg-red-100 {
+  background-color: color-mix(in srgb, #f87171 16%, transparent);
+}
+:root[data-theme="dark"] .bg-amber-50,
+:root[data-theme="dark"] .bg-amber-100 {
+  background-color: color-mix(in srgb, #fbbf24 16%, transparent);
+}
+:root[data-theme="dark"] .bg-blue-50,
+:root[data-theme="dark"] .bg-blue-100 {
+  background-color: color-mix(in srgb, #60a5fa 16%, transparent);
+}
+:root[data-theme="dark"] .bg-indigo-50 {
+  background-color: color-mix(in srgb, #818cf8 16%, transparent);
+}
+:root[data-theme="dark"] .bg-violet-100 {
+  background-color: color-mix(in srgb, #a78bfa 16%, transparent);
+}
+:root[data-theme="dark"] .bg-slate-100.text-slate-700 {
+  background-color: var(--surface-3);
+}
+
+:root[data-theme="dark"] .text-emerald-600,
+:root[data-theme="dark"] .text-emerald-700,
+:root[data-theme="dark"] .text-emerald-800 {
+  color: #6ee7b7;
+}
+:root[data-theme="dark"] .text-red-500,
+:root[data-theme="dark"] .text-red-600,
+:root[data-theme="dark"] .text-red-700,
+:root[data-theme="dark"] .text-red-800 {
+  color: #fca5a5;
+}
+:root[data-theme="dark"] .text-amber-600,
+:root[data-theme="dark"] .text-amber-700,
+:root[data-theme="dark"] .text-amber-800,
+:root[data-theme="dark"] .text-amber-900 {
+  color: #fcd34d;
+}
+:root[data-theme="dark"] .text-blue-600,
+:root[data-theme="dark"] .text-blue-700,
+:root[data-theme="dark"] .text-blue-800 {
+  color: #93c5fd;
+}
+:root[data-theme="dark"] .text-violet-600,
+:root[data-theme="dark"] .text-violet-700 {
+  color: #c4b5fd;
+}
+
+:root[data-theme="dark"] .border-emerald-200,
+:root[data-theme="dark"] .border-emerald-300 {
+  border-color: color-mix(in srgb, #34d399 40%, transparent);
+}
+:root[data-theme="dark"] .border-red-200,
+:root[data-theme="dark"] .border-red-300 {
+  border-color: color-mix(in srgb, #f87171 40%, transparent);
+}
+:root[data-theme="dark"] .border-amber-200,
+:root[data-theme="dark"] .border-amber-400 {
+  border-color: color-mix(in srgb, #fbbf24 40%, transparent);
+}
+:root[data-theme="dark"] .border-blue-200 {
+  border-color: color-mix(in srgb, #60a5fa 40%, transparent);
+}
+
+/* Los botones de acción (verde/rojo sólidos) se bajan un punto de intensidad
+   para que no deslumbren sobre fondo oscuro. */
+:root[data-theme="dark"] .bg-emerald-600,
+:root[data-theme="dark"] .bg-emerald-700 {
+  background-color: #0f8a62;
+}
+:root[data-theme="dark"] .bg-red-600,
+:root[data-theme="dark"] .bg-red-700 {
+  background-color: #b4423f;
+}
