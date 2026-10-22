@@ -89,9 +89,12 @@ export function AppShell({
       {/* --- Barra lateral (escritorio) --- */}
       <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-brand to-brand-2 px-4 py-6 lg:flex">
         <Brand />
-        <div className="mt-8 flex-1">{nav}</div>
+        {/* Apariencia y usuario van justo debajo del menú (antes quedaban
+            pegados al fondo de la pantalla). El hueco sobrante va al final. */}
+        <div className="mt-8">{nav}</div>
         <ThemeToggle />
         <UserBox user={user} />
+        <div className="flex-1" />
       </aside>
 
       {/* --- Cabecera móvil --- */}
