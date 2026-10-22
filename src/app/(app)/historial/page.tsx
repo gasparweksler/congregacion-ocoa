@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName, statusLabel, isPioneer } from "@/lib/constants";
 import { parsePeriod, yearOptions } from "@/lib/period";
@@ -38,11 +40,13 @@ export default async function HistorialPage({
   const { year, month } = parsePeriod(sp.anio, sp.mes);
   const tipo = sp.tipo || undefined;
 
+  const cong = congregationId(user);
   const scope = scopedGroupId(user);
   const targetGroupId = secretary ? sp.grupo || null : scope;
 
   const groups = secretary
     ? await prisma.group.findMany({
+        where: { congregationId: cong },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -51,6 +55,7 @@ export default async function HistorialPage({
   // Snapshot de informes del período (solo lectura).
   const reports = await prisma.monthlyReport.findMany({
     where: {
+      congregationId: cong,
       year,
       month,
       ...(targetGroupId ? { publisher: { groupId: targetGroupId } } : {}),
@@ -73,7 +78,7 @@ export default async function HistorialPage({
   const years = yearOptions(new Date().getFullYear() - 3).filter(
     (y) => y <= new Date().getFullYear(),
   );
-  const annual = await getAnnualEvolution(targetGroupId, years);
+  const annual = await getAnnualEvolution(cong, targetGroupId, years);
 
   return (
     <>

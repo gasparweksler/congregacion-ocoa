@@ -12,6 +12,8 @@
     "test:pdf-nocanvas": "tsx scripts/test-pdf-nocanvas.mts",
     "test:card": "tsx scripts/test-card.mts",
     "test:cards-zip": "tsx scripts/test-cards-zip.mts",
+    "audit:congregacion": "tsx scripts/audit-congregacion.mts",
+    "test:aislamiento": "tsx scripts/test-aislamiento.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

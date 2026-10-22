@@ -103,8 +103,8 @@ export async function saveMeetingAction(
   const user = await requireMeetingsAccess();
 
   const meetingId = String(formData.get("meetingId") ?? "");
-  const meeting = await prisma.meeting.findUnique({
-    where: { id: meetingId },
+  const meeting = await prisma.meeting.findFirst({
+    where: { id: meetingId, congregationId: congregationId(user) },
     include: { assignments: true },
   });
   if (!meeting) return { error: "Reunión no encontrada." };
@@ -218,8 +218,8 @@ export async function saveMeetingAction(
     });
   }
 
-  await prisma.meeting.update({
-    where: { id: meetingId },
+  await prisma.meeting.updateMany({
+    where: { id: meetingId, congregationId: congregationId(user) },
     data: {
       confirmadorName,
       weekLabel,
@@ -250,8 +250,8 @@ export async function resetConfirmationAction(
   who: "p" | "s",
 ): Promise<void> {
   const user = await requireMeetingsAccess();
-  const assignment = await prisma.meetingAssignment.findUnique({
-    where: { id: assignmentId },
+  const assignment = await prisma.meetingAssignment.findFirst({
+    where: { id: assignmentId, meeting: { congregationId: congregationId(user) } },
     select: { id: true, meetingId: true },
   });
   if (!assignment) return;
@@ -286,8 +286,8 @@ export async function confirmAssignmentAction(
   who: "p" | "s",
 ): Promise<void> {
   const user = await requireMeetingsAccess();
-  const assignment = await prisma.meetingAssignment.findUnique({
-    where: { id: assignmentId },
+  const assignment = await prisma.meetingAssignment.findFirst({
+    where: { id: assignmentId, meeting: { congregationId: congregationId(user) } },
     select: { id: true, meetingId: true },
   });
   if (!assignment) return;
@@ -322,13 +322,14 @@ export async function reorderAssignmentsAction(
   orderedIds: string[],
 ): Promise<void> {
   const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
   const ids = orderedIds.filter(Boolean);
   if (ids.length === 0) return;
 
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.meetingAssignment.updateMany({
-        where: { id, meetingId },
+        where: { id, meetingId, meeting: { congregationId: cong } },
         data: { order: index },
       }),
     ),
@@ -355,8 +356,8 @@ export async function setMeetingConfirmadorAction(
 ): Promise<void> {
   const user = await requireMeetingsAccess();
   const clean = name.trim() || null;
-  await prisma.meeting.update({
-    where: { id: meetingId },
+  await prisma.meeting.updateMany({
+    where: { id: meetingId, congregationId: congregationId(user) },
     data: { confirmadorName: clean },
   });
 
@@ -374,7 +375,9 @@ export async function setMeetingConfirmadorAction(
 
 export async function deleteAllMeetingsAction(): Promise<void> {
   const user = await requireMeetingsAccess();
-  const res = await prisma.meeting.deleteMany({});
+  const res = await prisma.meeting.deleteMany({
+    where: { congregationId: congregationId(user) },
+  });
   await logAudit({
     userId: user.id,
     action: "ELIMINAR",
@@ -389,7 +392,11 @@ export async function deleteMeetingAction(formData: FormData): Promise<void> {
   const user = await requireMeetingsAccess();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.meeting.delete({ where: { id } });
+  // deleteMany acota por congregación: no se puede borrar una reunión ajena.
+  const borrada = await prisma.meeting.deleteMany({
+    where: { id, congregationId: congregationId(user) },
+  });
+  if (borrada.count === 0) return;
   await logAudit({
     userId: user.id,
     action: "ELIMINAR",

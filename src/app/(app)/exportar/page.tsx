@@ -1,13 +1,16 @@
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody } from "@/components/ui";
 import { ExportPanel } from "@/components/ExportPanel";
 
 export default async function ExportarPage() {
-  await requireSecretary();
+  const user = await requireSecretary();
 
   const groups = await prisma.group.findMany({
+    where: { congregationId: congregationId(user) },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

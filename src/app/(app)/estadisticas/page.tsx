@@ -1,4 +1,9 @@
-import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
+import {
+  requireReportsAccess,
+  isSecretary,
+  scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName } from "@/lib/constants";
 import { parsePeriod, previousPeriod } from "@/lib/period";
@@ -38,8 +43,11 @@ export default async function EstadisticasPage({
   // Grupo objetivo: super/aux -> el suyo; secretario -> filtro opcional.
   const targetGroupId = secretary ? sp.grupo || null : scope;
 
+  const cong = congregationId(user);
+
   const groups = secretary
     ? await prisma.group.findMany({
+        where: { congregationId: cong },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -47,7 +55,7 @@ export default async function EstadisticasPage({
 
   // Estadísticas principales del período.
   const stats = await getPeriodStats(
-    targetGroupId ? { groupId: targetGroupId } : {},
+    { congregationId: cong, ...(targetGroupId ? { groupId: targetGroupId } : {}) },
     year,
     month,
   );
@@ -55,11 +63,11 @@ export default async function EstadisticasPage({
   // Comparación entre grupos (solo secretario, vista congregacional).
   const congregation =
     secretary && !targetGroupId
-      ? await getCongregationStats(year, month)
+      ? await getCongregationStats(cong, year, month)
       : null;
 
   // Evolución mensual del año.
-  const evolution = await getMonthlyEvolution(targetGroupId, year);
+  const evolution = await getMonthlyEvolution(cong, targetGroupId, year);
 
   const scopeLabel = targetGroupId
     ? (groups.find((g) => g.id === targetGroupId)?.name ??

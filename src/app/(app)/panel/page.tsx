@@ -1,4 +1,6 @@
-import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { roleLabel, monthName } from "@/lib/constants";
 import { previousPeriod } from "@/lib/period";
 import {
@@ -28,7 +30,12 @@ export default async function PanelPage() {
   const periodLabel = `${monthName(month)} ${year}`;
 
   const scope = scopedGroupId(user); // null si secretario
-  const stats = await getPeriodStats(scope ? { groupId: scope } : {}, year, month);
+  const cong = congregationId(user);
+  const stats = await getPeriodStats(
+    { congregationId: cong, ...(scope ? { groupId: scope } : {}) },
+    year,
+    month,
+  );
 
   return (
     <>
@@ -87,6 +94,7 @@ export default async function PanelPage() {
         {secretary ? (
           <div className="order-3">
             <PendingByGroup
+              congregationId={cong}
               year={year}
               month={month}
               periodLabel={periodLabel}
@@ -99,17 +107,19 @@ export default async function PanelPage() {
 }
 
 async function PendingByGroup({
+  congregationId: cong,
   year,
   month,
   periodLabel,
 }: {
+  congregationId: string;
   year: number;
   month: number;
   periodLabel: string;
 }) {
   const [pending, pendingPublishers] = await Promise.all([
-    getPendingCountByGroup(year, month),
-    getPendingPublishers(null, year, month),
+    getPendingCountByGroup(cong, year, month),
+    getPendingPublishers(cong, null, year, month),
   ]);
   const groupsWithPending = pending.filter((g) => g.pending > 0);
   const totalGroups = pending.length;

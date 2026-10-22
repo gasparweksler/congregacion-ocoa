@@ -99,7 +99,10 @@ export async function deleteGroupAction(formData: FormData): Promise<void> {
 
   // Al eliminar un grupo se borran en cascada sus publicadores e informes
   // (definido en el esquema). La confirmación se realiza en la interfaz.
-  await prisma.group.delete({ where: { id } });
+  // deleteMany acota por congregación: no se puede borrar un grupo ajeno.
+  await prisma.group.deleteMany({
+    where: { id, congregationId: congregationId(user) },
+  });
 
   await logAudit({
     userId: user.id,

@@ -1,4 +1,6 @@
-import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { isPioneer, monthName } from "@/lib/constants";
 import { parsePeriod, previousPeriod } from "@/lib/period";
@@ -28,6 +30,7 @@ export default async function InformesPage({
 }) {
   const user = await requireReportsAccess();
   const secretary = isSecretary(user);
+  const cong = congregationId(user);
   const sp = await searchParams;
   // Por defecto se muestra el mes anterior (el que toca informar). Editable.
   const { year, month } = parsePeriod(sp.anio, sp.mes, previousPeriod());
@@ -42,6 +45,7 @@ export default async function InformesPage({
   // el formulario inicia bloqueado (hasta pulsar "Editar informe").
   const periodReport = await prisma.monthlyReport.findFirst({
     where: {
+      congregationId: cong,
       year,
       month,
       publisher: {
@@ -63,6 +67,7 @@ export default async function InformesPage({
 
   const groups = secretary
     ? await prisma.group.findMany({
+        where: { congregationId: cong },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -74,7 +79,7 @@ export default async function InformesPage({
   let pendingGroups: { id: string; name: string }[] = [];
   if (secretary) {
     const reported = await prisma.monthlyReport.findMany({
-      where: { year: prev.year, month: prev.month },
+      where: { congregationId: cong, year: prev.year, month: prev.month },
       select: { publisher: { select: { groupId: true } } },
     });
     const reportedIds = new Set(reported.map((r) => r.publisher.groupId));
@@ -84,6 +89,7 @@ export default async function InformesPage({
 
   const publishers = await prisma.publisher.findMany({
     where: {
+      congregationId: cong,
       ...(pub ? { id: pub } : {}),
       ...(scope ? { groupId: scope } : {}),
       ...(groupFilter ? { groupId: groupFilter } : {}),

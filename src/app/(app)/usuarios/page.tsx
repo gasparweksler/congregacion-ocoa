@@ -1,4 +1,6 @@
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState } from "@/components/ui";
@@ -7,13 +9,16 @@ import { UserRow } from "@/components/forms/UserRow";
 
 export default async function UsuariosPage() {
   const actor = await requireSecretary();
+  const cong = congregationId(actor);
 
   const [groups, users] = await Promise.all([
     prisma.group.findMany({
+      where: { congregationId: cong },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
     prisma.user.findMany({
+      where: { congregationId: cong },
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: {
         id: true,

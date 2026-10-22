@@ -91,7 +91,9 @@ export async function updatePublisherAction(
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Publicador no especificado." };
 
-  const current = await prisma.publisher.findUnique({ where: { id } });
+  const current = await prisma.publisher.findFirst({
+    where: { id, congregationId: congregationId(user) },
+  });
   if (!current) return { error: "Publicador no encontrado." };
 
   // Acceso al grupo actual del publicador.
@@ -121,7 +123,7 @@ export async function updatePublisherAction(
   const statusChanged = data.status !== current.status;
 
   await prisma.publisher.update({
-    where: { id },
+    where: { id, congregationId: congregationId(user) },
     data: {
       fullName: data.fullName,
       sex: data.sex ?? null,
@@ -171,8 +173,8 @@ export async function changePublisherGroupAction(
   if (!id) return { error: "Publicador no especificado." };
   if (!groupId) return { error: "Selecciona un grupo." };
 
-  const current = await prisma.publisher.findUnique({
-    where: { id },
+  const current = await prisma.publisher.findFirst({
+    where: { id, congregationId: congregationId(user) },
     select: { fullName: true, groupId: true },
   });
   if (!current) return { error: "Publicador no encontrado." };
@@ -186,13 +188,16 @@ export async function changePublisherGroupAction(
     return { success: "El publicador ya pertenece a ese grupo." };
   }
 
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
+  const group = await prisma.group.findFirst({
+    where: { id: groupId, congregationId: congregationId(user) },
     select: { name: true },
   });
   if (!group) return { error: "El grupo seleccionado no existe." };
 
-  await prisma.publisher.update({ where: { id }, data: { groupId } });
+  await prisma.publisher.updateMany({
+    where: { id, congregationId: congregationId(user) },
+    data: { groupId },
+  });
 
   await logAudit({
     userId: user.id,
@@ -212,8 +217,8 @@ export async function deletePublisherAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  const current = await prisma.publisher.findUnique({
-    where: { id },
+  const current = await prisma.publisher.findFirst({
+    where: { id, congregationId: congregationId(user) },
     select: { fullName: true, groupId: true },
   });
   if (!current) return;
@@ -221,7 +226,10 @@ export async function deletePublisherAction(formData: FormData): Promise<void> {
   assertGroupAccess(user, current.groupId);
 
   // Borra en cascada sus informes e historial (definido en el esquema).
-  await prisma.publisher.delete({ where: { id } });
+  const eliminado = await prisma.publisher.deleteMany({
+    where: { id, congregationId: congregationId(user) },
+  });
+  if (eliminado.count === 0) return;
 
   await logAudit({
     userId: user.id,

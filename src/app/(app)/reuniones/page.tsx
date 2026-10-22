@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   meetingDayLabel,
@@ -23,9 +25,11 @@ import {
 } from "@/server/meeting-actions";
 
 export default async function ReunionesPage() {
-  await requireMeetingsAccess();
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
 
   const meetingsRaw = await prisma.meeting.findMany({
+    where: { congregationId: cong },
     include: { assignments: true },
   });
   // Orden por cercanía a la fecha de hoy: la más cercana primero, la más lejana
@@ -40,6 +44,7 @@ export default async function ReunionesPage() {
   const confirmadoresUsers = await prisma.user.findMany({
     where: {
       active: true,
+      congregationId: cong,
       OR: [
         { alsoConfirmador: true },
         { role: ROLES.RESPONSABLE_CONFIRMACIONES },

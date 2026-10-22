@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName, isPioneer } from "@/lib/constants";
 import { PageHeader } from "@/components/PageHeader";
@@ -13,11 +15,11 @@ export default async function ReporteDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireSecretary();
+  const user = await requireSecretary();
   const { id } = await params;
 
-  const report = await prisma.monthlyReport.findUnique({
-    where: { id },
+  const report = await prisma.monthlyReport.findFirst({
+    where: { id, congregationId: congregationId(user) },
     select: {
       id: true,
       year: true,

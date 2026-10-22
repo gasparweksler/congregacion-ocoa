@@ -1,4 +1,6 @@
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName } from "@/lib/constants";
 import { parsePeriod } from "@/lib/period";
@@ -15,16 +17,19 @@ export default async function ResponsabilidadesMensualPage({
 }: {
   searchParams: Promise<{ anio?: string; mes?: string }>;
 }) {
-  await requireMeetingsAccess();
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);
 
   const [publishersRaw, groupsRaw, rows] = await Promise.all([
     prisma.publisher.findMany({
+      where: { congregationId: cong },
       orderBy: { fullName: "asc" },
       select: { fullName: true },
     }),
     prisma.group.findMany({
+      where: { congregationId: cong },
       orderBy: { name: "asc" },
       select: { name: true },
     }),

@@ -34,8 +34,8 @@ export async function updateSingleReportAction(
 ): Promise<FormState> {
   const user = await requireSecretary();
   const id = String(formData.get("id") ?? "");
-  const report = await prisma.monthlyReport.findUnique({
-    where: { id },
+  const report = await prisma.monthlyReport.findFirst({
+    where: { id, congregationId: congregationId(user) },
     select: {
       statusAtReport: true,
       publisherId: true,
@@ -62,6 +62,7 @@ export async function updateSingleReportAction(
   if (newYear !== report.year || newMonth !== report.month) {
     const clash = await prisma.monthlyReport.findFirst({
       where: {
+        congregationId: congregationId(user),
         publisherId: report.publisherId,
         year: newYear,
         month: newMonth,
@@ -77,8 +78,8 @@ export async function updateSingleReportAction(
     }
   }
 
-  await prisma.monthlyReport.update({
-    where: { id },
+  await prisma.monthlyReport.updateMany({
+    where: { id, congregationId: congregationId(user) },
     data: {
       year: newYear,
       month: newMonth,
@@ -126,8 +127,10 @@ export async function moveReportsPeriodAction(
     return { error: "El período de origen y el de destino son iguales." };
   }
 
+  const cong = congregationId(user);
   const source = await prisma.monthlyReport.findMany({
     where: {
+      congregationId: cong,
       year: fromYear,
       month: fromMonth,
       ...(groupId ? { publisher: { groupId } } : {}),
@@ -146,13 +149,14 @@ export async function moveReportsPeriodAction(
   await prisma.$transaction([
     prisma.monthlyReport.deleteMany({
       where: {
+        congregationId: cong,
         year: toYear,
         month: toMonth,
         publisherId: { in: publisherIds },
       },
     }),
     prisma.monthlyReport.updateMany({
-      where: { id: { in: source.map((r) => r.id) } },
+      where: { id: { in: source.map((r) => r.id) }, congregationId: cong },
       data: { year: toYear, month: toMonth },
     }),
   ]);
@@ -178,7 +182,10 @@ export async function deleteSingleReportAction(
   const user = await requireSecretary();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.monthlyReport.delete({ where: { id } });
+  const eliminado = await prisma.monthlyReport.deleteMany({
+    where: { id, congregationId: congregationId(user) },
+  });
+  if (eliminado.count === 0) return;
   await logAudit({
     userId: user.id,
     action: "ELIMINAR",
@@ -209,6 +216,7 @@ export async function deleteReportsPeriodAction(
 
   const res = await prisma.monthlyReport.deleteMany({
     where: {
+      congregationId: congregationId(user),
       year,
       month,
       ...(groupId ? { publisher: { groupId } } : {}),

@@ -8,7 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary, congregationId } from "@/lib/access";
 import { hashPassword } from "@/lib/password";
 import { createUserSchema, updateUserSchema } from "@/lib/validations";
 import { ROLES, GROUP_ROLES, roleLabel, type Role } from "@/lib/constants";
@@ -62,10 +62,13 @@ export async function createUserAction(
   });
   if (exists) return { error: "Ese nombre de usuario ya está en uso." };
 
+  const cong = congregationId(actor);
   const groupId = resolveGroupId(data.role, data.groupId);
-  // Verificar que el grupo exista cuando corresponde.
+  // El grupo debe existir Y pertenecer a la misma congregación.
   if (groupId) {
-    const g = await prisma.group.findUnique({ where: { id: groupId } });
+    const g = await prisma.group.findFirst({
+      where: { id: groupId, congregationId: cong },
+    });
     if (!g) return { error: "El grupo seleccionado no existe." };
   }
 
@@ -86,6 +89,7 @@ export async function createUserAction(
       plainPassword: data.password,
       role: data.role,
       groupId,
+      congregationId: cong,
       mustChangePassword: data.mustChangePassword ?? false,
       alsoConfirmador,
       groupRoleLabel,
@@ -126,7 +130,10 @@ export async function updateUserAction(
   }
   const data = parsed.data;
 
-  const target = await prisma.user.findUnique({ where: { id: data.id } });
+  const cong = congregationId(actor);
+  const target = await prisma.user.findFirst({
+    where: { id: data.id, congregationId: cong },
+  });
   if (!target) return { error: "Usuario no encontrado." };
 
   // El usuario no puede desactivarse a sí mismo (se quedaría fuera): su cuenta
@@ -141,7 +148,9 @@ export async function updateUserAction(
 
   const groupId = resolveGroupId(data.role, data.groupId);
   if (groupId) {
-    const g = await prisma.group.findUnique({ where: { id: groupId } });
+    const g = await prisma.group.findFirst({
+      where: { id: groupId, congregationId: cong },
+    });
     if (!g) return { error: "El grupo seleccionado no existe." };
   }
 
@@ -153,8 +162,8 @@ export async function updateUserAction(
     data.groupRoleLabel,
   );
 
-  await prisma.user.update({
-    where: { id: data.id },
+  await prisma.user.updateMany({
+    where: { id: data.id, congregationId: cong },
     data: {
       name: data.name,
       username: data.username,
@@ -193,21 +202,22 @@ export async function deleteUserAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id || id === actor.id) return; // nunca eliminarse a sí mismo
 
-  const target = await prisma.user.findUnique({
-    where: { id },
+  const cong = congregationId(actor);
+  const target = await prisma.user.findFirst({
+    where: { id, congregationId: cong },
     select: { username: true, role: true },
   });
   if (!target) return;
 
-  // Evitar eliminar al último Secretario activo del sistema.
+  // Evitar eliminar al último Administrador de ESTA congregación.
   if (target.role === ROLES.SECRETARIO) {
     const secretarios = await prisma.user.count({
-      where: { role: ROLES.SECRETARIO },
+      where: { role: ROLES.SECRETARIO, congregationId: cong },
     });
     if (secretarios <= 1) return;
   }
 
-  await prisma.user.delete({ where: { id } });
+  await prisma.user.deleteMany({ where: { id, congregationId: cong } });
 
   await logAudit({
     userId: actor.id,

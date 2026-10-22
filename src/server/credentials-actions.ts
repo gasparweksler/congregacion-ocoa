@@ -10,7 +10,9 @@
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { roleLabel } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 
@@ -54,6 +56,7 @@ export async function revealCredentialsAction(
   }
 
   const users = await prisma.user.findMany({
+    where: { congregationId: congregationId(actor) },
     orderBy: [{ role: "asc" }, { name: "asc" }],
     select: {
       name: true,

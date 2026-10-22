@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName, statusLabel } from "@/lib/constants";
 import type { Prisma } from "@prisma/client";
@@ -33,7 +35,8 @@ export default async function HistorialInformesPage({
     tipo?: string;
   }>;
 }) {
-  await requireSecretary();
+  const user = await requireSecretary();
+  const cong = congregationId(user);
   const sp = await searchParams;
   const year = parseInt(sp.anio ?? "", 10);
   const month = parseInt(sp.mes ?? "", 10);
@@ -41,6 +44,7 @@ export default async function HistorialInformesPage({
   const tipo = sp.tipo || undefined;
 
   const where: Prisma.MonthlyReportWhereInput = {
+    congregationId: cong,
     ...(!isNaN(year) ? { year } : {}),
     ...(!isNaN(month) ? { month } : {}),
     ...(grupo ? { publisher: { groupId: grupo } } : {}),
@@ -49,6 +53,7 @@ export default async function HistorialInformesPage({
 
   const [groups, reports] = await Promise.all([
     prisma.group.findMany({
+      where: { congregationId: cong },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

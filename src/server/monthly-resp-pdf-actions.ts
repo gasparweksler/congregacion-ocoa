@@ -15,7 +15,9 @@
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess,
+  congregationId,
+} from "@/lib/access";
 import { MONTHLY_RESPONSIBILITIES } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
 import { extractPdfItems } from "@/lib/pdf-text";
@@ -77,7 +79,7 @@ const EMPTY: Omit<PdfPreviewResult, "ok" | "error"> = {
 export async function previewResponsibilitiesPdfAction(
   formData: FormData,
 ): Promise<PdfPreviewResult> {
-  await requireMeetingsAccess();
+  const user = await requireMeetingsAccess();
 
   const year = Number(formData.get("anio"));
   const month = Number(formData.get("mes"));
@@ -125,10 +127,15 @@ export async function previewResponsibilitiesPdfAction(
 
   const [publishersRaw, groupsRaw, currentRows] = await Promise.all([
     prisma.publisher.findMany({
+      where: { congregationId: congregationId(user) },
       orderBy: { fullName: "asc" },
       select: { fullName: true },
     }),
-    prisma.group.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
+    prisma.group.findMany({
+      where: { congregationId: congregationId(user) },
+      orderBy: { name: "asc" },
+      select: { name: true },
+    }),
     getMonthlyResponsibilities(year, month),
   ]);
   const publishers = publishersRaw.map((p) => p.fullName);

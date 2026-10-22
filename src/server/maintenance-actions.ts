@@ -8,7 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary, congregationId } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 
 /** Elimina todos los informes de un año concreto. */
@@ -19,7 +19,10 @@ export async function deleteReportsByYearAction(
   const year = parseInt(String(formData.get("year") ?? ""), 10);
   if (isNaN(year)) return;
 
-  const { count } = await prisma.monthlyReport.deleteMany({ where: { year } });
+  // Acotado a su congregación: nunca borra informes de otra.
+  const { count } = await prisma.monthlyReport.deleteMany({
+    where: { congregationId: congregationId(user), year },
+  });
 
   await logAudit({
     userId: user.id,
@@ -36,7 +39,9 @@ export async function deleteReportsByYearAction(
 export async function deleteAllReportsAction(): Promise<void> {
   const user = await requireSecretary();
 
-  const { count } = await prisma.monthlyReport.deleteMany({});
+  const { count } = await prisma.monthlyReport.deleteMany({
+    where: { congregationId: congregationId(user) },
+  });
 
   await logAudit({
     userId: user.id,

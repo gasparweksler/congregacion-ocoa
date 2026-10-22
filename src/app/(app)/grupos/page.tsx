@@ -1,4 +1,6 @@
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -13,9 +15,10 @@ import { GroupCreateForm } from "@/components/forms/GroupCreateForm";
 import { GroupRow } from "@/components/forms/GroupRow";
 
 export default async function GruposPage() {
-  await requireSecretary();
+  const user = await requireSecretary();
 
   const groups = await prisma.group.findMany({
+    where: { congregationId: congregationId(user) },
     orderBy: { name: "asc" },
     select: {
       id: true,

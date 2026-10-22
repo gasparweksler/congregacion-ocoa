@@ -76,12 +76,16 @@ function emptyParticipation(): Record<PublisherStatus, { yes: number; no: number
 
 /** Estadísticas de un conjunto de publicadores para un período concreto. */
 export async function getPeriodStats(
-  where: { groupId?: string },
+  // congregationId es OBLIGATORIO: ninguna estadística puede quedar sin acotar.
+  where: { congregationId: string; groupId?: string },
   year: number,
   month: number,
 ): Promise<PeriodStats> {
   const publishers = await prisma.publisher.findMany({
-    where: { ...(where.groupId ? { groupId: where.groupId } : {}) },
+    where: {
+      congregationId: where.congregationId,
+      ...(where.groupId ? { groupId: where.groupId } : {}),
+    },
     orderBy: { fullName: "asc" },
     select: {
       id: true,
@@ -93,6 +97,7 @@ export async function getPeriodStats(
 
   const reports = await prisma.monthlyReport.findMany({
     where: {
+      congregationId: where.congregationId,
       year,
       month,
       ...(where.groupId ? { publisher: { groupId: where.groupId } } : {}),
@@ -304,10 +309,12 @@ export type GroupComparison = {
 
 /** Estadísticas congregacionales: totales + comparación por grupo. */
 export async function getCongregationStats(
+  congregationId: string,
   year: number,
   month: number,
 ): Promise<{ totals: PeriodStats; perGroup: GroupComparison[] }> {
   const groups = await prisma.group.findMany({
+    where: { congregationId },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -317,11 +324,11 @@ export async function getCongregationStats(
     perGroup.push({
       groupId: g.id,
       groupName: g.name,
-      stats: await getPeriodStats({ groupId: g.id }, year, month),
+      stats: await getPeriodStats({ congregationId, groupId: g.id }, year, month),
     });
   }
 
-  const totals = await getPeriodStats({}, year, month);
+  const totals = await getPeriodStats({ congregationId }, year, month);
   return { totals, perGroup };
 }
 
@@ -335,11 +342,13 @@ export type MonthlyPoint = {
 
 /** Evolución mes a mes dentro de un año (para gráficos de tendencia). */
 export async function getMonthlyEvolution(
+  congregationId: string,
   groupId: string | null,
   year: number,
 ): Promise<MonthlyPoint[]> {
   const reports = await prisma.monthlyReport.findMany({
     where: {
+      congregationId,
       year,
       ...(groupId ? { publisher: { groupId } } : {}),
     },
@@ -367,6 +376,7 @@ export async function getMonthlyEvolution(
 
 /** Totales por año (para evolución anual). */
 export async function getAnnualEvolution(
+  congregationId: string,
   groupId: string | null,
   years: number[],
 ): Promise<
@@ -375,7 +385,11 @@ export async function getAnnualEvolution(
   const result = [];
   for (const year of years) {
     const reports = await prisma.monthlyReport.findMany({
-      where: { year, ...(groupId ? { publisher: { groupId } } : {}) },
+      where: {
+        congregationId,
+        year,
+        ...(groupId ? { publisher: { groupId } } : {}),
+      },
       select: { participated: true, hours: true, bibleStudies: true },
     });
     result.push({
@@ -390,12 +404,14 @@ export async function getAnnualEvolution(
 
 /** Publicadores SIN informe en el período (pendientes de informar). */
 export async function getPendingPublishers(
+  congregationId: string,
   groupId: string | null,
   year: number,
   month: number,
 ): Promise<Array<{ id: string; fullName: string; groupName: string | null }>> {
   const publishers = await prisma.publisher.findMany({
     where: {
+      congregationId,
       ...(groupId ? { groupId } : {}),
       // Sin ningún informe que coincida con el período.
       reports: { none: { year, month } },
@@ -416,12 +432,14 @@ export async function getPendingPublishers(
 
 /** Conteo de pendientes por grupo (para alertas del panel del secretario). */
 export async function getPendingCountByGroup(
+  congregationId: string,
   year: number,
   month: number,
 ): Promise<
   Array<{ groupId: string; groupName: string; pending: number; total: number }>
 > {
   const groups = await prisma.group.findMany({
+    where: { congregationId },
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -433,7 +451,11 @@ export async function getPendingCountByGroup(
   const result = [];
   for (const g of groups) {
     const pending = await prisma.publisher.count({
-      where: { groupId: g.id, reports: { none: { year, month } } },
+      where: {
+        congregationId,
+        groupId: g.id,
+        reports: { none: { year, month } },
+      },
     });
     result.push({
       groupId: g.id,

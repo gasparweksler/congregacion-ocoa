@@ -1,4 +1,6 @@
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -28,9 +30,10 @@ function actionTone(action: string) {
 }
 
 export default async function AuditoriaPage() {
-  await requireSecretary();
+  const user = await requireSecretary();
 
   const logs = await prisma.auditLog.findMany({
+    where: { congregationId: congregationId(user) },
     orderBy: { createdAt: "desc" },
     take: 150,
     include: { user: { select: { name: true, username: true } } },

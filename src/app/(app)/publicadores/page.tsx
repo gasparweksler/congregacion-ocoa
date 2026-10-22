@@ -1,4 +1,6 @@
-import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireReportsAccess, isSecretary, scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
@@ -19,6 +21,7 @@ export default async function PublicadoresPage({
   const { grupo } = await searchParams;
 
   // Alcance: super/aux limitados a su grupo; secretario puede filtrar.
+  const cong = congregationId(user);
   const scope = scopedGroupId(user); // null si secretario
   const groupFilter = secretary ? grupo : (scope ?? undefined);
 
@@ -28,6 +31,7 @@ export default async function PublicadoresPage({
 
   const groups = secretary
     ? await prisma.group.findMany({
+        where: { congregationId: cong },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -35,6 +39,7 @@ export default async function PublicadoresPage({
 
   const publishers = await prisma.publisher.findMany({
     where: {
+      congregationId: cong,
       ...(scope ? { groupId: scope } : {}),
       ...(groupFilter ? { groupId: groupFilter } : {}),
     },

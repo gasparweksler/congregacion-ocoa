@@ -40,6 +40,7 @@ function sexLabel(sex: string | null): string {
 
 /** Libro: listado completo de publicadores (opcionalmente de un grupo). */
 export async function buildPublishersWorkbook(
+  congregationId: string,
   groupId?: string,
 ): Promise<ExcelJS.Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -57,7 +58,7 @@ export async function buildPublishersWorkbook(
   styleHeader(ws.getRow(1));
 
   const publishers = await prisma.publisher.findMany({
-    where: { ...(groupId ? { groupId } : {}) },
+    where: { congregationId, ...(groupId ? { groupId } : {}) },
     orderBy: [{ group: { name: "asc" } }, { fullName: "asc" }],
     include: { group: { select: { name: true } } },
   });
@@ -79,6 +80,7 @@ export async function buildPublishersWorkbook(
 
 /** Libro: informes de un período (año/mes), opcionalmente por grupo. */
 export async function buildReportsWorkbook(
+  congregationId: string,
   year: number,
   month: number,
   groupId?: string,
@@ -100,6 +102,7 @@ export async function buildReportsWorkbook(
 
   const reports = await prisma.monthlyReport.findMany({
     where: {
+      congregationId,
       year,
       month,
       ...(groupId ? { publisher: { groupId } } : {}),
@@ -146,13 +149,18 @@ export async function buildReportsWorkbook(
 
 /** Libro: estadísticas generales + hoja por grupo para un período. */
 export async function buildStatsWorkbook(
+  congregationId: string,
   year: number,
   month: number,
 ): Promise<ExcelJS.Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Sistema Ocoa";
 
-  const { totals, perGroup } = await getCongregationStats(year, month);
+  const { totals, perGroup } = await getCongregationStats(
+    congregationId,
+    year,
+    month,
+  );
 
   // --- Hoja resumen general ---
   const resumen = wb.addWorksheet("Resumen general");
@@ -162,7 +170,7 @@ export async function buildStatsWorkbook(
 
   // Informes del período para el desglose detallado.
   const reports = await prisma.monthlyReport.findMany({
-    where: { year, month },
+    where: { congregationId, year, month },
     select: {
       participated: true,
       bibleStudies: true,
@@ -298,6 +306,7 @@ export async function buildStatsWorkbook(
  * lectura: no modifica ningún informe.
  */
 export async function buildHistoryWorkbook(
+  congregationId: string,
   year: number | null,
   month: number | null,
   groupId: string | null,
@@ -332,6 +341,7 @@ export async function buildHistoryWorkbook(
 
   const reports = await prisma.monthlyReport.findMany({
     where: {
+      congregationId,
       ...(year ? { year } : {}),
       ...(month ? { month } : {}),
       ...(groupId ? { publisher: { groupId } } : {}),

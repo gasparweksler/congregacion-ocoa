@@ -37,9 +37,17 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
-  if (user.role !== ROLES.SECRETARIO) {
+  if (user.role !== ROLES.SECRETARIO && user.role !== ROLES.SUPERADMIN) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+  // Toda exportación queda acotada a la congregación de quien la pide.
+  if (!user.congregationId) {
+    return NextResponse.json(
+      { error: "Tu usuario no pertenece a ninguna congregación." },
+      { status: 403 },
+    );
+  }
+  const cong = user.congregationId;
 
   const { searchParams } = request.nextUrl;
   const tipo = searchParams.get("tipo") ?? "publicadores";
@@ -55,16 +63,16 @@ export async function GET(request: NextRequest) {
 
     switch (tipo) {
       case "informes":
-        buffer = (await buildReportsWorkbook(year, month, grupo)) as ArrayBuffer;
+        buffer = (await buildReportsWorkbook(cong, year, month, grupo)) as ArrayBuffer;
         filename = `informes_de_todos_los_publicadores_${monthName(month)}_${year}.xlsx`;
         break;
       case "estadisticas":
-        buffer = (await buildStatsWorkbook(year, month)) as ArrayBuffer;
+        buffer = (await buildStatsWorkbook(cong, year, month)) as ArrayBuffer;
         filename = `estadisticas_${monthName(month)}_${year}.xlsx`;
         break;
       case "publicadores":
       default:
-        buffer = (await buildPublishersWorkbook(grupo)) as ArrayBuffer;
+        buffer = (await buildPublishersWorkbook(cong, grupo)) as ArrayBuffer;
         filename = `publicadores.xlsx`;
         break;
     }

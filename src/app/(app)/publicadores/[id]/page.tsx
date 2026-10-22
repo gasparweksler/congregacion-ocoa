@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser, canAccessGroup, isSecretary } from "@/lib/access";
+import { requireUser, canAccessGroup, isSecretary,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   statusLabel,
@@ -33,8 +35,8 @@ export default async function PublisherDetailPage({
   const user = await requireUser();
   const { id } = await params;
 
-  const publisher = await prisma.publisher.findUnique({
-    where: { id },
+  const publisher = await prisma.publisher.findFirst({
+    where: { id, congregationId: congregationId(user) },
     include: {
       group: { select: { name: true } },
       statusChanges: { orderBy: { changedAt: "desc" } },
@@ -52,6 +54,7 @@ export default async function PublisherDetailPage({
   // Solo el Secretario puede mover de grupo, así que solo él ve ese campo.
   const groups = secretary
     ? await prisma.group.findMany({
+        where: { congregationId: congregationId(user) },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })

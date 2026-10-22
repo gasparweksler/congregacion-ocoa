@@ -20,7 +20,9 @@ import { NextRequest, NextResponse } from "next/server";
 import JSZip from "jszip";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireUser, isSecretary, scopedGroupId } from "@/lib/access";
+import { requireUser, isSecretary, scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { PUBLISHER_STATUS_VALUES, PRIVILEGE_VALUES } from "@/lib/constants";
 import {
   buildPublisherCard,
@@ -62,6 +64,7 @@ export async function GET(request: NextRequest) {
   const groupId = isSecretary(user) ? grupo : (scope ?? undefined);
 
   const where: Prisma.PublisherWhereInput = {
+    congregationId: congregationId(user),
     ...(pub ? { id: pub } : {}),
     ...(groupId ? { groupId } : {}),
     ...(scope ? { groupId: scope } : {}),
@@ -91,6 +94,7 @@ export async function GET(request: NextRequest) {
   const months = serviceYearMonths(serviceYear);
   const reports = await prisma.monthlyReport.findMany({
     where: {
+      congregationId: congregationId(user),
       publisherId: { in: publishers.map((p) => p.id) },
       OR: months.map((m) => ({ year: m.year, month: m.month })),
     },

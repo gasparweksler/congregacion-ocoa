@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess,
+  congregationId,
+} from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   meetingDayLabel,
@@ -22,16 +24,18 @@ export default async function ReunionDetallePage({
   params: Promise<{ id: string }>;
 }) {
   const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
   const { id } = await params;
 
-  const meeting = await prisma.meeting.findUnique({
-    where: { id },
+  const meeting = await prisma.meeting.findFirst({
+    where: { id, congregationId: cong },
     include: { assignments: { orderBy: { order: "asc" } } },
   });
   if (!meeting) notFound();
 
   // Lista de hermanos (publicadores) para el buscador rápido.
   const publishers = await prisma.publisher.findMany({
+    where: { congregationId: cong },
     orderBy: { fullName: "asc" },
     select: { fullName: true },
   });

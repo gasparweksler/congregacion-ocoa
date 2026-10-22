@@ -7,7 +7,12 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireReportsAccess, isSecretary, scopedGroupId } from "@/lib/access";
+import {
+  requireReportsAccess,
+  isSecretary,
+  scopedGroupId,
+  congregationId,
+} from "@/lib/access";
 import { monthName } from "@/lib/constants";
 import { parsePeriod } from "@/lib/period";
 import { buildHistoryWorkbook } from "@/lib/excel";
@@ -37,6 +42,7 @@ export async function GET(request: NextRequest) {
   const groupId = isSecretary(user) ? searchParams.get("grupo") || null : scope;
 
   const buffer = (await buildHistoryWorkbook(
+    congregationId(user),
     year,
     month,
     groupId,

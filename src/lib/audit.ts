@@ -23,10 +23,24 @@ export async function logAudit(params: {
   entity: string;
   entityId?: string | null;
   details?: string | null;
+  /** Si no se indica, se toma la del usuario (así no hay que repetirlo). */
+  congregationId?: string | null;
 }): Promise<void> {
   try {
+    // La congregación se deduce del usuario para que ninguna anotación quede
+    // sin dueño y la pantalla de Auditoría solo muestre la de cada quien.
+    let congregationId = params.congregationId ?? null;
+    if (!congregationId && params.userId) {
+      const u = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { congregationId: true },
+      });
+      congregationId = u?.congregationId ?? null;
+    }
+
     await prisma.auditLog.create({
       data: {
+        congregationId,
         userId: params.userId ?? null,
         action: params.action,
         entity: params.entity,
