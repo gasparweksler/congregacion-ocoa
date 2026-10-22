@@ -319,8 +319,11 @@ export function MeetingEditor({
       `Hola querido Hermano/a *${name}* ${E.hug}\n\n` +
       `Le comento que para la reunión del día ${E.cal} *${dayLabel} ${dateLabel}* ` +
       `tiene la siguiente asignación: ${E.clip} *${label}*.\n\n` +
-      `${E.tie} Recuerde que para su asignación la vestimenta debe ser con ` +
-      `chaqueta y corbata (varones) y falda o vestido (mujeres) ${E.dress}\n\n` +
+      // WhatsApp no tiene subrayado: solo *negrita*, _cursiva_ y ~tachado~.
+      // Se usan negrita + cursiva para destacar el recordatorio. Los marcadores
+      // deben pegar al texto, así que los emojis van fuera.
+      `${E.tie} *_Recuerde que para su asignación la vestimenta debe ser con ` +
+      `chaqueta y corbata (varones) y falda o vestido (mujeres)_* ${E.dress}\n\n` +
       `${E.check} Por favor, haga click en el siguiente enlace para confirmar o ` +
       `rechazar la asignación. ¡Muchísimas gracias! ${E.pray}${E.smile}\n\n` +
       `${E.point} ${origin}/confirmar/${token}`
