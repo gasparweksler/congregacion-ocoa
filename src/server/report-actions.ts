@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
   requireUser,
+  congregationId,
   requireSecretary,
   canAccessGroup,
   scopedGroupId,
@@ -280,8 +281,10 @@ export async function saveReportsAction(
 
   // Traemos los publicadores reales (estado actual + grupo) para validar acceso
   // y registrar el estado del período de forma fiable.
+  const cong = congregationId(user);
+  // Solo publicadores de SU congregación: un id de otra no se puede tocar.
   const publishers = await prisma.publisher.findMany({
-    where: { id: { in: ids } },
+    where: { id: { in: ids }, congregationId: cong },
     select: { id: true, status: true, groupId: true },
   });
 
@@ -306,6 +309,7 @@ export async function saveReportsAction(
       },
       create: {
         publisherId: p.id,
+        congregationId: cong,
         year,
         month,
         participated,
@@ -341,7 +345,7 @@ export async function saveReportsAction(
   // devuelven a la pantalla: así se muestra exactamente lo que quedó en la base
   // de datos, sin recargar la aplicación entera.
   const stored = await prisma.monthlyReport.findMany({
-    where: { year, month, publisherId: { in: savedIds } },
+    where: { congregationId: cong, year, month, publisherId: { in: savedIds } },
     select: {
       publisherId: true,
       participated: true,

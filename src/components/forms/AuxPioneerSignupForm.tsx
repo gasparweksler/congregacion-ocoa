@@ -10,11 +10,14 @@ const initial: SignupState = {};
 export function AuxPioneerSignupForm({
   year,
   month,
+  congregacion,
   periodLabel,
   allow15,
 }: {
   year: number;
   month: number;
+  /** Identificador de la congregación que trae el enlace público. */
+  congregacion: string;
   periodLabel: string;
   allow15: boolean;
 }) {
@@ -36,6 +39,7 @@ export function AuxPioneerSignupForm({
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
+      <input type="hidden" name="congregacion" value={congregacion} />
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
 

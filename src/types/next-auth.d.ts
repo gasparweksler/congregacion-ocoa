@@ -1,7 +1,7 @@
 // ============================================================================
 //  Ampliación de tipos de NextAuth
-//  Añade los campos personalizados (role, groupId, username, ...) a la sesión
-//  y al token JWT para tener tipado fuerte en toda la aplicación.
+//  Añade los campos personalizados (role, groupId, congregationId, ...) a la
+//  sesión y al token JWT para tener tipado fuerte en toda la aplicación.
 // ============================================================================
 
 import type { Role } from "@/lib/constants";
@@ -13,6 +13,9 @@ declare module "next-auth" {
       id: string;
       role: Role;
       groupId: string | null;
+      // Congregación del usuario. Nulo solo para el SUPERADMIN.
+      congregationId: string | null;
+      congregationName: string | null;
       username: string;
       mustChangePassword: boolean;
       alsoConfirmador: boolean;
@@ -23,6 +26,8 @@ declare module "next-auth" {
     username: string;
     role: Role;
     groupId: string | null;
+    congregationId?: string | null;
+    congregationName?: string | null;
     mustChangePassword?: boolean;
     alsoConfirmador?: boolean;
   }
@@ -33,6 +38,8 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
     groupId: string | null;
+    congregationId: string | null;
+    congregationName: string | null;
     username: string;
     mustChangePassword: boolean;
     alsoConfirmador: boolean;

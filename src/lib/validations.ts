@@ -7,7 +7,7 @@
 import { z } from "zod";
 import {
   PUBLISHER_STATUS_VALUES,
-  ROLE_VALUES,
+  ASSIGNABLE_ROLE_VALUES,
   GROUP_ROLES,
   SEX,
   HOPE_VALUES,
@@ -61,7 +61,7 @@ export const createUserSchema = z
     password: z
       .string()
       .min(6, "La contraseña debe tener al menos 6 caracteres"),
-    role: z.enum(ROLE_VALUES as [string, ...string[]]),
+    role: z.enum(ASSIGNABLE_ROLE_VALUES as [string, ...string[]]),
     groupId: z.string().trim().optional().nullable(),
     mustChangePassword: z.boolean().optional().default(false),
     alsoConfirmador: z.boolean().optional().default(false),
@@ -78,7 +78,7 @@ export const updateUserSchema = z
     id: z.string().min(1),
     name: z.string().trim().min(2, "Ingresa el nombre completo"),
     username: usernameField,
-    role: z.enum(ROLE_VALUES as [string, ...string[]]),
+    role: z.enum(ASSIGNABLE_ROLE_VALUES as [string, ...string[]]),
     groupId: z.string().trim().optional().nullable(),
     active: z.boolean().optional().default(true),
     alsoConfirmador: z.boolean().optional().default(false),

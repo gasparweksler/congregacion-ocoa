@@ -6,7 +6,13 @@ import { EMPTY_FORM_STATE } from "@/server/actions-shared";
 import { Label, Input, Select, Button, Badge, Alert } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { ROLES, ROLE_LABELS, GROUP_ROLES, roleLabel } from "@/lib/constants";
+import {
+  ROLES,
+  ROLE_LABELS,
+  GROUP_ROLES,
+  ASSIGNABLE_ROLE_VALUES,
+  roleLabel,
+} from "@/lib/constants";
 
 type GroupOption = { id: string; name: string };
 export type UserRowData = {
@@ -117,7 +123,7 @@ export function UserRow({
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
-            {Object.values(ROLES).map((r) => (
+            {ASSIGNABLE_ROLE_VALUES.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>

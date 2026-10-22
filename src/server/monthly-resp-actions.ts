@@ -11,7 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import {
   MONTHLY_RESPONSIBILITIES,
   CONFIRM_STATUS,
@@ -86,14 +86,15 @@ export async function getMonthlyResponsibilities(
   year: number,
   month: number,
 ): Promise<MonthlyMeetingRow[]> {
-  await requireMeetingsAccess();
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
 
   // Ventana amplia (±8 días) para captar reuniones de rango cuya fecha guardada
   // caiga en semanas de borde del mes.
   const first = new Date(year, month - 1, 1 - 8, 0, 0, 0);
   const last = new Date(year, month, 1 + 8, 0, 0, 0);
   const meetings = await prisma.meeting.findMany({
-    where: { date: { gte: first, lt: last } },
+    where: { congregationId: cong, date: { gte: first, lt: last } },
     include: { assignments: true },
   });
 
@@ -126,6 +127,7 @@ async function createMeetingForDate(
   day: "JUEVES" | "SABADO",
   userId: string,
   userName: string | null,
+  cong: string,
 ): Promise<string> {
   // Asignaciones normales (Tesoros, SMM, VC…), SIN las responsabilidades viejas.
   const asigSlots = slotsForDay(day).filter(
@@ -145,6 +147,7 @@ async function createMeetingForDate(
     data: {
       date,
       day,
+      congregationId: cong,
       createdById: userId,
       confirmadorName: userName ?? null,
       assignments: {
@@ -171,7 +174,7 @@ async function createMeetingForDate(
     // impide y aquí se reutiliza la que ganó la carrera.
     if (isUniqueViolation(error)) {
       const existing = await prisma.meeting.findUnique({
-        where: { date_day: { date, day } },
+        where: { congregationId_date_day: { congregationId: cong, date, day } },
         select: { id: true },
       });
       if (existing) return existing.id;
@@ -201,8 +204,9 @@ export async function setMonthlyResponsibility(
   // lunes del rango). Si no existe, crearla perezosamente.
   const first = new Date(y, m - 1, d - 8, 0, 0, 0);
   const last = new Date(y, m - 1, d + 8, 0, 0, 0);
+  const cong = congregationId(user);
   const existing = await prisma.meeting.findMany({
-    where: { date: { gte: first, lt: last } },
+    where: { congregationId: cong, date: { gte: first, lt: last } },
     select: { id: true, date: true, day: true, weekLabel: true },
   });
   let meetingId = findWeekMeeting(existing, date, day)?.id ?? null;
@@ -210,12 +214,18 @@ export async function setMonthlyResponsibility(
   if (!meetingId) {
     // Si se está limpiando un valor vacío y no hay reunión, no crear nada.
     if (!clean) return;
-    meetingId = await createMeetingForDate(date, day, user.id, user.name ?? null);
+    meetingId = await createMeetingForDate(
+      date,
+      day,
+      user.id,
+      user.name ?? null,
+      cong,
+    );
   }
 
   // Buscar/crear la asignación canónica de esta responsabilidad.
   const assignment = await prisma.meetingAssignment.findFirst({
-    where: { meetingId, slotKey },
+    where: { meetingId, slotKey, meeting: { congregationId: cong } },
   });
 
   const isGroup = resp.kind === "group";

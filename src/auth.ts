@@ -29,9 +29,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials?.password ?? "");
         if (!username || !password) return null;
 
-        const user = await prisma.user.findUnique({ where: { username } });
+        const user = await prisma.user.findUnique({
+          where: { username },
+          include: { congregation: { select: { name: true, active: true } } },
+        });
         // Usuario inexistente o desactivado => acceso denegado.
         if (!user || !user.active) return null;
+        // Congregación desactivada => nadie de ella puede entrar (el Superadmin
+        // no tiene congregación, así que no le afecta).
+        if (user.congregation && !user.congregation.active) return null;
 
         const valid = await verifyPassword(password, user.passwordHash);
         if (!valid) return null;
@@ -43,6 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           username: user.username,
           role: user.role as Role,
           groupId: user.groupId,
+          congregationId: user.congregationId,
+          congregationName: user.congregation?.name ?? null,
           mustChangePassword: user.mustChangePassword,
           alsoConfirmador: user.alsoConfirmador,
         };
@@ -56,6 +64,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id as string;
         token.role = user.role;
         token.groupId = user.groupId ?? null;
+        token.congregationId = user.congregationId ?? null;
+        token.congregationName = user.congregationName ?? null;
         token.username = user.username;
         token.mustChangePassword = user.mustChangePassword ?? false;
         token.alsoConfirmador = user.alsoConfirmador ?? false;
@@ -68,6 +78,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.groupId = (token.groupId as string | null) ?? null;
+        session.user.congregationId =
+          (token.congregationId as string | null) ?? null;
+        session.user.congregationName =
+          (token.congregationName as string | null) ?? null;
         session.user.username = token.username as string;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
         session.user.alsoConfirmador = Boolean(token.alsoConfirmador);

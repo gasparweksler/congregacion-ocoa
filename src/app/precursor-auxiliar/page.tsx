@@ -1,5 +1,6 @@
 import { monthName } from "@/lib/constants";
 import { parsePeriod } from "@/lib/period";
+import { prisma } from "@/lib/prisma";
 import { isFifteenAllowed } from "@/server/aux-pioneer-actions";
 import { AuxPioneerSignupForm } from "@/components/forms/AuxPioneerSignupForm";
 
@@ -33,13 +34,38 @@ function Shell({ children }: { children: React.ReactNode }) {
 export default async function PrecursorAuxiliarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string }>;
+  searchParams: Promise<{ anio?: string; mes?: string; congregacion?: string }>;
 }) {
   const sp = await searchParams;
   // El período viene en el enlace; si falta o es inválido, usa el mes actual.
   const { year, month } = parsePeriod(sp.anio, sp.mes);
   const periodLabel = `${monthName(month)} ${year}`;
-  const allow15 = await isFifteenAllowed(year, month);
+
+  // La congregación también viene en el enlace. Sin ella no se puede mostrar
+  // el formulario: la inscripción no sabría a qué congregación pertenece.
+  const slug = (sp.congregacion ?? "").trim();
+  const congregation = slug
+    ? await prisma.congregation.findFirst({
+        where: { slug, active: true },
+        select: { id: true, name: true, slug: true },
+      })
+    : null;
+
+  if (!congregation) {
+    return (
+      <Shell>
+        <h1 className="text-lg font-semibold text-foreground">
+          Enlace no válido
+        </h1>
+        <p className="mt-2 text-sm text-muted">
+          Este enlace de inscripción no corresponde a ninguna congregación
+          activa. Pide a tu administrador que te envíe uno nuevo.
+        </p>
+      </Shell>
+    );
+  }
+
+  const allow15 = await isFifteenAllowed(congregation.id, year, month);
 
   return (
     <Shell>
@@ -48,12 +74,14 @@ export default async function PrecursorAuxiliarPage({
       </h1>
       <p className="mt-1 text-sm text-muted">
         Completa tus datos para inscribirte durante{" "}
-        <strong className="text-foreground">{periodLabel}</strong>.
+        <strong className="text-foreground">{periodLabel}</strong> en{" "}
+        <strong className="text-foreground">{congregation.name}</strong>.
       </p>
       <div className="mt-4">
         <AuxPioneerSignupForm
           year={year}
           month={month}
+          congregacion={congregation.slug}
           periodLabel={periodLabel}
           allow15={allow15}
         />

@@ -17,6 +17,9 @@ export type SessionUser = {
   username: string;
   role: Role;
   groupId: string | null;
+  // Congregación del usuario. Nulo solo para el SUPERADMIN.
+  congregationId: string | null;
+  congregationName: string | null;
   mustChangePassword: boolean;
   alsoConfirmador: boolean;
 };
@@ -40,14 +43,16 @@ export async function requireUser(): Promise<SessionUser> {
 
 /** Exige rol de Administrador (antes "Secretario"). Si no, redirige al inicio. */
 export async function requireSecretary(): Promise<SessionUser> {
-  const user = await requireUser();
-  if (user.role !== ROLES.SECRETARIO) redirect(landingFor(user));
+  const user = await requireCongregation();
+  if (user.role !== ROLES.SECRETARIO && user.role !== ROLES.SUPERADMIN) {
+    redirect(landingFor(user));
+  }
   return user;
 }
 
 /** ¿El usuario es Administrador (acceso total)? */
 export function isSecretary(user: SessionUser): boolean {
-  return user.role === ROLES.SECRETARIO;
+  return user.role === ROLES.SECRETARIO || user.role === ROLES.SUPERADMIN;
 }
 
 /**
@@ -75,19 +80,23 @@ export function canAccessReports(user: SessionUser): boolean {
  * - Responsable de Confirmaciones "puro" (sin Informes) -> Reuniones.
  */
 export function landingFor(user: SessionUser): string {
+  // Superadmin sin congregación propia: su sitio es el panel de plataforma.
+  if (user.role === ROLES.SUPERADMIN && !user.congregationId) {
+    return "/plataforma";
+  }
   return canAccessReports(user) ? "/panel" : "/reuniones";
 }
 
 /** Exige acceso a la sección Reuniones; si no, redirige al inicio del rol. */
 export async function requireMeetingsAccess(): Promise<SessionUser> {
-  const user = await requireUser();
+  const user = await requireCongregation();
   if (!canAccessMeetings(user)) redirect(landingFor(user));
   return user;
 }
 
 /** Exige acceso a la sección Informes; si no, redirige a Reuniones. */
 export async function requireReportsAccess(): Promise<SessionUser> {
-  const user = await requireUser();
+  const user = await requireCongregation();
   if (!canAccessReports(user)) redirect(landingFor(user));
   return user;
 }
@@ -98,7 +107,7 @@ export async function requireReportsAccess(): Promise<SessionUser> {
  * - Superintendente/Auxiliar: únicamente su grupo.
  */
 export function canAccessGroup(user: SessionUser, groupId: string): boolean {
-  if (user.role === ROLES.SECRETARIO) return true;
+  if (isSecretary(user)) return true;
   return user.groupId === groupId;
 }
 
@@ -118,5 +127,69 @@ export function assertGroupAccess(user: SessionUser, groupId: string): void {
  * - Resto: su groupId.
  */
 export function scopedGroupId(user: SessionUser): string | null {
-  return user.role === ROLES.SECRETARIO ? null : user.groupId;
+  return isSecretary(user) ? null : user.groupId;
+}
+
+// ---------------------------------------------------------------------------
+//  CONGREGACIÓN  (separación entre congregaciones)
+//
+//  Regla de oro: toda consulta y toda escritura va acotada a la congregación
+//  del usuario. "Administrador ve todo" significa "ve todo DE SU congregación".
+//  El SUPERADMIN es el único sin congregación propia.
+// ---------------------------------------------------------------------------
+
+/** ¿Es el Superadministrador de la plataforma? */
+export function isSuperadmin(user: SessionUser): boolean {
+  return user.role === ROLES.SUPERADMIN;
+}
+
+/** Exige rol de Superadministrador. */
+export async function requireSuperadmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!isSuperadmin(user)) redirect(landingFor(user));
+  return user;
+}
+
+/**
+ * Congregación a la que está acotado el usuario. Lanza error si no tiene,
+ * para que ninguna consulta pueda quedarse sin filtro por descuido.
+ * Pensado para las secciones normales (no para el Superadmin).
+ */
+export function congregationId(user: SessionUser): string {
+  if (!user.congregationId) {
+    throw new Error(
+      "Tu usuario no pertenece a ninguna congregación. Contacta al administrador de la plataforma.",
+    );
+  }
+  return user.congregationId;
+}
+
+/**
+ * Exige una sesión con congregación. El Superadmin no entra a las secciones
+ * de congregación: se le manda a su panel de plataforma.
+ */
+export async function requireCongregation(): Promise<
+  SessionUser & { congregationId: string }
+> {
+  const user = await requireUser();
+  if (!user.congregationId) redirect("/plataforma");
+  return user as SessionUser & { congregationId: string };
+}
+
+/** Filtro de congregación listo para usar en un `where` de Prisma. */
+export function congregationWhere(user: SessionUser): { congregationId: string } {
+  return { congregationId: congregationId(user) };
+}
+
+/**
+ * Comprueba que una fila pertenece a la congregación del usuario.
+ * Se usa antes de editar o borrar algo buscado por id.
+ */
+export function assertSameCongregation(
+  user: SessionUser,
+  rowCongregationId: string | null,
+): void {
+  if (rowCongregationId !== congregationId(user)) {
+    throw new Error("Ese dato pertenece a otra congregación.");
+  }
 }

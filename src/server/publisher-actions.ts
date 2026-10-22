@@ -13,6 +13,7 @@ import {
   requireUser,
   assertGroupAccess,
   isSecretary,
+  congregationId,
 } from "@/lib/access";
 import { publisherSchema } from "@/lib/validations";
 import { logAudit } from "@/lib/audit";
@@ -62,6 +63,7 @@ export async function createPublisherAction(
       privilege: data.privilege ?? null,
       status: data.status,
       groupId: data.groupId,
+      congregationId: congregationId(user),
       // Registro inicial del estado en el historial.
       statusChanges: {
         create: { status: data.status, changedById: user.id },

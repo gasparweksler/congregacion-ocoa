@@ -10,7 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import {
   slotsForDay,
   MEETING_DAYS,
@@ -42,8 +42,9 @@ export async function createMeetingAction(
 
   // Si ya existe una reunión de ese día, se abre en vez de crear una segunda
   // (la base lo impide, pero así el usuario va directo a la que corresponde).
+  const cong = congregationId(user);
   const already = await prisma.meeting.findUnique({
-    where: { date_day: { date, day } },
+    where: { congregationId_date_day: { congregationId: cong, date, day } },
     select: { id: true },
   });
   if (already) redirect(`/reuniones/${already.id}`);
@@ -55,6 +56,7 @@ export async function createMeetingAction(
     data: {
       date,
       day,
+      congregationId: cong,
       createdById: user.id,
       // Responsable de Confirmación por defecto: quien crea la reunión.
       confirmadorName: user.name ?? null,
@@ -75,7 +77,7 @@ export async function createMeetingAction(
     // alta. Se abre la que ya existe en lugar de mostrar un error.
     if (isUniqueViolation(error)) {
       const existing = await prisma.meeting.findUnique({
-        where: { date_day: { date, day } },
+        where: { congregationId_date_day: { congregationId: cong, date, day } },
         select: { id: true },
       });
       if (existing) redirect(`/reuniones/${existing.id}`);

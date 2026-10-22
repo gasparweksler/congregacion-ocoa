@@ -17,9 +17,12 @@ export type InvitePeriod = {
 export function AuxPioneerInvite({
   curso,
   siguiente,
+  congregacion,
 }: {
   curso: InvitePeriod;
   siguiente: InvitePeriod;
+  /** Identificador de la congregación, para que el enlace apunte a la suya. */
+  congregacion: string;
 }) {
   const [which, setWhich] = useState<"curso" | "siguiente">("curso");
   const [copied, setCopied] = useState(false);
@@ -47,7 +50,9 @@ export function AuxPioneerInvite({
       smile: cp(0x1f60a), wave: cp(0x1f44b), pray: cp(0x1f64f),
       point: cp(0x1f449), heart: cp(0x1f49a), happy: cp(0x1f603),
     };
-    const link = `${origin}/precursor-auxiliar?anio=${period.year}&mes=${period.month}`;
+    const link =
+      `${origin}/precursor-auxiliar?congregacion=${encodeURIComponent(congregacion)}` +
+      `&anio=${period.year}&mes=${period.month}`;
     // Si el mes admite 15 horas, se agrega el recordatorio de 30 o 15 horas.
     const reminder = fifteenOn
       ? `Recuerda que por este mes puedes realizar el Precursorado por 30 o 15 Horas ${E.happy}\n\n`

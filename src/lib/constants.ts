@@ -9,6 +9,9 @@
 //  ROLES DE USUARIO
 // ---------------------------------------------------------------------------
 export const ROLES = {
+  // Administra TODA la plataforma: crea congregaciones y sus usuarios. Es el
+  // único rol sin congregación propia.
+  SUPERADMIN: "SUPERADMIN",
   // El valor interno se mantiene como "SECRETARIO" por compatibilidad con los
   // datos y sesiones existentes; su etiqueta visible es "Administrador".
   SECRETARIO: "SECRETARIO",
@@ -21,7 +24,16 @@ export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const ROLE_VALUES = Object.values(ROLES) as Role[];
 
+/**
+ * Roles que un Administrador de congregación puede asignar a sus usuarios.
+ * SUPERADMIN queda fuera a propósito: solo se crea desde la plataforma.
+ */
+export const ASSIGNABLE_ROLE_VALUES = ROLE_VALUES.filter(
+  (r) => r !== ROLES.SUPERADMIN,
+);
+
 export const ROLE_LABELS: Record<Role, string> = {
+  SUPERADMIN: "Superadministrador",
   SECRETARIO: "Administrador",
   SUPERINTENDENTE: "Superintendente de Grupo",
   AUXILIAR: "Auxiliar de Grupo",

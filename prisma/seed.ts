@@ -17,6 +17,17 @@ async function hash(plain: string) {
 }
 
 async function main() {
+  // --- 0) Congregación -------------------------------------------------------
+  // Todo lo que se siembra pertenece a una congregación. Por defecto, "Ocoa".
+  const congSlug = process.env.SEED_CONGREGACION_SLUG ?? "ocoa";
+  const congName = process.env.SEED_CONGREGACION_NOMBRE ?? "Ocoa";
+  const congregacion = await prisma.congregation.upsert({
+    where: { slug: congSlug },
+    update: {},
+    create: { slug: congSlug, name: congName },
+  });
+  console.log(`✔ Congregación lista: ${congregacion.name}`);
+
   // --- 1) Secretario inicial -------------------------------------------------
   const secUser = process.env.SEED_SECRETARIO_USUARIO ?? "secretario";
   const secPass = process.env.SEED_SECRETARIO_PASSWORD ?? "Ocoa2026";
@@ -32,6 +43,7 @@ async function main() {
       passwordHash: await hash(secPass),
       plainPassword: secPass,
       role: "SECRETARIO",
+      congregationId: congregacion.id,
       mustChangePassword: true, // se le pedirá cambiarla al primer ingreso
     },
   });
@@ -45,7 +57,7 @@ async function main() {
   }
 
   const grupo = await prisma.group.create({
-    data: { name: "Grupo 1 (Demostración)" },
+    data: { name: "Grupo 1 (Demostración)", congregationId: congregacion.id },
   });
   console.log(`✔ Grupo de demostración creado: ${grupo.name}`);
 
@@ -57,6 +69,7 @@ async function main() {
       plainPassword: "Ocoa2026",
       role: "SUPERINTENDENTE",
       groupId: grupo.id,
+      congregationId: congregacion.id,
       mustChangePassword: true,
     },
   });
@@ -93,6 +106,7 @@ async function main() {
         sex: p.sex,
         status: p.status,
         groupId: grupo.id,
+        congregationId: congregacion.id,
         statusChanges: {
           create: { status: p.status, changedById: secretario.id },
         },
@@ -108,6 +122,7 @@ async function main() {
     await prisma.monthlyReport.create({
       data: {
         publisherId: pub.id,
+        congregationId: congregacion.id,
         year,
         month,
         participated: p.status !== "INACTIVO",

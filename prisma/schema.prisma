@@ -18,10 +18,37 @@ datasource db {
 }
 
 // ----------------------------------------------------------------------------
+//  CONGREGACIONES  (inquilinos de la plataforma)
+//  Cada congregación es independiente: sus grupos, publicadores, informes,
+//  reuniones y usuarios no se mezclan con los de otra. El Superadmin es el
+//  único usuario sin congregación asignada.
+// ----------------------------------------------------------------------------
+model Congregation {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  slug   String  @unique // identificador corto para enlaces (p. ej. "ocoa")
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users                   User[]
+  groups                  Group[]
+  publishers              Publisher[]
+  reports                 MonthlyReport[]
+  meetings                Meeting[]
+  auxiliaryPioneerSignups AuxiliaryPioneerSignup[]
+  auxPioneerSettings      AuxPioneerSetting[]
+  auditLogs               AuditLog[]
+}
+
+// ----------------------------------------------------------------------------
 //  USUARIOS  (Secretario, Superintendente, Auxiliar)
 // ----------------------------------------------------------------------------
 model User {
   id           String  @id @default(cuid())
+  // El usuario es único en TODA la plataforma: así el inicio de sesión sigue
+  // pidiendo solo usuario y contraseña, sin elegir congregación.
   username     String  @unique
   passwordHash String
   // Copia recuperable de la contraseña, solo para que el Secretario pueda
@@ -40,6 +67,11 @@ model User {
 
   active             Boolean @default(true)
   mustChangePassword Boolean @default(false)
+
+  // Congregación a la que pertenece. Nulo solo para el SUPERADMIN, que
+  // administra la plataforma y no pertenece a ninguna.
+  congregationId String?
+  congregation   Congregation? @relation(fields: [congregationId], references: [id], onDelete: SetNull)
 
   // Rol adicional: además de su rol base, también es Encargado de Confirmaciones
   // (acceso a la sección Reuniones). Permite combinar p.ej. Superintendente +
@@ -68,13 +100,22 @@ model User {
 //  GRUPOS DE SERVICIO
 // ----------------------------------------------------------------------------
 model Group {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id   String @id @default(cuid())
+  name String
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   users      User[]
   publishers Publisher[]
+
+  // "Grupo 1" puede existir en varias congregaciones, pero no dos veces en la
+  // misma (antes el nombre era único en toda la plataforma).
+  @@unique([congregationId, name])
+  @@index([congregationId])
 }
 
 // ----------------------------------------------------------------------------
@@ -92,6 +133,9 @@ model Publisher {
   status      String // ver PUBLISHER_STATUSES en constants.ts
   active      Boolean   @default(true)
 
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
   groupId String
   group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
@@ -101,6 +145,7 @@ model Publisher {
   statusChanges StatusChange[]
   reports       MonthlyReport[]
 
+  @@index([congregationId])
   @@index([groupId])
   @@index([status])
 }
@@ -125,7 +170,13 @@ model StatusChange {
 //  INFORMES MENSUALES  (un registro por publicador / año / mes)
 // ----------------------------------------------------------------------------
 model MonthlyReport {
-  id          String    @id @default(cuid())
+  id String @id @default(cuid())
+
+  // Se guarda también aquí (además de en el publicador) porque los informes se
+  // consultan directamente por año y mes en Estadísticas, Historial y Exportar.
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
   publisherId String
   publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
 
@@ -154,6 +205,7 @@ model MonthlyReport {
   updatedAt DateTime @updatedAt
 
   @@unique([publisherId, year, month])
+  @@index([congregationId])
   @@index([year, month])
 }
 
@@ -164,6 +216,9 @@ model Meeting {
   id   String   @id @default(cuid())
   date DateTime
   day  String // JUEVES | SABADO
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
 
   // Etiqueta de la semana (rango) mostrada en vez de una fecha única, p. ej.
   // "20-26 de Julio". Opcional; si es null se muestra la fecha.
@@ -184,8 +239,9 @@ model Meeting {
   // guardan a la vez creen dos reuniones del mismo día (ya ocurrió).
   // La fecha siempre se guarda al mediodía local, así que la pareja
   // (date, day) identifica la reunión sin ambigüedad.
-  @@unique([date, day])
+  @@unique([congregationId, date, day])
   @@index([date])
+  @@index([congregationId])
 }
 
 // Una casilla de asignación/responsabilidad dentro de una reunión.
@@ -224,7 +280,12 @@ model MeetingAssignment {
 //  REGISTRO DE AUDITORÍA
 // ----------------------------------------------------------------------------
 model AuditLog {
-  id       String  @id @default(cuid())
+  id String @id @default(cuid())
+
+  // Nulo cuando la acción la hace el Superadmin fuera de una congregación.
+  congregationId String?
+  congregation   Congregation? @relation(fields: [congregationId], references: [id], onDelete: SetNull)
+
   userId   String?
   user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   action   String // CREAR | EDITAR | ELIMINAR | INGRESAR_SESION | REINICIAR_DATOS ...
@@ -245,7 +306,11 @@ model AuditLog {
 //  inscripción quede en el mes elegido y no en el mes actual.
 // ----------------------------------------------------------------------------
 model AuxiliaryPioneerSignup {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
   name    String // nombre tal cual lo escribió el hermano
   nameKey String // nombre normalizado (para evitar duplicados por mes)
   hours   Int // 15 | 30
@@ -255,20 +320,28 @@ model AuxiliaryPioneerSignup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Una sola inscripción por persona y período (se actualiza si repite).
-  @@unique([nameKey, year, month])
+  // Una sola inscripción por persona y período EN SU congregación (antes el
+  // nombre bloqueaba al tocayo de cualquier otra).
+  @@unique([congregationId, nameKey, year, month])
   @@index([year, month])
+  @@index([congregationId])
 }
 
 // Configuración por período de las inscripciones de Precursor Auxiliar.
 // allow15h=false -> ese mes solo admite inscripción de 30 horas.
 model AuxPioneerSetting {
-  id       String  @id @default(cuid())
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
   year     Int
   month    Int
   allow15h Boolean @default(true)
 
   updatedAt DateTime @updatedAt
 
-  @@unique([year, month])
+  // Antes el interruptor de 15 horas era global: cambiarlo en una congregación
+  // lo cambiaba en todas.
+  @@unique([congregationId, year, month])
 }

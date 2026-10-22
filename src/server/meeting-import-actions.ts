@@ -12,7 +12,7 @@
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import {
   slotsForDay,
   MEETING_DAYS,
@@ -54,13 +54,14 @@ export async function importMeetingsAction(
     };
   }
 
+  const cong = congregationId(user);
   const juevesSlots = slotsForDay(MEETING_DAYS.JUEVES);
   let created = 0;
   let skipped = 0;
 
   for (const w of weeks) {
     const existing = await prisma.meeting.findFirst({
-      where: { day: MEETING_DAYS.JUEVES, date: w.date },
+      where: { congregationId: cong, day: MEETING_DAYS.JUEVES, date: w.date },
     });
     if (existing) {
       skipped++;
@@ -103,6 +104,7 @@ export async function importMeetingsAction(
         data: {
           date: w.date,
           day: MEETING_DAYS.JUEVES,
+          congregationId: cong,
           weekLabel: w.label,
           createdById: user.id,
           confirmadorName: user.name ?? null,

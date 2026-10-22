@@ -6,7 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary, congregationId } from "@/lib/access";
 import { groupSchema } from "@/lib/validations";
 import { logAudit } from "@/lib/audit";
 import { type FormState } from "@/server/actions-shared";
@@ -22,13 +22,18 @@ export async function createGroupAction(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  // Evitar nombres duplicados (mensaje claro en vez de error de BD).
+  const cong = congregationId(user);
+
+  // Evitar nombres duplicados EN ESTA congregación (mensaje claro en vez de
+  // error de BD). "Grupo 1" puede existir en otra congregación.
   const exists = await prisma.group.findUnique({
-    where: { name: parsed.data.name },
+    where: { congregationId_name: { congregationId: cong, name: parsed.data.name } },
   });
   if (exists) return { error: "Ya existe un grupo con ese nombre." };
 
-  const group = await prisma.group.create({ data: { name: parsed.data.name } });
+  const group = await prisma.group.create({
+    data: { name: parsed.data.name, congregationId: cong },
+  });
 
   await logAudit({
     userId: user.id,
@@ -55,15 +60,19 @@ export async function updateGroupAction(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
+  const cong = congregationId(user);
   const duplicate = await prisma.group.findFirst({
-    where: { name: parsed.data.name, NOT: { id } },
+    where: { congregationId: cong, name: parsed.data.name, NOT: { id } },
   });
   if (duplicate) return { error: "Ya existe otro grupo con ese nombre." };
 
-  const group = await prisma.group.update({
-    where: { id },
+  // updateMany acota por congregación: no se puede renombrar un grupo ajeno.
+  const updated = await prisma.group.updateMany({
+    where: { id, congregationId: cong },
     data: { name: parsed.data.name },
   });
+  if (updated.count === 0) return { error: "Grupo no encontrado." };
+  const group = { id, name: parsed.data.name };
 
   await logAudit({
     userId: user.id,
@@ -82,8 +91,8 @@ export async function deleteGroupAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  const group = await prisma.group.findUnique({
-    where: { id },
+  const group = await prisma.group.findFirst({
+    where: { id, congregationId: congregationId(user) },
     select: { name: true, _count: { select: { publishers: true } } },
   });
   if (!group) return;

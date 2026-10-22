@@ -1,4 +1,4 @@
-import { requireSecretary } from "@/lib/access";
+import { requireSecretary, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { monthName } from "@/lib/constants";
 import { currentPeriod, nextPeriod, parsePeriod } from "@/lib/period";
@@ -25,7 +25,8 @@ export default async function PrecursoresAuxiliaresPage({
 }: {
   searchParams: Promise<{ anio?: string; mes?: string }>;
 }) {
-  await requireSecretary();
+  const sessionUser = await requireSecretary();
+  const cong = congregationId(sessionUser);
   const sp = await searchParams;
 
   const curso = currentPeriod();
@@ -34,13 +35,20 @@ export default async function PrecursoresAuxiliaresPage({
   // Período que se está consultando en la tabla (por defecto, mes en curso).
   const { year, month } = parsePeriod(sp.anio, sp.mes, curso);
 
+  // El enlace público lleva el identificador de la congregación.
+  const congregation = await prisma.congregation.findUnique({
+    where: { id: cong },
+    select: { slug: true },
+  });
+
   const [signups, distinct] = await Promise.all([
     prisma.auxiliaryPioneerSignup.findMany({
-      where: { year, month },
+      where: { congregationId: cong, year, month },
       orderBy: { name: "asc" },
       select: { id: true, name: true, hours: true, year: true, month: true },
     }),
     prisma.auxiliaryPioneerSignup.findMany({
+      where: { congregationId: cong },
       distinct: ["year", "month"],
       select: { year: true, month: true },
       orderBy: [{ year: "desc" }, { month: "desc" }],
@@ -60,8 +68,8 @@ export default async function PrecursoresAuxiliaresPage({
   );
 
   const [allow15Curso, allow15Sig] = await Promise.all([
-    isFifteenAllowed(curso.year, curso.month),
-    isFifteenAllowed(siguiente.year, siguiente.month),
+    isFifteenAllowed(cong, curso.year, curso.month),
+    isFifteenAllowed(cong, siguiente.year, siguiente.month),
   ]);
 
   const invite = (
@@ -92,6 +100,7 @@ export default async function PrecursoresAuxiliaresPage({
           <AuxPioneerInvite
             curso={invite(curso, allow15Curso)}
             siguiente={invite(siguiente, allow15Sig)}
+            congregacion={congregation?.slug ?? ""}
           />
         </CardBody>
       </Card>

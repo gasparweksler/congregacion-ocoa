@@ -5,7 +5,12 @@ import { createUserAction } from "@/server/user-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
 import { Label, Input, Select, Alert } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { ROLES, ROLE_LABELS, GROUP_ROLES } from "@/lib/constants";
+import {
+  ROLES,
+  ROLE_LABELS,
+  GROUP_ROLES,
+  ASSIGNABLE_ROLE_VALUES,
+} from "@/lib/constants";
 
 type GroupOption = { id: string; name: string };
 
@@ -67,7 +72,7 @@ export function UserCreateForm({ groups }: { groups: GroupOption[] }) {
           value={role}
           onChange={(e) => setRole(e.target.value)}
         >
-          {Object.values(ROLES).map((r) => (
+          {ASSIGNABLE_ROLE_VALUES.map((r) => (
             <option key={r} value={r}>
               {ROLE_LABELS[r]}
             </option>
