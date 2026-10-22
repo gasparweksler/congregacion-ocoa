@@ -36,14 +36,14 @@ export default async function LoginPage() {
             O
           </div>
           <div className="leading-tight">
-            <p className="font-semibold tracking-tight">Congregación Ocoa</p>
+            <p className="font-semibold tracking-tight">Mi Congregación</p>
             <p className="text-sm text-white/60">Actividad de Publicadores</p>
           </div>
         </div>
 
         <div className="relative my-10 lg:my-0">
           <h1 className="max-w-md text-3xl font-bold leading-tight tracking-tight lg:text-4xl">
-            Congregación Ocoa
+            Mi Congregación
           </h1>
           <p className="mt-4 max-w-md text-base text-white/70">
             Registro de informes de la congregación y gestión de reuniones.

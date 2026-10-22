@@ -8,9 +8,9 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Actividad de Publicadores · Congregación Ocoa",
+  title: "Actividad de Publicadores · Mi Congregación",
   description:
-    "Sistema de gestión de la actividad mensual de los publicadores de la Congregación Ocoa.",
+    "Sistema de gestión de la actividad mensual de los publicadores de la congregación.",
 };
 
 // Aplica la apariencia guardada ANTES de pintar, para que no se vea un
