@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { LoginForm } from "@/components/forms/LoginForm";
+import { BrandMark } from "@/components/BrandMark";
 
 // Página de inicio de sesión. Si ya hay una sesión VÁLIDA (la cuenta existe y
 // está activa), va directo al panel. Si la sesión apunta a una cuenta que ya
@@ -32,12 +33,12 @@ export default async function LoginPage() {
         />
 
         <div className="relative flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 text-2xl font-bold text-brand shadow-md">
-            O
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 text-brand shadow-md">
+            <BrandMark className="h-8 w-8" />
           </div>
           <div className="leading-tight">
             <p className="font-semibold tracking-tight">Mi Congregación</p>
-            <p className="text-sm text-white/60">Actividad de Publicadores</p>
+            <p className="text-sm text-white/60">Actividad de mi Congregación</p>
           </div>
         </div>
 

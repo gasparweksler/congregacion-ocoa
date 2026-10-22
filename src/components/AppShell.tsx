@@ -11,6 +11,7 @@ import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { logoutAction } from "@/server/auth-actions";
+import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export type NavItem = { href: string; label: string; icon: string };
@@ -132,14 +133,14 @@ export function AppShell({
 function Brand() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 text-lg font-bold text-brand shadow-sm">
-        O
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 text-brand shadow-sm">
+        <BrandMark className="h-7 w-7" />
       </div>
       <div className="leading-tight">
         <p className="text-sm font-semibold tracking-tight text-white">
           Congregación Ocoa
         </p>
-        <p className="text-xs text-white/60">Actividad de Publicadores</p>
+        <p className="text-xs text-white/60">Actividad de mi Congregación</p>
       </div>
     </div>
   );

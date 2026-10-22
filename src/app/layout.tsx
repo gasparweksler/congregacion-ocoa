@@ -8,7 +8,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Actividad de Publicadores · Mi Congregación",
+  title: "Actividad de mi Congregación",
   description:
     "Sistema de gestión de la actividad mensual de los publicadores de la congregación.",
 };
