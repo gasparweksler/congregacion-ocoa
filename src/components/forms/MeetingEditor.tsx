@@ -130,6 +130,11 @@ export function MeetingEditor({
   const [counter, setCounter] = useState(0);
   const [, startTransition] = useTransition();
   const [dragKey, setDragKey] = useState<string | null>(null);
+  // Asignaciones que el usuario quitó en pantalla. Se envían explícitamente:
+  // el servidor borra SOLO estas, nunca "lo que no vino en el formulario".
+  // Así, si otra persona agrega algo mientras editas, tu guardado no se lo
+  // lleva por delante.
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
 
   const [items, setItems] = useState<Item[]>(() =>
     rows.map((r) => {
@@ -179,8 +184,12 @@ export function MeetingEditor({
     setItems((prev) =>
       prev.map((it) => (it.key === key ? { ...it, ...patch } : it)),
     );
-  const remove = (key: string) =>
-    setItems((prev) => prev.filter((it) => it.key !== key));
+  const remove = (key: string) => {
+    const it = items.find((i) => i.key === key);
+    // Solo las que ya existen en la base hay que borrarlas al guardar.
+    if (it?.id) setRemovedIds((prev) => [...new Set([...prev, it.id])]);
+    setItems((prev) => prev.filter((i) => i.key !== key));
+  };
   const add = (t: "asig" | "resp") => {
     const key = `new_${counter}`;
     setCounter((c) => c + 1);
@@ -454,6 +463,7 @@ export function MeetingEditor({
       <form action={action} className="space-y-5">
         <input type="hidden" name="meetingId" value={meetingId} />
         <input type="hidden" name="keys" value={items.map((i) => i.key).join(",")} />
+        <input type="hidden" name="removed" value={removedIds.join(",")} />
         {items.map((it) => (
           <span key={`h_${it.key}`}>
             <input type="hidden" name={`id_${it.key}`} value={it.id} />

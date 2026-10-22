@@ -180,6 +180,11 @@ model Meeting {
 
   assignments MeetingAssignment[]
 
+  // Una sola reunión por fecha y tipo de día: evita que dos personas que
+  // guardan a la vez creen dos reuniones del mismo día (ya ocurrió).
+  // La fecha siempre se guarda al mediodía local, así que la pareja
+  // (date, day) identifica la reunión sin ambigüedad.
+  @@unique([date, day])
   @@index([date])
 }
 

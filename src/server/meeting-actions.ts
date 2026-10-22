@@ -19,7 +19,7 @@ import {
   sectionAllowsSecondary,
 } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
-import { type FormState } from "@/server/actions-shared";
+import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
 function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
@@ -40,8 +40,18 @@ export async function createMeetingAction(
   const date = new Date(`${dateStr}T12:00:00`);
   if (isNaN(date.getTime())) return { error: "Fecha inválida." };
 
+  // Si ya existe una reunión de ese día, se abre en vez de crear una segunda
+  // (la base lo impide, pero así el usuario va directo a la que corresponde).
+  const already = await prisma.meeting.findUnique({
+    where: { date_day: { date, day } },
+    select: { id: true },
+  });
+  if (already) redirect(`/reuniones/${already.id}`);
+
   const slots = slotsForDay(day);
-  const meeting = await prisma.meeting.create({
+  let meeting;
+  try {
+    meeting = await prisma.meeting.create({
     data: {
       date,
       day,
@@ -59,7 +69,19 @@ export async function createMeetingAction(
         })),
       },
     },
-  });
+    });
+  } catch (error) {
+    // Carrera: otra persona creó la misma reunión entre la comprobación y el
+    // alta. Se abre la que ya existe en lugar de mostrar un error.
+    if (isUniqueViolation(error)) {
+      const existing = await prisma.meeting.findUnique({
+        where: { date_day: { date, day } },
+        select: { id: true },
+      });
+      if (existing) redirect(`/reuniones/${existing.id}`);
+    }
+    throw error;
+  }
 
   await logAudit({
     userId: user.id,
@@ -167,19 +189,30 @@ export async function saveMeetingAction(
     }
   }
 
-  // Eliminar las asignaciones que se quitaron en la pantalla. Las
-  // RESPONSABILIDADES no se tocan aquí (solo se administran desde la vista
+  // Eliminar SOLO las asignaciones que el usuario quitó explícitamente en
+  // pantalla. Antes se borraba todo lo que no viniera en el formulario, y eso
+  // hacía que, si dos personas editaban la misma reunión a la vez, el segundo
+  // guardado borrara en silencio lo que había agregado el primero.
+  // Las RESPONSABILIDADES nunca se tocan aquí (se administran desde la vista
   // mensual "Todas las Responsabilidades del mes").
   const isResponsibility = (a: { section: string; slotKey: string }) =>
     a.section === "RESPONSABILIDADES" ||
     a.section === "SAB_RESPONSABILIDADES" ||
     MONTHLY_RESP_KEYS.includes(a.slotKey);
+  const removed = new Set(
+    String(formData.get("removed") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
   const toDelete = meeting.assignments
-    .filter((a) => !submittedIds.has(a.id) && !isResponsibility(a))
+    .filter(
+      (a) => removed.has(a.id) && !submittedIds.has(a.id) && !isResponsibility(a),
+    )
     .map((a) => a.id);
   if (toDelete.length) {
     await prisma.meetingAssignment.deleteMany({
-      where: { id: { in: toDelete } },
+      where: { id: { in: toDelete }, meetingId },
     });
   }
 

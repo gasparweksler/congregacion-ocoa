@@ -20,7 +20,7 @@ import {
   sectionAllowsSecondary,
 } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
-import { type FormState } from "@/server/actions-shared";
+import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 import { parseVymc, buildSlotData } from "@/lib/vymc-parser";
 
 function newToken(): string {
@@ -98,17 +98,26 @@ export async function importMeetingsAction(
       })
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
-    await prisma.meeting.create({
-      data: {
-        date: w.date,
-        day: MEETING_DAYS.JUEVES,
-        weekLabel: w.label,
-        createdById: user.id,
-        confirmadorName: user.name ?? null,
-        assignments: { create: assignments },
-      },
-    });
-    created++;
+    try {
+      await prisma.meeting.create({
+        data: {
+          date: w.date,
+          day: MEETING_DAYS.JUEVES,
+          weekLabel: w.label,
+          createdById: user.id,
+          confirmadorName: user.name ?? null,
+          assignments: { create: assignments },
+        },
+      });
+      created++;
+    } catch (error) {
+      // Otra persona la creó mientras se importaba: se cuenta como omitida.
+      if (isUniqueViolation(error)) {
+        skipped++;
+        continue;
+      }
+      throw error;
+    }
   }
 
   await logAudit({

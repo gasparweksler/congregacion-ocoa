@@ -19,6 +19,7 @@ import {
 } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
 import { logAudit } from "@/lib/audit";
+import { isUniqueViolation } from "@/server/actions-shared";
 
 function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
@@ -138,7 +139,9 @@ async function createMeetingForDate(
     equalPair: false,
   }));
 
-  const meeting = await prisma.meeting.create({
+  let meeting;
+  try {
+    meeting = await prisma.meeting.create({
     data: {
       date,
       day,
@@ -161,7 +164,20 @@ async function createMeetingForDate(
         ],
       },
     },
-  });
+    });
+  } catch (error) {
+    // Carrera: dos personas asignando responsabilidades de la misma fecha a la
+    // vez. Antes se creaban DOS reuniones del mismo día; ahora la base lo
+    // impide y aquí se reutiliza la que ganó la carrera.
+    if (isUniqueViolation(error)) {
+      const existing = await prisma.meeting.findUnique({
+        where: { date_day: { date, day } },
+        select: { id: true },
+      });
+      if (existing) return existing.id;
+    }
+    throw error;
+  }
   return meeting.id;
 }
 
