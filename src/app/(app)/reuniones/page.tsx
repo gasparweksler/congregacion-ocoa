@@ -96,7 +96,21 @@ export default async function ReunionesPage() {
               title="Carga masiva (Excel)"
               description="Crea varias reuniones de una vez desde una plantilla."
             />
-            <CardBody>
+            <CardBody className="space-y-4">
+              {/* La planilla en blanco se descarga tal cual, para completarla y
+                  subirla después aquí mismo. */}
+              <div>
+                <a
+                  href="/api/plantilla-vymc"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-slate-50"
+                >
+                  📄 Descargar Planilla Excel
+                </a>
+                <p className="mt-1.5 text-xs text-muted">
+                  Complétala con el programa del mes y súbela aquí abajo.
+                </p>
+              </div>
+
               <MeetingImport />
             </CardBody>
           </Card>

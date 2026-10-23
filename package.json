@@ -18,6 +18,7 @@
     "test:concurrencia": "tsx scripts/test-concurrencia.mts",
     "test:usuarios-plataforma": "tsx scripts/test-usuarios-plataforma.mts",
     "test:estadisticas": "tsx scripts/test-estadisticas-asignaciones.mts",
+    "test:plantilla": "tsx scripts/test-plantilla-vymc.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
