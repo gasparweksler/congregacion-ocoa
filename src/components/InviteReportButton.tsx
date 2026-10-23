@@ -6,6 +6,8 @@ export function InviteReportButton({ periodLabel }: { periodLabel: string }) {
   const [copied, setCopied] = useState(false);
 
   const buildMessage = () => {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
     const cp = String.fromCodePoint;
     const smile = cp(0x1f60a);
     const wave = cp(0x1f44b);
@@ -21,7 +23,10 @@ export function InviteReportButton({ periodLabel }: { periodLabel: string }) {
       (periodLabel ? ` de ${periodLabel}` : "") +
       `. Es muy rápido y sencillo ${pray}${sparkles}\n\n` +
       `Ingresa aquí e inicia sesión:\n` +
-      `${point} https://congregacion-ocoa.vercel.app/login\n\n` +
+      // El enlace se arma con el dominio desde el que se está usando la app,
+      // igual que en los demás mensajes. Antes iba escrito a mano y habría
+      // quedado apuntando a una dirección vieja al cambiar de dominio.
+      `${point} ${origin}/login\n\n` +
       `¡Muchísimas gracias por tu trabajo! ${heart}${party}`
     );
   };
