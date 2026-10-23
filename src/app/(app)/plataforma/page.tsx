@@ -5,6 +5,7 @@
 //  congregación: eso es cosa de su propio Administrador.
 // ============================================================================
 
+import Link from "next/link";
 import { requireSuperadmin } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { ROLES, roleLabel } from "@/lib/constants";
@@ -120,7 +121,7 @@ export default async function PlataformaPage() {
                   <Th>Publicadores</Th>
                   <Th>Informes</Th>
                   <Th>Estado</Th>
-                  <Th>Acción</Th>
+                  <Th>Acciones</Th>
                 </tr>
               </thead>
               <tbody>
@@ -158,19 +159,30 @@ export default async function PlataformaPage() {
                       </Badge>
                     </Td>
                     <Td>
-                      {/* Desactivar impide entrar a sus usuarios, pero no borra
-                          nada: siempre se puede volver a activar. */}
-                      <ConfirmButton
-                        action={setCongregationActiveAction}
-                        hidden={{ id: c.id, active: c.active ? "0" : "1" }}
-                        confirmText={
-                          c.active
-                            ? `¿Desactivar "${c.name}"? Sus usuarios no podrán iniciar sesión. No se borra ningún dato.`
-                            : `¿Volver a activar "${c.name}"?`
-                        }
-                      >
-                        {c.active ? "Desactivar" : "Activar"}
-                      </ConfirmButton>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Abre la MISMA pantalla de Usuarios acotada a esta
+                            congregación: lo que se haga allí queda en su ficha
+                            sin ninguna sincronización aparte. */}
+                        <Link
+                          href={`/usuarios?congregacion=${c.id}`}
+                          className="rounded-md px-2.5 py-1 text-sm font-medium text-primary hover:bg-indigo-50"
+                        >
+                          👥 Ver Usuarios
+                        </Link>
+                        {/* Desactivar impide entrar a sus usuarios, pero no borra
+                            nada: siempre se puede volver a activar. */}
+                        <ConfirmButton
+                          action={setCongregationActiveAction}
+                          hidden={{ id: c.id, active: c.active ? "0" : "1" }}
+                          confirmText={
+                            c.active
+                              ? `¿Desactivar "${c.name}"? Sus usuarios no podrán iniciar sesión. No se borra ningún dato.`
+                              : `¿Volver a activar "${c.name}"?`
+                          }
+                        >
+                          {c.active ? "Desactivar" : "Activar"}
+                        </ConfirmButton>
+                      </div>
                     </Td>
                   </tr>
                 ))}

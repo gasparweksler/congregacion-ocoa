@@ -14,7 +14,15 @@ import {
 
 type GroupOption = { id: string; name: string };
 
-export function UserCreateForm({ groups }: { groups: GroupOption[] }) {
+export function UserCreateForm({
+  groups,
+  congregacion,
+}: {
+  groups: GroupOption[];
+  /** Congregación destino. Solo el Superadministrador puede indicar una
+   *  distinta de la suya; el servidor ignora el dato para los demás. */
+  congregacion?: string;
+}) {
   const [state, action] = useActionState(createUserAction, EMPTY_FORM_STATE);
   const [role, setRole] = useState<string>(ROLES.SUPERINTENDENTE);
   const formRef = useRef<HTMLFormElement>(null);
@@ -31,6 +39,9 @@ export function UserCreateForm({ groups }: { groups: GroupOption[] }) {
 
   return (
     <form ref={formRef} action={action} className="space-y-3">
+      {congregacion ? (
+        <input type="hidden" name="congregacion" value={congregacion} />
+      ) : null}
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 

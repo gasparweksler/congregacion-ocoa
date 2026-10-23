@@ -193,3 +193,19 @@ export function assertSameCongregation(
     throw new Error("Ese dato pertenece a otra congregación.");
   }
 }
+
+/**
+ * Congregación sobre la que se va a actuar.
+ *
+ * - El Superadministrador puede indicar otra (desde el panel de Plataforma).
+ * - Cualquier otro usuario queda SIEMPRE en la suya: si envía otra, se ignora
+ *   en silencio. Por eso esta es la única puerta para elegir congregación.
+ */
+export function targetCongregationId(
+  user: SessionUser,
+  requested?: string | null,
+): string {
+  const pedida = (requested ?? "").trim();
+  if (pedida && isSuperadmin(user)) return pedida;
+  return congregationId(user);
+}

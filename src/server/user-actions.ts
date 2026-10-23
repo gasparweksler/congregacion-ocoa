@@ -8,7 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireSecretary, targetCongregationId } from "@/lib/access";
 import { hashPassword } from "@/lib/password";
 import { createUserSchema, updateUserSchema } from "@/lib/validations";
 import { ROLES, GROUP_ROLES, roleLabel, type Role } from "@/lib/constants";
@@ -62,7 +62,9 @@ export async function createUserAction(
   });
   if (exists) return { error: "Ese nombre de usuario ya está en uso." };
 
-  const cong = congregationId(actor);
+  // Congregación destino: la propia, o la que indique el Superadmin desde el
+  // panel de Plataforma. targetCongregationId ignora el dato si no lo es.
+  const cong = targetCongregationId(actor, String(formData.get("congregacion") ?? ""));
   const groupId = resolveGroupId(data.role, data.groupId);
   // El grupo debe existir Y pertenecer a la misma congregación.
   if (groupId) {
@@ -105,6 +107,7 @@ export async function createUserAction(
   });
 
   revalidatePath("/usuarios");
+  revalidatePath("/plataforma");
   return { success: `Usuario "${created.username}" creado.` };
 }
 
@@ -130,7 +133,7 @@ export async function updateUserAction(
   }
   const data = parsed.data;
 
-  const cong = congregationId(actor);
+  const cong = targetCongregationId(actor, String(formData.get("congregacion") ?? ""));
   const target = await prisma.user.findFirst({
     where: { id: data.id, congregationId: cong },
   });
@@ -194,6 +197,7 @@ export async function updateUserAction(
   });
 
   revalidatePath("/usuarios");
+  revalidatePath("/plataforma");
   return { success: "Usuario actualizado." };
 }
 
@@ -202,7 +206,7 @@ export async function deleteUserAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id || id === actor.id) return; // nunca eliminarse a sí mismo
 
-  const cong = congregationId(actor);
+  const cong = targetCongregationId(actor, String(formData.get("congregacion") ?? ""));
   const target = await prisma.user.findFirst({
     where: { id, congregationId: cong },
     select: { username: true, role: true },
@@ -228,4 +232,5 @@ export async function deleteUserAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/usuarios");
+  revalidatePath("/plataforma");
 }

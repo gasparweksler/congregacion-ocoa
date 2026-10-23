@@ -31,10 +31,13 @@ export function UserRow({
   user,
   groups,
   isSelf,
+  congregacion,
 }: {
   user: UserRowData;
   groups: GroupOption[];
   isSelf: boolean;
+  /** Congregación destino (ver UserCreateForm). */
+  congregacion?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, action] = useActionState(updateUserAction, EMPTY_FORM_STATE);
@@ -87,7 +90,11 @@ export function UserRow({
           {!isSelf ? (
             <ConfirmButton
               action={deleteUserAction}
-              hidden={{ id: user.id }}
+              hidden={
+                congregacion
+                  ? { id: user.id, congregacion }
+                  : { id: user.id }
+              }
               confirmText={`¿Eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
             >
               Eliminar
@@ -101,6 +108,9 @@ export function UserRow({
   return (
     <div className="border-l-4 border-primary bg-slate-50 px-5 py-4">
       <form action={action} className="grid gap-3 sm:grid-cols-2">
+        {congregacion ? (
+          <input type="hidden" name="congregacion" value={congregacion} />
+        ) : null}
         <input type="hidden" name="id" value={user.id} />
         {state.error ? (
           <div className="sm:col-span-2">
