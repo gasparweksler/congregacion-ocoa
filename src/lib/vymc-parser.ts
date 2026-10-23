@@ -226,7 +226,18 @@ const SMM_ORDER = [
 ];
 const TES_ORDER = ["j_tesoros_discurso", "j_perlas", "j_lectura"];
 
-export type SlotData = { label?: string; p?: string; s?: string };
+export type SlotData = {
+  label?: string;
+  p?: string;
+  s?: string;
+  /**
+   * Solo para las partes que NO caben en las casillas fijas: el número de
+   * partes de "Seamos Mejores Maestros" y "Nuestra Vida Cristiana" cambia cada
+   * semana, así que cuando sobran se crea una casilla nueva en vez de
+   * descartarlas. Indica a qué sección pertenece y si admite Auxiliar.
+   */
+  extra?: { section: string; allowTwo: boolean };
+};
 
 export function buildSlotData(w: Week): Record<string, SlotData> {
   const map: Record<string, SlotData> = {};
@@ -240,24 +251,41 @@ export function buildSlotData(w: Week): Record<string, SlotData> {
   });
 
   const used = new Set<string>();
+  let smmExtra = 0;
   for (const p of w.smm) {
     let k = smmSlotFor(p.label);
     if (!k || used.has(k)) k = SMM_ORDER.find((x) => !used.has(x)) ?? null;
-    if (k) {
-      used.add(k);
-      set(k, { label: p.label, p: p.name || undefined, s: p.name2 || undefined });
-    }
+    // Más partes que casillas: se añade una en vez de perder la asignación.
+    const esExtra = !k;
+    if (!k) k = `j_smm_extra_${++smmExtra}`;
+    used.add(k);
+    set(k, {
+      label: p.label,
+      p: p.name || undefined,
+      s: p.name2 || undefined,
+      ...(esExtra ? { extra: { section: "SMM", allowTwo: true } } : {}),
+    });
   }
 
   const talk = ["j_vc_discurso1", "j_vc_discurso2"];
   let ti = 0;
+  let vcExtra = 0;
   for (const p of w.vc) {
     if (/estudio b[ií]blico/i.test(p.label)) {
       set("j_vc_conductor", { label: p.label, p: p.c5 || undefined });
       if (p.name) set("j_vc_lector", { p: p.name }); // lector: mantiene su título
     } else {
       const k = talk[ti++];
-      if (k) set(k, { label: p.label, p: p.name || undefined });
+      if (k) {
+        set(k, { label: p.label, p: p.name || undefined });
+      } else {
+        // Semana con más discursos de los previstos: casilla nueva.
+        set(`j_vc_extra_${++vcExtra}`, {
+          label: p.label,
+          p: p.name || undefined,
+          extra: { section: "VC", allowTwo: false },
+        });
+      }
     }
   }
 

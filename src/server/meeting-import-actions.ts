@@ -107,6 +107,33 @@ export async function importMeetingsAction(
       })
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
+    // Partes que no caben en las casillas fijas: el número de asignaciones de
+    // "Seamos Mejores Maestros" y "Nuestra Vida Cristiana" cambia cada semana,
+    // así que las que sobran se añaden como casillas nuevas en vez de perderse.
+    const extras = Object.entries(data)
+      .filter(([, d]) => d.extra)
+      .map(([key, d], i) => {
+        const sectionOk = sectionAllowsSecondary(d.extra!.section);
+        const secondaryName = sectionOk ? d.s || null : null;
+        const primaryName = d.p || null;
+        return {
+          slotKey: key,
+          section: d.extra!.section,
+          label: d.label ?? "Asignación",
+          // Después de las fijas, conservando el orden del programa.
+          order: juevesSlots.length + i,
+          allowTwo: sectionOk && (d.extra!.allowTwo || !!secondaryName),
+          equalPair: false,
+          primaryName,
+          primaryToken: primaryName ? newToken() : null,
+          primaryStatus: CONFIRM_STATUS.PENDIENTE,
+          secondaryName,
+          secondaryToken: secondaryName ? newToken() : null,
+          secondaryStatus: CONFIRM_STATUS.PENDIENTE,
+        };
+      });
+    assignments.push(...extras);
+
     try {
       await prisma.meeting.create({
         data: {
