@@ -27,14 +27,21 @@ type Assignment = {
 export type ProgramMeeting = {
   date: Date;
   weekLabel: string | null;
+  /** Datos del programa impreso leídos de la planilla (pueden faltar). */
+  weeklyReading?: string | null;
+  songStart?: string | null;
+  songMiddle?: string | null;
+  songEnd?: string | null;
   assignments: Assignment[];
 };
 
 // Secciones del programa, en el orden del impreso. Las responsabilidades
 // (micrófono, acomodadores, sonido…) no forman parte de este programa.
 const ORDEN = [
-  "PRESIDENCIA",
+  // La canción y oración abre la reunión, y después las palabras de
+  // introducción del presidente, como en el programa impreso.
   "ORACION_INICIO",
+  "PRESIDENCIA",
   "TESOROS",
   "SMM",
   "VC",
@@ -54,6 +61,21 @@ type Fila = (string | Celda)[];
 /** Responsable y Auxiliar, uno debajo del otro. */
 const nombres = (a: Assignment): string =>
   [a.primaryName?.trim(), a.secondaryName?.trim()].filter(Boolean).join("\n");
+
+/**
+ * Título de una parte. Las oraciones de inicio y final se imprimen junto a su
+ * canción ("Canción 33 y oración"), como en el programa impreso; si la
+ * planilla no traía el número, se conserva el título guardado.
+ */
+function tituloDe(a: Assignment, m: ProgramMeeting): string {
+  if (a.section === "ORACION_INICIO" && m.songStart?.trim()) {
+    return `Canción ${m.songStart.trim()} y oración`;
+  }
+  if (a.section === "ORACION_FINAL" && m.songEnd?.trim()) {
+    return `Canción ${m.songEnd.trim()} y oración`;
+  }
+  return a.label;
+}
 
 /** Fecha larga, por si la semana no tiene etiqueta guardada. */
 function fechaLarga(d: Date): string {
@@ -92,9 +114,14 @@ export function buildProgramaPdf(
   for (const m of meetings) {
     const body: Fila[] = [];
 
+    // Encabezado de la semana y, debajo, la lectura semanal de la Biblia
+    // (si la planilla la traía).
+    const lectura = m.weeklyReading?.trim();
     body.push([
       {
-        content: (m.weekLabel ?? fechaLarga(m.date)).toUpperCase(),
+        content:
+          (m.weekLabel ?? fechaLarga(m.date)).toUpperCase() +
+          (lectura ? `\nLectura semanal de la Biblia: ${lectura}` : ""),
         colSpan: 2,
         styles: {
           fontStyle: "bold",
@@ -128,12 +155,19 @@ export function buildProgramaPdf(
         ]);
       }
 
+      // La canción de "Nuestra Vida Cristiana" abre la sección, como en el
+      // impreso. No es asignación de nadie: va sin nombre.
+      const cancionMedio = m.songMiddle?.trim();
+      if (sec === "VC" && cancionMedio) {
+        body.push([{ content: `• Canción ${cancionMedio}` }, ""]);
+      }
+
       for (const a of partes) {
         // Presidencia y oraciones van con viñeta, como en el impreso; las
         // partes numeradas ya traen su número en el título guardado.
         const conVinneta = !barra;
         body.push([
-          { content: `${conVinneta ? "• " : ""}${a.label}` },
+          { content: `${conVinneta ? "• " : ""}${tituloDe(a, m)}` },
           nombres(a),
         ]);
       }

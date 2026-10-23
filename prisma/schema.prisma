@@ -227,6 +227,16 @@ model Meeting {
   // "Responsable de Confirmación" mostrado en la reunión (texto libre).
   confirmadorName String?
 
+  // Datos del programa impreso que no son asignaciones de nadie: se leen de la
+  // planilla al importar y se usan al generar el PDF del programa.
+  //   weeklyReading: "Lectura semanal de la Biblia" (ej. "JEREMÍAS 40, 41")
+  //   songStart / songMiddle / songEnd: número de cada canción
+  // Nulos cuando la planilla no los traía: nunca se inventa un número.
+  weeklyReading String?
+  songStart     String?
+  songMiddle    String?
+  songEnd       String?
+
   createdById String?
   createdBy   User?   @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 

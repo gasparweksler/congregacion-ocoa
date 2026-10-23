@@ -74,6 +74,10 @@ async function pdfDe(congregationId: string) {
     meetings.map((m) => ({
       date: m.date,
       weekLabel: m.weekLabel,
+      weeklyReading: m.weeklyReading,
+      songStart: m.songStart,
+      songMiddle: m.songMiddle,
+      songEnd: m.songEnd,
       assignments: m.assignments.map((a) => ({
         slotKey: a.slotKey,
         section: a.section,
@@ -161,15 +165,48 @@ check(
     : `faltan ${faltanL.length}: ${faltanL.slice(0, 3).join(" | ")}`,
 );
 
-console.log("\n5. No se inventan datos que no se guardan");
-check(
-  !/cancion \d/.test(texto),
-  "no aparece ningún número de canción inventado",
-);
-check(
-  !texto.includes("lectura semanal de la biblia"),
-  "no aparece una lectura semanal inventada",
-);
+console.log("\n5. Canciones y lectura semanal: lo guardado sale, lo que falta no se inventa");
+{
+  const conLectura = meetings.filter((m) => m.weeklyReading?.trim());
+  for (const m of conLectura) {
+    check(
+      texto.includes(norm(m.weeklyReading!)),
+      `"${m.weekLabel}": aparece la lectura «${m.weeklyReading}»`,
+    );
+  }
+  if (conLectura.length === 0) {
+    check(
+      !texto.includes("lectura semanal de la biblia"),
+      "ninguna semana la tiene guardada, así que no aparece inventada",
+    );
+  }
+
+  const canciones = meetings.flatMap((m) =>
+    [m.songStart, m.songMiddle, m.songEnd].filter((s) => s?.trim()),
+  );
+  for (const m of meetings) {
+    for (const n of [m.songStart, m.songEnd]) {
+      if (n?.trim()) {
+        check(
+          texto.includes(norm(`Canción ${n.trim()} y oración`)),
+          `"${m.weekLabel}": aparece «Canción ${n.trim()} y oración»`,
+        );
+      }
+    }
+    if (m.songMiddle?.trim()) {
+      check(
+        texto.includes(norm(`Canción ${m.songMiddle.trim()}`)),
+        `"${m.weekLabel}": aparece «Canción ${m.songMiddle.trim()}» en Nuestra Vida Cristiana`,
+      );
+    }
+  }
+  if (canciones.length === 0) {
+    check(
+      !/cancion \d/.test(texto),
+      "ninguna canción guardada, así que no aparece ningún número inventado",
+    );
+  }
+}
 
 console.log("\n6. Ninguna semana se parte entre dos hojas");
 {

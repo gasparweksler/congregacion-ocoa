@@ -40,6 +40,10 @@ export async function GET(request: Request) {
     meetings.map((m) => ({
       date: m.date,
       weekLabel: m.weekLabel,
+      weeklyReading: m.weeklyReading,
+      songStart: m.songStart,
+      songMiddle: m.songMiddle,
+      songEnd: m.songEnd,
       assignments: m.assignments.map((a) => ({
         slotKey: a.slotKey,
         section: a.section,

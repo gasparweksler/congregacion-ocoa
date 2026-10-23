@@ -21,7 +21,11 @@ import {
 } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
-import { parseVymc, buildSlotData } from "@/lib/vymc-parser";
+import {
+  parseVymc,
+  buildSlotData,
+  programFieldsToFill,
+} from "@/lib/vymc-parser";
 
 function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
@@ -66,12 +70,24 @@ export async function importMeetingsAction(
   const juevesSlots = slotsForDay(MEETING_DAYS.JUEVES);
   let created = 0;
   let skipped = 0;
+  let completed = 0;
 
   for (const w of weeks) {
     const existing = await prisma.meeting.findFirst({
       where: { congregationId: cong, day: MEETING_DAYS.JUEVES, date: w.date },
     });
     if (existing) {
+      // La reunión ya está: NO se tocan sus asignaciones ni sus nombres. Solo
+      // se rellenan los datos del programa impreso (lectura semanal y
+      // canciones) que todavía estén vacíos, nunca los que ya tengan valor.
+      const faltantes = programFieldsToFill(existing, w);
+      if (Object.keys(faltantes).length > 0) {
+        await prisma.meeting.update({
+          where: { id: existing.id },
+          data: faltantes,
+        });
+        completed++;
+      }
       skipped++;
       continue;
     }
@@ -141,6 +157,11 @@ export async function importMeetingsAction(
           day: MEETING_DAYS.JUEVES,
           congregationId: cong,
           weekLabel: w.label,
+          // Datos del programa impreso (no son asignaciones de nadie).
+          weeklyReading: w.reading || null,
+          songStart: w.songStart || null,
+          songMiddle: w.songMiddle || null,
+          songEnd: w.songEnd || null,
           createdById: user.id,
           confirmadorName: user.name ?? null,
           assignments: { create: assignments },
@@ -161,7 +182,7 @@ export async function importMeetingsAction(
     userId: user.id,
     action: "CREAR",
     entity: "Reunion",
-    details: `Importación VyMC: ${created} creada(s), ${skipped} omitida(s).`,
+    details: `Importación VyMC: ${created} creada(s), ${skipped} omitida(s), ${completed} completada(s) con canciones/lectura.`,
   });
 
   revalidatePath("/reuniones");
@@ -172,6 +193,9 @@ export async function importMeetingsAction(
     success:
       `Se crearon ${created} reunión(es) de Jueves con títulos y nombres ` +
       `(${weeks[0]?.label} … ${weeks[weeks.length - 1]?.label}, año ${años.join(" y ")}).` +
-      (skipped ? ` ${skipped} ya existían y se omitieron.` : ""),
+      (skipped ? ` ${skipped} ya existían y se omitieron.` : "") +
+      (completed
+        ? ` En ${completed} de ellas se completaron las canciones y la lectura semanal que faltaban (las asignaciones no se tocaron).`
+        : ""),
   };
 }

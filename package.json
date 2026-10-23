@@ -22,6 +22,8 @@
     "test:vymc-anio": "tsx scripts/test-vymc-anio.mts",
     "test:partes": "tsx scripts/test-partes-variables.mts",
     "test:programa": "tsx scripts/test-programa-pdf.mts",
+    "test:canciones": "tsx scripts/test-programa-canciones.mts",
+    "db:migrate-canciones": "tsx scripts/migrate-programa-canciones.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

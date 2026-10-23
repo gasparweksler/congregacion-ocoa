@@ -22,6 +22,11 @@ const semana = (over: Partial<Week>): Week => ({
   pres: "Presidente",
   orac: "Oración",
   clos: "Final",
+  // Datos del programa impreso: esta prueba solo mira las partes variables.
+  reading: "",
+  songStart: "",
+  songMiddle: "",
+  songEnd: "",
   tesoros: [],
   smm: [],
   vc: [],

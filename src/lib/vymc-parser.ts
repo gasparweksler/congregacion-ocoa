@@ -69,6 +69,45 @@ const NAME_COLS = [9, 8];
 // Viñeta de las líneas de canción/oración: los archivos usan • o ● indistintamente.
 const BULLET = /^[•●▪◦·*-]\s*/;
 
+/**
+ * Número de canción escrito en una línea del programa.
+ *
+ * La plantilla trae "● Canción y oración:" sin número (lo escribe quien
+ * prepara el programa) y "● Canción 49" ya numerada. Se devuelve solo el
+ * número; si no hay, cadena vacía, para no inventar ninguno.
+ */
+function songNumber(text: string): string {
+  const m = text.match(/canci[oó]n\s*(?:n[°º.]?\s*)?(\d{1,3})\b/i);
+  return m ? m[1] : "";
+}
+
+/**
+ * "Lectura semanal de la Biblia" de la fila del encabezado de la semana.
+ *
+ * En la planilla la etiqueta va en una celda y el texto en la siguiente
+ * ("Lectura semanal de la Biblia:" | "JEREMÍAS 13-15"), pero también puede
+ * venir todo junto en la misma celda, así que se contemplan ambos casos.
+ */
+function readingAt(ws: ExcelJS.Worksheet, r: number): string {
+  const row = ws.getRow(r);
+  const ultima = Math.max(ws.columnCount, 12);
+  for (let c = 1; c <= ultima; c++) {
+    const t = raw(cellText(row.getCell(c).value));
+    if (!/lectura\s+semanal/i.test(t)) continue;
+    // ¿La etiqueta y el texto comparten celda?
+    const trasDosPuntos = t.split(":").slice(1).join(":").trim();
+    if (trasDosPuntos) return trasDosPuntos;
+    // Si no, el primer texto a la derecha que no repita la etiqueta.
+    for (let k = c + 1; k <= ultima; k++) {
+      const v = raw(cellText(row.getCell(k).value));
+      if (!v || /lectura\s+semanal/i.test(v)) continue;
+      return v;
+    }
+    return "";
+  }
+  return "";
+}
+
 function parseWeek(
   c1: string,
   year: number,
@@ -103,6 +142,12 @@ export type Week = {
   pres: string;
   orac: string;
   clos: string;
+  /** "Lectura semanal de la Biblia", tal cual se escribió (ej. "JEREMÍAS 40, 41"). */
+  reading: string;
+  /** Número de la canción de inicio, de la mitad (Nuestra Vida Cristiana) y final. */
+  songStart: string;
+  songMiddle: string;
+  songEnd: string;
   tesoros: Part[];
   smm: Part[];
   vc: Part[];
@@ -168,6 +213,9 @@ export function parseVymc(
         if (w) {
           cur = {
             date: w.date, label: w.label, pres: "", orac: "", clos: "",
+            // La lectura semanal va en esta misma fila, a la derecha.
+            reading: readingAt(ws, r),
+            songStart: "", songMiddle: "", songEnd: "",
             tesoros: [], smm: [], vc: [],
           };
           weeks.push(cur);
@@ -199,15 +247,63 @@ export function parseVymc(
       if (BULLET.test(c1)) {
         if (/conclusi/i.test(c1)) {
           cur.clos = nameAt(ws, r, NAME_COLS, c1);
+          // La canción final se escribe en la celda de la derecha, junto a la
+          // oración ("● Canción 38 y oración"), no en la de la conclusión.
+          for (let c = 2; c <= Math.max(ws.columnCount, 12); c++) {
+            const n = songNumber(raw(cellText(ws.getRow(r).getCell(c).value)));
+            if (n) {
+              cur.songEnd = n;
+              break;
+            }
+          }
         } else if (section === null && /canci[oó]n|oraci[oó]n/i.test(c1)) {
           // Canción + oración inicial; y "Palabras de introd." = presidente.
           cur.orac = nameAt(ws, r, [3, 4], c1);
           cur.pres = nameAt(ws, r, NAME_COLS, c1);
+          cur.songStart = songNumber(c1);
+        } else if (section === "V" && /canci[oó]n/i.test(c1)) {
+          // Canción de "Nuestra Vida Cristiana" (la plantilla ya la trae).
+          cur.songMiddle = songNumber(c1);
         }
       }
     }
   }
   return weeks;
+}
+
+/** Los datos del programa impreso tal como se guardan en la reunión. */
+export type ProgramFields = {
+  weeklyReading: string | null;
+  songStart: string | null;
+  songMiddle: string | null;
+  songEnd: string | null;
+};
+
+/**
+ * Qué datos del programa le faltan a una reunión que YA existe.
+ *
+ * Al volver a subir la planilla no se recrean las reuniones ni se tocan sus
+ * asignaciones: solo se rellenan la lectura semanal y las canciones que
+ * estuvieran vacías. Lo que ya tiene valor NO se pisa, y lo que la planilla no
+ * trae no se escribe.
+ */
+export function programFieldsToFill(
+  actual: ProgramFields,
+  w: Pick<Week, "reading" | "songStart" | "songMiddle" | "songEnd">,
+): Partial<ProgramFields> {
+  const faltan: Partial<ProgramFields> = {};
+  const pares: [keyof ProgramFields, string][] = [
+    ["weeklyReading", w.reading],
+    ["songStart", w.songStart],
+    ["songMiddle", w.songMiddle],
+    ["songEnd", w.songEnd],
+  ];
+  for (const [campo, valor] of pares) {
+    const nuevo = valor?.trim();
+    const viejo = actual[campo]?.trim();
+    if (nuevo && !viejo) faltan[campo] = nuevo;
+  }
+  return faltan;
 }
 
 function smmSlotFor(label: string): string | null {
