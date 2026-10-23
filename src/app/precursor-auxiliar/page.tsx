@@ -1,4 +1,5 @@
 import { monthName } from "@/lib/constants";
+import { BrandMark } from "@/components/BrandMark";
 import { parsePeriod } from "@/lib/period";
 import { prisma } from "@/lib/prisma";
 import { isFifteenAllowed } from "@/server/aux-pioneer-actions";
@@ -8,17 +9,25 @@ import { AuxPioneerSignupForm } from "@/components/forms/AuxPioneerSignupForm";
 // inscribe como Precursor Auxiliar para el período que viene en el enlace.
 export const dynamic = "force-dynamic";
 
-function Shell({ children }: { children: React.ReactNode }) {
+// La cabecera muestra la congregación a la que pertenece el enlace; si aún no
+// se conoce, un texto neutro (la página es pública, sin sesión).
+function Shell({
+  children,
+  congregationName,
+}: {
+  children: React.ReactNode;
+  congregationName?: string | null;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-2 text-xl font-bold text-white shadow">
-            O
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-2 text-white shadow">
+            <BrandMark className="h-7 w-7" />
           </div>
-          <div className="leading-tight">
-            <p className="font-semibold tracking-tight text-foreground">
-              Congregación Ocoa
+          <div className="min-w-0 leading-tight">
+            <p className="truncate font-semibold tracking-tight text-foreground">
+              {congregationName ?? "Mi Congregación"}
             </p>
             <p className="text-xs text-muted">Precursor Auxiliar</p>
           </div>
@@ -68,7 +77,7 @@ export default async function PrecursorAuxiliarPage({
   const allow15 = await isFifteenAllowed(congregation.id, year, month);
 
   return (
-    <Shell>
+    <Shell congregationName={congregation.name}>
       <h1 className="text-lg font-semibold text-foreground">
         Inscripción como Precursor Auxiliar
       </h1>

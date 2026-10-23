@@ -21,7 +21,13 @@ export function AppShell({
   navItems,
   children,
 }: {
-  user: { name: string; roleLabel: string; groupName?: string | null };
+  user: {
+    name: string;
+    roleLabel: string;
+    groupName?: string | null;
+    /** Nombre de la congregación del usuario (nulo para el Superadmin). */
+    congregationName?: string | null;
+  };
   navItems: NavItem[];
   children: React.ReactNode;
 }) {
@@ -89,7 +95,7 @@ export function AppShell({
     <div className="min-h-screen lg:flex">
       {/* --- Barra lateral (escritorio) --- */}
       <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-brand to-brand-2 px-4 py-6 lg:flex">
-        <Brand />
+        <Brand congregationName={user.congregationName} />
         {/* Apariencia y usuario van justo debajo del menú (antes quedaban
             pegados al fondo de la pantalla). El hueco sobrante va al final. */}
         <div className="mt-8">{nav}</div>
@@ -100,7 +106,7 @@ export function AppShell({
 
       {/* --- Cabecera móvil --- */}
       <header className="sticky top-0 z-20 flex items-center justify-between bg-gradient-to-r from-brand to-brand-2 px-4 py-3 shadow-md lg:hidden">
-        <Brand />
+        <Brand congregationName={user.congregationName} />
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -130,15 +136,17 @@ export function AppShell({
   );
 }
 
-function Brand() {
+function Brand({ congregationName }: { congregationName?: string | null }) {
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 text-brand shadow-sm">
         <BrandMark className="h-7 w-7" />
       </div>
-      <div className="leading-tight">
-        <p className="text-sm font-semibold tracking-tight text-white">
-          Congregación Ocoa
+      <div className="min-w-0 leading-tight">
+        {/* Se muestra la congregación del usuario. El Superadmin no tiene una
+            propia, así que para él dice "Plataforma". */}
+        <p className="truncate text-sm font-semibold tracking-tight text-white">
+          {congregationName ?? "Plataforma"}
         </p>
         <p className="text-xs text-white/60">Actividad de mi Congregación</p>
       </div>
@@ -149,7 +157,13 @@ function Brand() {
 function UserBox({
   user,
 }: {
-  user: { name: string; roleLabel: string; groupName?: string | null };
+  user: {
+    name: string;
+    roleLabel: string;
+    groupName?: string | null;
+    /** Nombre de la congregación del usuario (nulo para el Superadmin). */
+    congregationName?: string | null;
+  };
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3.5">

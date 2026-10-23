@@ -23,6 +23,7 @@ export default async function AppLayout({
       active: true,
       groupRoleLabel: true,
       group: { select: { name: true } },
+      congregation: { select: { name: true } },
     },
   });
 
@@ -110,6 +111,7 @@ export default async function AppLayout({
             ? ` · ${roleLabel(dbUser.groupRoleLabel)}`
             : ""),
         groupName,
+        congregationName: dbUser.congregation?.name ?? null,
       }}
       navItems={navItems}
     >

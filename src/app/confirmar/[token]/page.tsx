@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { BrandMark } from "@/components/BrandMark";
 import { CONFIRM_STATUS, meetingDayLabel } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
 import { ConfirmAnswerButtons } from "@/components/ConfirmAnswerButtons";
@@ -7,17 +8,25 @@ import { ConfirmAnswerButtons } from "@/components/ConfirmAnswerButtons";
 // registra su respuesta (Sí confirmo / No podré).
 export const dynamic = "force-dynamic";
 
-function Shell({ children }: { children: React.ReactNode }) {
+// La cabecera muestra la congregación a la que pertenece el enlace; si aún no
+// se conoce, un texto neutro (la página es pública, sin sesión).
+function Shell({
+  children,
+  congregationName,
+}: {
+  children: React.ReactNode;
+  congregationName?: string | null;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-2 text-xl font-bold text-white shadow">
-            O
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-2 text-white shadow">
+            <BrandMark className="h-7 w-7" />
           </div>
-          <div className="leading-tight">
-            <p className="font-semibold tracking-tight text-foreground">
-              Congregación Ocoa
+          <div className="min-w-0 leading-tight">
+            <p className="truncate font-semibold tracking-tight text-foreground">
+              {congregationName ?? "Mi Congregación"}
             </p>
             <p className="text-xs text-muted">Confirmación de asignación</p>
           </div>
@@ -42,7 +51,7 @@ export default async function ConfirmarPage({
 
   const assignment = await prisma.meetingAssignment.findFirst({
     where: { OR: [{ primaryToken: token }, { secondaryToken: token }] },
-    include: { meeting: true },
+    include: { meeting: { include: { congregation: { select: { name: true } } } } },
   });
 
   if (!assignment) {
@@ -80,7 +89,7 @@ export default async function ConfirmarPage({
   const answered = confirmed || rejected;
 
   return (
-    <Shell>
+    <Shell congregationName={assignment.meeting.congregation?.name}>
       <h1 className="text-lg font-semibold text-foreground">
         Hola, {name}
       </h1>
