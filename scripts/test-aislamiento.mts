@@ -16,6 +16,7 @@ const check = (ok: boolean, msg: string) => {
 };
 
 const ocoa = await p.congregation.findFirstOrThrow({ where: { slug: "ocoa" } });
+const congregacionesAntes = await p.congregation.count();
 const antes = {
   grupos: await p.group.count({ where: { congregationId: ocoa.id } }),
   publicadores: await p.publisher.count({ where: { congregationId: ocoa.id } }),
@@ -124,7 +125,12 @@ const final = {
   informes: await p.monthlyReport.count(),
 };
 console.log("\nTras revertir:", final);
-check(final.congregaciones === 1, "sigue habiendo una sola congregación");
+// Comprueba que la transacción no dejó congregaciones nuevas, sean las que
+// sean las que hubiera al empezar.
+check(
+  final.congregaciones === congregacionesAntes,
+  `siguen existiendo las mismas congregaciones (${congregacionesAntes})`,
+);
 check(final.publicadores === antes.publicadores, "no quedó ningún publicador de prueba");
 
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);
