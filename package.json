@@ -21,6 +21,7 @@
     "test:plantilla": "tsx scripts/test-plantilla-vymc.mts",
     "test:vymc-anio": "tsx scripts/test-vymc-anio.mts",
     "test:partes": "tsx scripts/test-partes-variables.mts",
+    "test:programa": "tsx scripts/test-programa-pdf.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

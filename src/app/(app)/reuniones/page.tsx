@@ -8,6 +8,7 @@ import {
   CONFIRM_STATUS,
   ROLES,
   MONTHLY_RESP_KEYS,
+  MEETING_DAYS,
 } from "@/lib/constants";
 import { ConfirmadorSelect } from "@/components/ConfirmadorSelect";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -16,6 +17,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
+import { ProgramaPdfDownload } from "@/components/forms/ProgramaPdfDownload";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EnterMeetingButton } from "@/components/EnterMeetingButton";
 import { LoadingLinkButton } from "@/components/LoadingLinkButton";
@@ -57,6 +59,25 @@ export default async function ReunionesPage() {
   const confirmadorOptions = Array.from(
     new Set(confirmadoresUsers.map((u) => u.name).filter(Boolean)),
   );
+
+  // Meses con programa de Jueves cargado, para ofrecer solo esos en el PDF
+  // (el más cercano a hoy primero, igual que el listado de reuniones).
+  const conteoPorMes = new Map<string, number>();
+  for (const m of meetingsRaw) {
+    if (m.day !== MEETING_DAYS.JUEVES) continue;
+    const k = `${m.date.getFullYear()}-${m.date.getMonth() + 1}`;
+    conteoPorMes.set(k, (conteoPorMes.get(k) ?? 0) + 1);
+  }
+  const programaPeriods = [...conteoPorMes.entries()]
+    .map(([k, count]) => {
+      const [year, month] = k.split("-").map(Number);
+      return { year, month, count };
+    })
+    .sort(
+      (a, b) =>
+        Math.abs(new Date(a.year, a.month - 1, 15).getTime() - now) -
+        Math.abs(new Date(b.year, b.month - 1, 15).getTime() - now),
+    );
 
   return (
     <>
@@ -109,6 +130,11 @@ export default async function ReunionesPage() {
                 <p className="mt-1.5 text-xs text-muted">
                   Complétala con el programa del mes y súbela aquí abajo.
                 </p>
+              </div>
+
+              {/* El programa ya cargado, en PDF para imprimir y repartir. */}
+              <div className="border-t border-border pt-4">
+                <ProgramaPdfDownload periods={programaPeriods} />
               </div>
 
               <MeetingImport />
