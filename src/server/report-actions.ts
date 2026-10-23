@@ -19,7 +19,7 @@ import {
 import { isPioneer } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
 import { logAudit } from "@/lib/audit";
-import { type FormState } from "@/server/actions-shared";
+import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
 function toInt(value: FormDataEntryValue | null, max = 9999): number {
   const n = parseInt(String(value ?? "0"), 10);
@@ -311,7 +311,12 @@ export async function saveReportsAction(
     const commentRaw = String(formData.get(`c_${p.id}`) ?? "").trim();
     const comment = commentRaw.length > 0 ? commentRaw.slice(0, 2000) : null;
 
-    await prisma.monthlyReport.upsert({
+    // El upsert puede chocar si dos personas guardan el informe del mismo
+    // hermano en el mismo instante: uno de los dos recibe "ya existe". En ese
+    // caso se reintenta una vez y, como la fila ya está, el upsert actualiza.
+    // Antes el usuario veía un error y tenía que volver a guardar a mano.
+    const guardar = () =>
+      prisma.monthlyReport.upsert({
       where: {
         publisherId_year_month: { publisherId: p.id, year, month },
       },
@@ -337,7 +342,14 @@ export async function saveReportsAction(
         statusAtReport: p.status,
         submittedById: user.id,
       },
-    });
+      });
+
+    try {
+      await guardar();
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      await guardar();
+    }
     saved++;
     savedIds.push(p.id);
   }

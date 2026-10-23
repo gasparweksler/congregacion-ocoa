@@ -29,7 +29,7 @@ const total = {
   usuarios: await p.user.count(),
 };
 
-let suma = { grupos: 0, publicadores: 0, informes: 0, reuniones: 0, usuarios: 0 };
+const suma = { grupos: 0, publicadores: 0, informes: 0, reuniones: 0, usuarios: 0 };
 
 for (const c of congs) {
   console.log(`--- ${c.name} (${c.slug}) ---`);

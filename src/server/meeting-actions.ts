@@ -109,6 +109,18 @@ export async function saveMeetingAction(
   });
   if (!meeting) return { error: "Reunión no encontrada." };
 
+  // Edición simultánea: la pantalla envía la marca de tiempo con la que cargó
+  // la reunión. Si ya no coincide, otra persona guardó mientras tanto y sus
+  // cambios no se pisan: se le pide recargar para no perder lo que ya guardó.
+  const loadedAt = String(formData.get("loadedAt") ?? "").trim();
+  if (loadedAt && loadedAt !== meeting.updatedAt.toISOString()) {
+    return {
+      error:
+        "Otra persona guardó cambios en esta reunión mientras la editabas. " +
+        "Recarga la página para ver lo que hay ahora y vuelve a aplicar tus cambios.",
+    };
+  }
+
   const confirmadorName =
     String(formData.get("confirmadorName") ?? "").trim() || null;
   const weekLabel = String(formData.get("weekLabel") ?? "").trim() || null;

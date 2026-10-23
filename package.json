@@ -15,6 +15,7 @@
     "audit:congregacion": "tsx scripts/audit-congregacion.mts",
     "test:aislamiento": "tsx scripts/test-aislamiento.mts",
     "verificar:separacion": "tsx scripts/verificar-separacion.mts",
+    "test:concurrencia": "tsx scripts/test-concurrencia.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

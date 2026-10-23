@@ -109,6 +109,7 @@ export function MeetingEditor({
   sectionLabels,
   hermanos,
   responsibilities,
+  loadedAt,
 }: {
   meetingId: string;
   day: string;
@@ -123,6 +124,9 @@ export function MeetingEditor({
   sectionLabels: Record<string, string>;
   hermanos: string[];
   responsibilities: RespItem[];
+  /** Marca de tiempo de la reunión al abrir la pantalla. Se envía al guardar
+   *  para avisar si otra persona guardó mientras tanto. */
+  loadedAt: string;
 }) {
   const [state, action] = useActionState(saveMeetingAction, EMPTY_FORM_STATE);
   const [tab, setTab] = useState<"asig" | "resp">("asig");
@@ -464,6 +468,7 @@ export function MeetingEditor({
         <input type="hidden" name="meetingId" value={meetingId} />
         <input type="hidden" name="keys" value={items.map((i) => i.key).join(",")} />
         <input type="hidden" name="removed" value={removedIds.join(",")} />
+        <input type="hidden" name="loadedAt" value={loadedAt} />
         {items.map((it) => (
           <span key={`h_${it.key}`}>
             <input type="hidden" name={`id_${it.key}`} value={it.id} />

@@ -110,6 +110,7 @@ export default async function ReunionDetallePage({
         sectionLabels={MEETING_SECTION_LABELS}
         hermanos={hermanos}
         responsibilities={responsibilities}
+        loadedAt={meeting.updatedAt.toISOString()}
       />
     </>
   );
