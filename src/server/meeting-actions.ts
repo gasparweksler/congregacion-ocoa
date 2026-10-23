@@ -419,3 +419,91 @@ export async function deleteMeetingAction(formData: FormData): Promise<void> {
   revalidatePath("/reuniones");
   redirect("/reuniones");
 }
+
+/**
+ * Marca si un hermano REALIZÓ o no su asignación. Tres estados: `true` (sí),
+ * `false` (no) y `null` (sin registrar, que es como nace el historial).
+ * Es independiente de la confirmación previa: una asignación puede estar
+ * confirmada y no haberse realizado, o al revés.
+ */
+export async function setAssignmentDoneAction(
+  assignmentId: string,
+  who: "p" | "s",
+  done: boolean | null,
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const assignment = await prisma.meetingAssignment.findFirst({
+    where: { id: assignmentId, meeting: { congregationId: congregationId(user) } },
+    select: { id: true, meetingId: true },
+  });
+  if (!assignment) return;
+
+  await prisma.meetingAssignment.update({
+    where: { id: assignmentId },
+    data: {
+      ...(who === "p" ? { primaryDone: done } : { secondaryDone: done }),
+      doneMarkedAt: done === null ? null : new Date(),
+    },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: assignment.meetingId,
+    details: `Asignación marcada como ${
+      done === null ? "sin registrar" : done ? "realizada" : "no realizada"
+    }.`,
+  });
+
+  revalidatePath(`/reuniones/${assignment.meetingId}`);
+  revalidatePath("/reuniones/estadisticas");
+}
+
+/**
+ * Marca de una vez como realizadas todas las asignaciones de una reunión que
+ * tengan hermano asignado y sigan SIN REGISTRAR. No pisa lo ya marcado a mano,
+ * para que una excepción desmarcada no se pierda al volver a pulsar el botón.
+ */
+export async function markMeetingDoneAction(formData: FormData): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const meetingId = String(formData.get("meetingId") ?? "");
+  if (!meetingId) return;
+
+  const meeting = await prisma.meeting.findFirst({
+    where: { id: meetingId, congregationId: congregationId(user) },
+    select: { id: true },
+  });
+  if (!meeting) return;
+
+  const ahora = new Date();
+  const [principales, auxiliares] = await Promise.all([
+    prisma.meetingAssignment.updateMany({
+      where: {
+        meetingId,
+        primaryDone: null,
+        NOT: { primaryName: null },
+      },
+      data: { primaryDone: true, doneMarkedAt: ahora },
+    }),
+    prisma.meetingAssignment.updateMany({
+      where: {
+        meetingId,
+        secondaryDone: null,
+        NOT: { secondaryName: null },
+      },
+      data: { secondaryDone: true, doneMarkedAt: ahora },
+    }),
+  ]);
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: meetingId,
+    details: `Reunión marcada como realizada: ${principales.count} responsable(s) y ${auxiliares.count} auxiliar(es).`,
+  });
+
+  revalidatePath(`/reuniones/${meetingId}`);
+  revalidatePath("/reuniones/estadisticas");
+}

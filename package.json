@@ -17,6 +17,7 @@
     "verificar:separacion": "tsx scripts/verificar-separacion.mts",
     "test:concurrencia": "tsx scripts/test-concurrencia.mts",
     "test:usuarios-plataforma": "tsx scripts/test-usuarios-plataforma.mts",
+    "test:estadisticas": "tsx scripts/test-estadisticas-asignaciones.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

@@ -272,6 +272,16 @@ model MeetingAssignment {
   secondaryToken  String? @unique
   secondaryStatus String  @default("PENDIENTE")
 
+  // ¿Se REALIZÓ la asignación? Es distinto de la confirmación previa:
+  //   null  = sin registrar (nadie lo marcó; es el valor de todo el historial)
+  //   true  = la realizó
+  //   false = no la realizó
+  // Las estadísticas solo cuentan `true`, para no dar por hecho que lo
+  // programado se llevó a cabo.
+  primaryDone   Boolean?
+  secondaryDone Boolean?
+  doneMarkedAt  DateTime?
+
   @@unique([meetingId, slotKey])
   @@index([meetingId])
 }

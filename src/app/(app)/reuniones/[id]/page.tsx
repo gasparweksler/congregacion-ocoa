@@ -14,7 +14,12 @@ import {
 } from "@/lib/constants";
 import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
+import { Card, CardHeader, CardBody } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
+import {
+  MeetingDonePanel,
+  type DoneItem,
+} from "@/components/forms/MeetingDonePanel";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BackButton } from "@/components/BackButton";
 
@@ -40,6 +45,36 @@ export default async function ReunionDetallePage({
     select: { fullName: true },
   });
   const hermanos = publishers.map((p) => p.fullName);
+
+  // Un elemento por hermano asignado (responsable y auxiliar por separado).
+  const doneItems: DoneItem[] = meeting.assignments.flatMap((a) => [
+    ...(a.primaryName?.trim()
+      ? [
+          {
+            assignmentId: a.id,
+            section: a.section,
+            label: a.label,
+            who: "p" as const,
+            name: a.primaryName.trim(),
+            roleLabel: "Responsable",
+            done: a.primaryDone,
+          },
+        ]
+      : []),
+    ...(a.secondaryName?.trim()
+      ? [
+          {
+            assignmentId: a.id,
+            section: a.section,
+            label: a.label,
+            who: "s" as const,
+            name: a.secondaryName.trim(),
+            roleLabel: "Auxiliar",
+            done: a.secondaryDone,
+          },
+        ]
+      : []),
+  ]);
 
   const sectionOrder =
     meeting.day === MEETING_DAYS.SABADO
@@ -112,6 +147,18 @@ export default async function ReunionDetallePage({
         responsibilities={responsibilities}
         loadedAt={meeting.updatedAt.toISOString()}
       />
+
+      {/* Registro de cumplimiento. Va fuera del editor para no interferir con
+          el guardado del programa ni con el aviso de edición simultánea. */}
+      <Card className="mt-6">
+        <CardHeader
+          title="¿Qué asignaciones se realizaron?"
+          description="Esto es distinto de la confirmación por WhatsApp: aquí se registra lo que de verdad ocurrió en la reunión. Alimenta las Estadísticas de Asignaciones."
+        />
+        <CardBody>
+          <MeetingDonePanel meetingId={meeting.id} items={doneItems} />
+        </CardBody>
+      </Card>
     </>
   );
 }

@@ -65,9 +65,20 @@ export default async function ReunionesPage() {
         title="Reuniones de la Congregación"
         description="Organiza las asignaciones y responsabilidades de cada reunión y confirma la disponibilidad de los hermanos."
         action={
-          <LoadingLinkButton href="/reuniones/responsabilidades" variant="primary">
-            🗓️ Todas las Responsabilidades del mes
-          </LoadingLinkButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <LoadingLinkButton
+              href="/reuniones/responsabilidades"
+              variant="primary"
+            >
+              🗓️ Todas las Responsabilidades del mes
+            </LoadingLinkButton>
+            <LoadingLinkButton
+              href="/reuniones/estadisticas"
+              variant="secondary"
+            >
+              📈 Estadísticas de Asignaciones
+            </LoadingLinkButton>
+          </div>
         }
       />
 
