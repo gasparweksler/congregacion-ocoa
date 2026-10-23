@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { appOrigin } from "@/lib/app-url";
 import { setAllow15hAction } from "@/server/aux-pioneer-actions";
 
 export type InvitePeriod = {
@@ -43,8 +44,7 @@ export function AuxPioneerInvite({
   };
 
   const buildMessage = () => {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
+    const origin = appOrigin();
     const cp = String.fromCodePoint;
     const E = {
       smile: cp(0x1f60a), wave: cp(0x1f44b), pray: cp(0x1f64f),

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { appOrigin } from "@/lib/app-url";
 
 export function InviteReportButton({ periodLabel }: { periodLabel: string }) {
   const [copied, setCopied] = useState(false);
 
   const buildMessage = () => {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
+    const origin = appOrigin();
     const cp = String.fromCodePoint;
     const smile = cp(0x1f60a);
     const wave = cp(0x1f44b);

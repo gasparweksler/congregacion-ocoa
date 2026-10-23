@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { appOrigin } from "@/lib/app-url";
 import {
   confirmAssignmentAction,
   resetConfirmationAction,
@@ -43,7 +44,7 @@ export function MeetingResponsibilities({
   );
 
   const buildMessage = (name: string, label: string, token: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const origin = appOrigin();
     const cp = String.fromCodePoint;
     const E = {
       hug: cp(0x1f917), cal: cp(0x1f4c5), clip: cp(0x1f4cb),

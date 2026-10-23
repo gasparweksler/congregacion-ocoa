@@ -10,6 +10,7 @@ import {
   reorderAssignmentsAction,
 } from "@/server/meeting-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
+import { appOrigin } from "@/lib/app-url";
 import { Select } from "@/components/ui";
 import {
   Card,
@@ -318,8 +319,7 @@ export function MeetingEditor({
   };
 
   function buildMessage(name: string, label: string, token: string) {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
+    const origin = appOrigin();
     const cp = String.fromCodePoint;
     // Los emojis se arman por código (no literales) para que el empaquetado
     // no los rompa al enviarse desde el teléfono.
