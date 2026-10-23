@@ -46,7 +46,15 @@ export async function importMeetingsAction(
     return { error: "No se pudo leer el archivo. Debe ser un .xlsx válido." };
   }
 
-  const weeks = parseVymc(wb);
+  // Año indicado en el formulario: solo se usa si el archivo no lo trae
+  // (ver yearOfSheet en vymc-parser.ts).
+  const anio = parseInt(String(formData.get("anio") ?? ""), 10);
+  const fallbackYear =
+    !isNaN(anio) && anio >= 2000 && anio <= 2100
+      ? anio
+      : new Date().getFullYear();
+
+  const weeks = parseVymc(wb, fallbackYear);
   if (weeks.length === 0) {
     return {
       error:
@@ -130,9 +138,13 @@ export async function importMeetingsAction(
   });
 
   revalidatePath("/reuniones");
+  // Se informa del año y del rango usados: así un año equivocado se ve de
+  // inmediato en vez de descubrirse semanas después.
+  const años = [...new Set(weeks.map((w) => w.date.getFullYear()))].sort();
   return {
     success:
-      `Se crearon ${created} reunión(es) de Jueves con títulos y nombres.` +
+      `Se crearon ${created} reunión(es) de Jueves con títulos y nombres ` +
+      `(${weeks[0]?.label} … ${weeks[weeks.length - 1]?.label}, año ${años.join(" y ")}).` +
       (skipped ? ` ${skipped} ya existían y se omitieron.` : ""),
   };
 }

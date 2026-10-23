@@ -108,11 +108,50 @@ export type Week = {
   vc: Part[];
 };
 
-export function parseVymc(wb: ExcelJS.Workbook): Week[] {
+/**
+ * Año al que pertenece el programa de una hoja.
+ *
+ * El año NO aparece en el texto de las semanas ("SEMANA 6-12 DE JULIO"), así
+ * que se busca en este orden:
+ *   1. En el nombre de la hoja ("Junio 2026") — es dato del propio archivo.
+ *   2. En cualquier celda de la hoja, por si la planilla lo trae escrito.
+ *   3. El año indicado al subir el archivo.
+ * Antes se caía al año en curso sin avisar, de modo que una planilla con la
+ * hoja llamada "Modelo" creaba las reuniones en el año equivocado en silencio.
+ */
+function yearOfSheet(ws: ExcelJS.Worksheet, fallback: number): number {
+  const enNombre = ws.name.match(/\b(20\d{2})\b/);
+  if (enNombre) return Number(enNombre[1]);
+
+  for (let r = 1; r <= Math.min(ws.rowCount, 40); r++) {
+    for (let c = 1; c <= Math.min(ws.columnCount, 12); c++) {
+      const t = raw(cellText(ws.getRow(r).getCell(c).value));
+      const m = t.match(/\b(20\d{2})\b/);
+      if (m) return Number(m[1]);
+    }
+  }
+  return fallback;
+}
+
+/** Mes de INICIO que declara el encabezado de una semana (1..12), o 0. */
+function monthOfWeek(c1: string): number {
+  const m =
+    c1.match(/SEMANA\s+\d+\s*[-–—]\s*\d+\s+DE\s+([A-Za-z]+)/i) ??
+    c1.match(/SEMANA\s+\d+\s+DE\s+([A-Za-z]+)/i);
+  return m ? (MESES[m[1].toUpperCase()] ?? 0) : 0;
+}
+
+export function parseVymc(
+  wb: ExcelJS.Workbook,
+  /** Año a usar si el archivo no lo indica. Por defecto, el año en curso. */
+  fallbackYear: number = new Date().getFullYear(),
+): Week[] {
   const weeks: Week[] = [];
   for (const ws of wb.worksheets) {
-    const ym = ws.name.match(/(\d{4})/);
-    const year = ym ? Number(ym[1]) : new Date().getFullYear();
+    let year = yearOfSheet(ws, fallbackYear);
+    // Si el programa cruza el fin de año (…diciembre, enero…), las semanas de
+    // enero pertenecen al año siguiente.
+    let mesAnterior = 0;
     let cur: Week | null = null;
     let section: "T" | "S" | "V" | null = null;
 
@@ -122,6 +161,9 @@ export function parseVymc(wb: ExcelJS.Workbook): Week[] {
 
       if (/^SEMANA\b/i.test(c1)) {
         section = null;
+        const mes = monthOfWeek(c1);
+        if (mes && mesAnterior && mes < mesAnterior) year++;
+        if (mes) mesAnterior = mes;
         const w = parseWeek(c1, year);
         if (w) {
           cur = {
