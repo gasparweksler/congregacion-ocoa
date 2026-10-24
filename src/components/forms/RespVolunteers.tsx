@@ -5,6 +5,7 @@
 // a mano), y un mismo hermano puede estar en varias categorías.
 
 import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   addVolunteerAction,
   removeVolunteerAction,
@@ -74,16 +75,7 @@ function Categoria({
               <form action={removeVolunteerAction} className="inline">
                 <input type="hidden" name="category" value={cat.key} />
                 <input type="hidden" name="publisherId" value={e.publisherId} />
-                <button
-                  type="submit"
-                  title={`Quitar a ${e.name} de ${cat.label}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-foreground transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700"
-                >
-                  {e.name}
-                  <span aria-hidden className="text-xs text-muted">
-                    ✕
-                  </span>
-                </button>
+                <QuitarBoton name={e.name} catLabel={cat.label} />
               </form>
             </li>
           ))}
@@ -124,35 +116,72 @@ function Categoria({
   );
 }
 
-/** Interruptor "Repetir los de Sonido" de la categoría Video. */
+/**
+ * Interruptor "Repetir los de Sonido" de la categoría Video.
+ *
+ * Mientras se guarda, la palanca ya se mueve al estado nuevo y aparece
+ * "Guardando…": antes no había ningún aviso y parecía que no respondía.
+ */
+function SwitchEspejo({ activo }: { activo: boolean }) {
+  const { pending } = useFormStatus();
+  // Al pulsar, se muestra el estado al que va, no el que tenía.
+  const visual = pending ? !activo : activo;
+
+  return (
+    <button
+      type="submit"
+      role="switch"
+      aria-checked={activo}
+      disabled={pending}
+      className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-left text-sm transition-colors hover:bg-slate-50 disabled:cursor-wait"
+    >
+      <span
+        aria-hidden
+        className={`inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+          visual ? "bg-primary" : "bg-slate-300"
+        }`}
+      >
+        <span
+          className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
+            visual ? "translate-x-4" : ""
+          }`}
+        />
+      </span>
+      <span className="min-w-0 flex-1 font-medium text-foreground">
+        Repetir los de Sonido
+      </span>
+      {pending ? (
+        <span className="shrink-0 text-xs text-muted">Guardando…</span>
+      ) : null}
+    </button>
+  );
+}
+
 function EspejoSonido({ activo }: { activo: boolean }) {
   return (
     <form action={setVideoSameAsAudioAction}>
       {/* Se envía el valor contrario: el botón alterna. */}
       <input type="hidden" name="value" value={activo ? "no" : "si"} />
-      <button
-        type="submit"
-        role="switch"
-        aria-checked={activo}
-        className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-left text-sm transition-colors hover:bg-slate-50"
-      >
-        <span
-          aria-hidden
-          className={`inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-            activo ? "bg-primary" : "bg-slate-300"
-          }`}
-        >
-          <span
-            className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
-              activo ? "translate-x-4" : ""
-            }`}
-          />
-        </span>
-        <span className="min-w-0 font-medium text-foreground">
-          Repetir los de Sonido
-        </span>
-      </button>
+      <SwitchEspejo activo={activo} />
     </form>
+  );
+}
+
+/** Quitar a un hermano, con aviso mientras se guarda. */
+function QuitarBoton({ name, catLabel }: { name: string; catLabel: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      title={`Quitar a ${name} de ${catLabel}`}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-foreground transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-50"
+    >
+      {name}
+      <span aria-hidden className="text-xs text-muted">
+        {pending ? "…" : "✕"}
+      </span>
+    </button>
   );
 }
 
