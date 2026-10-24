@@ -156,6 +156,71 @@ check(
   "ninguno de los listados tiene asignaciones pasadas",
 );
 
+// --- 5. El aviso de "días sin asignación" ---
+// Mide los días desde la última asignación que TUVO el hermano, no desde la
+// última marcada como realizada: nadie marca el cumplimiento, así que con el
+// criterio anterior el aviso salía siempre en cero.
+console.log("\n5. Aviso por días sin asignación");
+const realizadas = await p.meetingAssignment.count({
+  where: {
+    meeting: { congregationId: cong.id, date: { lt: hoyInicio } },
+    OR: [{ primaryDone: true }, { secondaryDone: true }],
+  },
+});
+console.log(`  asignaciones marcadas como realizadas: ${realizadas} de ${enEstadisticas}`);
+
+const pubs = await p.publisher.findMany({
+  where: { congregationId: cong.id },
+  select: { id: true, fullName: true, status: true, group: { select: { name: true } } },
+});
+const { matchPublisher, normalizeName, daysSince } = await import(
+  "../src/lib/assignment-stats.js"
+);
+const indice = new Map(pubs.map((x) => [normalizeName(x.fullName), x]));
+const conFecha = await p.meetingAssignment.findMany({
+  where: {
+    meeting: { congregationId: cong.id, date: { lt: hoyInicio } },
+    ...conNombre,
+  },
+  include: { meeting: { select: { date: true } } },
+});
+const ultima = new Map<string, { date: Date; esPublicador: boolean }>();
+for (const a of conFecha) {
+  for (const n of [a.primaryName, a.secondaryName]) {
+    if (!n?.trim()) continue;
+    const pub = matchPublisher(n.trim(), pubs, indice);
+    const clave = pub ? `p:${pub.id}` : `t:${normalizeName(n)}`;
+    const prev = ultima.get(clave);
+    if (!prev || a.meeting.date > prev.date) {
+      ultima.set(clave, { date: a.meeting.date, esPublicador: !!pub });
+    }
+  }
+}
+const ahora = new Date();
+const avisados = (umbral: number) =>
+  [...ultima.values()].filter(
+    (u) => u.esPublicador && daysSince(u.date, ahora) > umbral,
+  ).length;
+for (const umbral of [5, 10, 90]) {
+  console.log(`  umbral ${String(umbral).padStart(2)} días -> ${avisados(umbral)} hermano(s)`);
+}
+check(
+  realizadas === 0,
+  "ninguna asignación está marcada como realizada (por eso el aviso no podía usar ese dato)",
+);
+check(
+  avisados(5) > 0,
+  `con 5 días el aviso devuelve hermanos (${avisados(5)}), no cero`,
+);
+check(
+  avisados(90) === 0,
+  "con 90 días no avisa de nadie: el historial no llega tan atrás",
+);
+check(
+  avisados(5) >= avisados(10),
+  "a mayor umbral, nunca más avisados que con uno menor",
+);
+
 await p.$disconnect();
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);
 process.exit(fallos === 0 ? 0 : 1);

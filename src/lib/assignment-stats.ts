@@ -53,6 +53,15 @@ export type BrotherStats = {
   doneCount: number;
   asResponsable: number;
   asAuxiliar: number;
+  /**
+   * Fecha de la última asignación que TUVO, en una reunión ya pasada, sin
+   * importar si alguien registró su cumplimiento. Es lo que mide el aviso de
+   * "días sin asignación": para repartir las partes importa a quién le tocó,
+   * no quién pulsó después "Marcar reunión como realizada".
+   */
+  lastAssigned: Date | null;
+  /** Días desde esa última asignación. null si nunca ha tenido ninguna. */
+  daysSinceAssigned: number | null;
   /** Fecha de la última asignación REALIZADA, o null si no consta ninguna. */
   lastDone: Date | null;
   /** Días desde la última realizada. null si nunca consta una. */

@@ -193,6 +193,8 @@ export async function getAssignmentStats(
         doneCount: 0,
         asResponsable: 0,
         asAuxiliar: 0,
+        lastAssigned: null,
+        daysSinceAssigned: null,
         lastDone: null,
         daysSinceDone: null,
         unrecordedCount: 0,
@@ -201,6 +203,9 @@ export async function getAssignmentStats(
     }
     if (!b.variants.includes(limpio)) b.variants.push(limpio);
     b.participations.push(part);
+    // La asignación cuenta aunque nadie registrara su cumplimiento: para el
+    // aviso de días sin asignación lo que importa es que le tocó.
+    if (!b.lastAssigned || part.date > b.lastAssigned) b.lastAssigned = part.date;
     if (part.role === "responsable") b.asResponsable++;
     else b.asAuxiliar++;
 
@@ -315,6 +320,7 @@ export async function getAssignmentStats(
   // Días desde la última realizada, y orden.
   const hoy = new Date();
   for (const b of porClave.values()) {
+    b.daysSinceAssigned = b.lastAssigned ? daysSince(b.lastAssigned, hoy) : null;
     b.daysSinceDone = b.lastDone ? daysSince(b.lastDone, hoy) : null;
     b.participations.sort((x, y) => y.date.getTime() - x.date.getTime());
   }
@@ -352,9 +358,11 @@ export async function getAssignmentStats(
     );
   }
 
+  // Por la última asignación que tuvieron: arriba los que participaron hace
+  // poco, al final los que llevan más tiempo sin que les toque.
   brothers.sort(
     (a, b) =>
-      (b.lastDone?.getTime() ?? -1) - (a.lastDone?.getTime() ?? -1) ||
+      (b.lastAssigned?.getTime() ?? -1) - (a.lastAssigned?.getTime() ?? -1) ||
       a.name.localeCompare(b.name, "es"),
   );
 

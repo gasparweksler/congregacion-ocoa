@@ -19,8 +19,12 @@ const fecha = (iso: string) =>
   });
 
 /** Lo que llega desde el servidor (las fechas viajan como texto ISO). */
-export type BrotherRow = Omit<BrotherStats, "participations" | "lastDone"> & {
+export type BrotherRow = Omit<
+  BrotherStats,
+  "participations" | "lastDone" | "lastAssigned"
+> & {
   lastDone: string | null;
+  lastAssigned: string | null;
   participations: (Omit<BrotherStats["participations"][number], "date"> & {
     date: string;
   })[];
@@ -49,10 +53,11 @@ export function AssignmentHistory({
       {brothers.map((b) => {
         const clave = b.publisherId ?? b.name;
         const open = abierto === clave;
-        // Resaltado SOLO por llevar tiempo sin una asignación registrada como
-        // realizada. No dice nada más sobre el hermano.
-        const pasado = b.daysSinceDone !== null && b.daysSinceDone > dias;
-        const nunca = b.lastDone === null;
+        // Resaltado SOLO por llevar tiempo sin que le toque una asignación.
+        // No dice nada más sobre el hermano.
+        const pasado =
+          b.daysSinceAssigned !== null && b.daysSinceAssigned > dias;
+        const nunca = b.lastAssigned === null;
 
         return (
           <div
@@ -96,10 +101,11 @@ export function AssignmentHistory({
 
               <div className="flex flex-wrap items-center gap-2">
                 {nunca ? (
-                  <Badge tone="slate">Sin asignación realizada registrada</Badge>
+                  <Badge tone="slate">Sin asignaciones en el período</Badge>
                 ) : (
                   <Badge tone={pasado ? "amber" : "green"}>
-                    Última: {fecha(b.lastDone!)} · {b.daysSinceDone} día(s)
+                    Última asignación: {fecha(b.lastAssigned!)} ·{" "}
+                    {b.daysSinceAssigned} día(s)
                   </Badge>
                 )}
                 <button

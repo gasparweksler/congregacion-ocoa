@@ -52,6 +52,7 @@ export default async function EstadisticasAsignacionesPage({
   const rows: BrotherRow[] = brothers.map((b) => ({
     ...b,
     lastDone: b.lastDone ? b.lastDone.toISOString() : null,
+    lastAssigned: b.lastAssigned ? b.lastAssigned.toISOString() : null,
     participations: b.participations.map((p) => ({
       ...p,
       date: p.date.toISOString(),
@@ -60,11 +61,19 @@ export default async function EstadisticasAsignacionesPage({
 
   // Quiénes están detrás del aviso, no solo cuántos (el ojo del recuadro).
   const avisados = rows
-    .filter((b) => b.daysSinceDone !== null && b.daysSinceDone > dias)
+    .filter(
+      (b) =>
+        b.daysSinceAssigned !== null &&
+        b.daysSinceAssigned > dias &&
+        // Solo publicadores: en las asignaciones hay textos que no son
+        // personas ("Grupo 3", "Asamblea Regional"). Esos ya se avisan aparte,
+        // en "Sin emparejar".
+        b.publisherId !== null,
+    )
     .map((b) => ({
       name: b.name,
       groupName: b.groupName,
-      days: b.daysSinceDone,
+      days: b.daysSinceAssigned,
     }))
     .sort(
       (a, b) =>
@@ -121,7 +130,8 @@ export default async function EstadisticasAsignacionesPage({
           sinParticipacion={sinParticipacion}
         />
         <Card className="p-4">
-          <p className="text-sm text-muted">Sin ninguna registrada</p>
+          {/* Distinto del aviso de al lado: aquí sí se mira el cumplimiento. */}
+          <p className="text-sm text-muted">Sin ninguna realizada</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700">
             {sinNinguna}
           </p>
@@ -165,7 +175,7 @@ export default async function EstadisticasAsignacionesPage({
       <Card>
         <CardHeader
           title="Hermanos"
-          description={`${rows.length} hermano(s) con asignaciones en el período. Resaltado en ámbar: más de ${dias} días sin una asignación registrada como realizada.`}
+          description={`${rows.length} hermano(s) con asignaciones en reuniones ya pasadas. Resaltado en ámbar: más de ${dias} días desde su última asignación.`}
         />
         <CardBody className="px-0 py-0">
           <AssignmentHistory brothers={rows} dias={dias} />
