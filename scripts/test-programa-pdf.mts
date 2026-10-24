@@ -154,6 +154,11 @@ for (const m of meetings) {
     // Las responsabilidades (micrófono, acomodadores, audio…) no forman parte
     // del programa impreso.
     if (a.section === "RESPONSABILIDADES" || a.slotKey.startsWith("r_")) continue;
+    // Cuando la semana trae canción, las oraciones se imprimen como en el
+    // programa impreso ("Canción 33 y oración") en vez de con su título
+    // guardado. No es una pérdida: se comprueba aparte, en el punto 5.
+    if (a.section === "ORACION_INICIO" && m.songStart?.trim()) continue;
+    if (a.section === "ORACION_FINAL" && m.songEnd?.trim()) continue;
     if (a.label?.trim()) labels.add(a.label.trim());
   }
 }

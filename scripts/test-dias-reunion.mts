@@ -72,9 +72,43 @@ console.log("\n2. La etiqueta sale del día real de la reunión");
   const jueves1 = new Date(2026, 9, 1, 12);
   check(
     meetingDayLabel("JUEVES", jueves1) === "Jueves (Entre semana)",
-    "una reunión ya creada no cambia de día al cambiar la configuración",
+    "una reunión suelta conserva el día de su fecha",
   );
   check(meetingDayLabel("JUEVES") === "Entre semana", "sin fecha, solo el tipo");
+
+  // Las reuniones importadas guardan el LUNES de su semana, no el día en que
+  // se reúne la congregación: si la etiqueta saliera de esa fecha, todas
+  // dirían "Lunes" (es el fallo que se vio en pantalla).
+  const lunesDeLaSemana = new Date(2026, 9, 5, 12); // 5 de octubre, lunes
+  check(
+    meetingDayLabel("JUEVES", lunesDeLaSemana, {
+      weekLabel: "5-11 de Octubre",
+      days: { midweekDay: 4, weekendDay: 6 },
+    }) === "Jueves (Entre semana)",
+    "una semana con jueves configurado dice Jueves, no Lunes",
+  );
+  check(
+    meetingDayLabel("JUEVES", lunesDeLaSemana, {
+      weekLabel: "5-11 de Octubre",
+      days: { midweekDay: 2, weekendDay: 0 },
+    }) === "Martes (Entre semana)",
+    "y si la congregación se reúne el martes, dice Martes",
+  );
+  check(
+    meetingDayLabel("SABADO", lunesDeLaSemana, {
+      weekLabel: "5-11 de Octubre",
+      days: { midweekDay: 4, weekendDay: 0 },
+    }) === "Domingo (Fin de semana)",
+    "la de fin de semana usa su propio día configurado",
+  );
+  // Sin etiqueta de semana es una reunión suelta: manda su fecha exacta.
+  check(
+    meetingDayLabel("JUEVES", lunesDeLaSemana, {
+      weekLabel: null,
+      days: { midweekDay: 4, weekendDay: 6 },
+    }) === "Lunes (Entre semana)",
+    "una reunión creada a mano conserva el día de su fecha",
+  );
   check(weekdayNameOfISO("2026-10-06") === "Martes", "weekdayNameOfISO respeta la zona horaria");
 }
 

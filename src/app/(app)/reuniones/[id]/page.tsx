@@ -16,6 +16,7 @@ import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
+import { getMeetingDays } from "@/lib/meeting-days";
 import { ProgramDataForm } from "@/components/forms/ProgramDataForm";
 import {
   MeetingDonePanel,
@@ -32,6 +33,8 @@ export default async function ReunionDetallePage({
   const user = await requireMeetingsAccess();
   const cong = congregationId(user);
   const { id } = await params;
+
+  const meetingDays = await getMeetingDays(cong);
 
   const meeting = await prisma.meeting.findFirst({
     where: { id, congregationId: cong },
@@ -135,7 +138,10 @@ export default async function ReunionDetallePage({
       <AutoRefresh seconds={8} />
       <PageHeader
         title={`Reunión · ${meeting.weekLabel ?? formatDate(meeting.date)}`}
-        description={`${meetingDayLabel(meeting.day, meeting.date)} · Creada ${formatDate(
+        description={`${meetingDayLabel(meeting.day, meeting.date, {
+          weekLabel: meeting.weekLabel,
+          days: meetingDays,
+        })} · Creada ${formatDate(
           meeting.createdAt,
         )} · Última modificación ${formatDate(meeting.updatedAt)}`}
         action={<BackButton href="/reuniones" />}
@@ -156,7 +162,10 @@ export default async function ReunionDetallePage({
       <MeetingEditor
         meetingId={meeting.id}
         day={meeting.day}
-        dayLabel={meetingDayLabel(meeting.day, meeting.date)}
+        dayLabel={meetingDayLabel(meeting.day, meeting.date, {
+          weekLabel: meeting.weekLabel,
+          days: meetingDays,
+        })}
         dateLabel={formatDate(meeting.date)}
         confirmadorName={meeting.confirmadorName ?? ""}
         currentUserName={user.name ?? user.username}

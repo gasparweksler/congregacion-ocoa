@@ -232,7 +232,12 @@ export default async function ReunionesPage() {
                               <span className="font-semibold text-foreground">
                                 {m.weekLabel ?? formatDate(m.date)}
                               </span>
-                              <Badge tone="blue">{meetingDayLabel(m.day, m.date)}</Badge>
+                              <Badge tone="blue">
+                                {meetingDayLabel(m.day, m.date, {
+                                  weekLabel: m.weekLabel,
+                                  days: meetingDays,
+                                })}
+                              </Badge>
                             </div>
                             <p className="mt-0.5 text-sm text-muted">
                               Total de asignaciones: {asignaciones}

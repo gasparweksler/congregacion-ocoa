@@ -51,7 +51,16 @@ export default async function ConfirmarPage({
 
   const assignment = await prisma.meetingAssignment.findFirst({
     where: { OR: [{ primaryToken: token }, { secondaryToken: token }] },
-    include: { meeting: { include: { congregation: { select: { name: true } } } } },
+    include: {
+      meeting: {
+        include: {
+          // midweekDay/weekendDay: el día real de una reunión de semana.
+          congregation: {
+            select: { name: true, midweekDay: true, weekendDay: true },
+          },
+        },
+      },
+    },
   });
 
   if (!assignment) {
@@ -96,7 +105,10 @@ export default async function ConfirmarPage({
       <div className="mt-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm">
         <p className="font-medium text-foreground">{assignment.label}</p>
         <p className="mt-0.5 text-muted">
-          {meetingDayLabel(assignment.meeting.day, assignment.meeting.date)} ·{" "}
+          {meetingDayLabel(assignment.meeting.day, assignment.meeting.date, {
+            weekLabel: assignment.meeting.weekLabel,
+            days: assignment.meeting.congregation,
+          })}{" · "}
           {formatDate(assignment.meeting.date)}
         </p>
         {assignment.note ? (

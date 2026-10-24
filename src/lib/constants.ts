@@ -310,12 +310,25 @@ export function slotsForDay(day: string): MeetingSlot[] {
 /**
  * Etiqueta de una reunión: "Jueves (Entre semana)".
  *
- * El día se toma de la FECHA de la reunión, no de la configuración de la
- * congregación: así una reunión ya creada sigue mostrando el día que de verdad
- * tiene, aunque después se cambien los días de reunión.
+ * De dónde sale el día, según el tipo de reunión:
+ *
+ *  - Las importadas de la planilla abarcan una SEMANA y guardan como fecha el
+ *    primer día de esa semana (el lunes), no el día en que se reúne la
+ *    congregación. Para esas, el día es el que la congregación tiene
+ *    configurado; si no, todas dirían "Lunes".
+ *  - Las creadas a mano guardan la fecha exacta de la reunión, así que el día
+ *    se toma de ella y no de la configuración.
  */
-export function meetingDayLabel(day: string, date?: Date | string | null): string {
+export function meetingDayLabel(
+  day: string,
+  date?: Date | string | null,
+  opts?: { weekLabel?: string | null; days?: MeetingDays },
+): string {
   const tipo = MEETING_DAY_LABELS[day as MeetingDay] ?? day;
+
+  if (opts?.weekLabel && opts.days) {
+    return `${weekdayName(weekdayOfMeetingDay(day, opts.days))} (${tipo})`;
+  }
   if (!date) return tipo;
   const d = new Date(date);
   if (isNaN(d.getTime())) return tipo;

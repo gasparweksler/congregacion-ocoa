@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
+import { getMeetingDays } from "@/lib/meeting-days";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import {
   meetingDayLabel,
@@ -89,6 +90,8 @@ export async function getAssignmentStats(
     ...(hasta && !isNaN(hasta.getTime()) ? { lte: hasta } : {}),
     lt: hoyInicio,
   };
+
+  const diasCongregacion = await getMeetingDays(cong);
 
   const [assignments, historial, publishers, rango] = await Promise.all([
     prisma.meetingAssignment.findMany({
@@ -293,7 +296,10 @@ export async function getAssignmentStats(
       assignmentId: a.assignmentId,
       meetingId: a.meetingId,
       date: a.date,
-      dayLabel: meetingDayLabel(a.day, a.date),
+      dayLabel: meetingDayLabel(a.day, a.date, {
+        weekLabel: a.weekLabel,
+        days: diasCongregacion,
+      }),
       weekLabel: a.weekLabel,
       section: a.section,
       label: a.label,
