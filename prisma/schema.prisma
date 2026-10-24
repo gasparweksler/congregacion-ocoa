@@ -50,6 +50,7 @@ model Congregation {
   auxPioneerSettings      AuxPioneerSetting[]
   auditLogs               AuditLog[]
   assignmentHistory       AssignmentHistory[]
+  respVolunteers          ResponsibilityVolunteer[]
 }
 
 // ----------------------------------------------------------------------------
@@ -153,6 +154,7 @@ model Publisher {
   updatedAt DateTime @updatedAt
 
   statusChanges StatusChange[]
+  respVolunteers ResponsibilityVolunteer[]
   reports       MonthlyReport[]
 
   @@index([congregationId])
@@ -266,6 +268,36 @@ model Meeting {
 
 // Una casilla de asignación/responsabilidad dentro de una reunión.
 // Puede tener 1 o 2 hermanos (principal = Responsable, secundario = Auxiliar).
+/**
+ * Hermanos disponibles para cada tipo de responsabilidad.
+ *
+ * Es la lista con la que trabaja la asignación automática: quién puede hacer
+ * de acomodador, pasar micrófono, audio, vídeo o plataforma. Un mismo hermano
+ * puede estar en varias categorías.
+ *
+ * Apunta al publicador (no a un nombre escrito), así que si se elimina el
+ * publicador desaparece también de estas listas.
+ */
+model ResponsibilityVolunteer {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  // Ver RESP_CATEGORIES en constants.ts
+  category String
+
+  publisherId String
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Un hermano una sola vez por categoría.
+  @@unique([congregationId, category, publisherId])
+  @@index([congregationId])
+  @@index([publisherId])
+}
+
 /**
  * Historial de asignaciones de reuniones ya eliminadas.
  *

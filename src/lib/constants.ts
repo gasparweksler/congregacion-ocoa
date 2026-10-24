@@ -389,3 +389,35 @@ export const CONFIRM_STATUS_LABELS: Record<ConfirmStatus, string> = {
   CONFIRMADO: "✅ Confirmado",
   RECHAZADO: "❌ Rechazado",
 };
+
+// ---------------------------------------------------------------------------
+//  CATEGORÍAS DE RESPONSABILIDAD
+//  Agrupan las casillas de responsabilidad por "tipo de tarea": los hermanos se
+//  apuntan a una categoría y la asignación automática reparte sus casillas.
+//  "Limpieza por Grupos" queda fuera a propósito: son grupos, no publicadores.
+// ---------------------------------------------------------------------------
+export type RespCategory = {
+  key: string;
+  label: string;
+  /** Casillas (slotKey) que cubre esta categoría. */
+  slots: string[];
+};
+
+export const RESP_CATEGORIES: RespCategory[] = [
+  {
+    key: "ACOMODADORES",
+    label: "Acomodadores",
+    slots: ["r_acom_entrada", "r_acom_auditorio"],
+  },
+  { key: "MICROFONO", label: "Pasa Micrófono", slots: ["r_microfono", "r_microfono_2"] },
+  { key: "PLATAFORMA", label: "Acomodador de Plataforma", slots: ["r_acom_plataforma"] },
+  { key: "AUDIO", label: "Audio", slots: ["r_audio"] },
+  { key: "VIDEO", label: "Video", slots: ["r_video"] },
+];
+
+export const RESP_CATEGORY_KEYS = RESP_CATEGORIES.map((c) => c.key);
+
+/** La categoría a la que pertenece una casilla, o null si no la cubre ninguna. */
+export function categoryOfSlot(slotKey: string): RespCategory | null {
+  return RESP_CATEGORIES.find((c) => c.slots.includes(slotKey)) ?? null;
+}

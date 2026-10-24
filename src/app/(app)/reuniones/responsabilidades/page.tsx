@@ -2,7 +2,8 @@ import { requireMeetingsAccess,
   congregationId,
 } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { monthName } from "@/lib/constants";
+import { monthName, RESP_CATEGORIES } from "@/lib/constants";
+import { getVolunteersByCategory } from "@/lib/resp-volunteers";
 import { parsePeriod } from "@/lib/period";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,6 +11,8 @@ import { Card, CardHeader, CardBody } from "@/components/ui";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { BackButton } from "@/components/BackButton";
 import { MonthlyResponsibilities } from "@/components/forms/MonthlyResponsibilities";
+import { RespVolunteers } from "@/components/forms/RespVolunteers";
+import { AutoAssignButton } from "@/components/forms/AutoAssignButton";
 
 export default async function ResponsabilidadesMensualPage({
   searchParams,
@@ -21,11 +24,11 @@ export default async function ResponsabilidadesMensualPage({
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);
 
-  const [publishersRaw, groupsRaw, rows] = await Promise.all([
+  const [publishersRaw, groupsRaw, rows, volunteers] = await Promise.all([
     prisma.publisher.findMany({
       where: { congregationId: cong },
       orderBy: { fullName: "asc" },
-      select: { fullName: true },
+      select: { id: true, fullName: true },
     }),
     prisma.group.findMany({
       where: { congregationId: cong },
@@ -33,9 +36,12 @@ export default async function ResponsabilidadesMensualPage({
       select: { name: true },
     }),
     getMonthlyResponsibilities(year, month),
+    getVolunteersByCategory(cong),
   ]);
 
   const publishers = publishersRaw.map((p) => p.fullName);
+  // Para los desplegables de la ventana de disponibles (hace falta el id).
+  const publisherOptions = publishersRaw.map((p) => ({ id: p.id, name: p.fullName }));
   const groups = groupsRaw.map((g) => g.name);
 
   return (
@@ -55,6 +61,25 @@ export default async function ResponsabilidadesMensualPage({
           📄 Descargar PDF
         </a>
       </div>
+
+      {/* Quién puede hacer cada responsabilidad, y el reparto automático que
+          se apoya en esas listas. */}
+      <Card className="mb-4">
+        <CardHeader
+          title="Hermanos disponibles por responsabilidad"
+          description="Los nombres se eligen de los publicadores de la congregación. Un hermano puede estar en varias categorías."
+        />
+        <CardBody className="space-y-4">
+          <RespVolunteers
+            categories={RESP_CATEGORIES}
+            byCategory={volunteers}
+            publishers={publisherOptions}
+          />
+          <div className="border-t border-border pt-4">
+            <AutoAssignButton year={year} month={month} />
+          </div>
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader

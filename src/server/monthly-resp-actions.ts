@@ -19,6 +19,7 @@ import {
 } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
 import { getMeetingDays } from "@/lib/meeting-days";
+import { findWeekMeeting } from "@/lib/meeting-week";
 import { logAudit } from "@/lib/audit";
 import { isUniqueViolation } from "@/server/actions-shared";
 
@@ -30,44 +31,8 @@ function newToken(): string {
 // emparejar un jueves/sábado calculado con una reunión ya creada de esa MISMA
 // semana, aunque la reunión guarde su fecha en otro día del rango (p. ej. el
 // lunes: "3-9 de Agosto" guarda 2026-08-03).
-function weekKey(date: Date): string {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const offsetToMonday = (d.getDay() + 6) % 7; // Dom=0 -> 6, Lun=1 -> 0, ...
-  d.setDate(d.getDate() - offsetToMonday);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-type MeetingLike = { id: string; date: Date; day: string; weekLabel?: string | null };
-
-/**
- * Encuentra la reunión ya creada que corresponde a una fecha (jueves/sábado)
- * calculada: misma semana y mismo tipo de día. Prefiere la reunión con rango
- * (weekLabel), luego la de fecha exacta, luego la más antigua.
- */
-function findWeekMeeting<T extends MeetingLike>(
-  meetings: T[],
-  date: Date,
-  day: string,
-): T | undefined {
-  const wk = weekKey(date);
-  const candidates = meetings.filter(
-    (m) => m.day === day && weekKey(m.date) === wk,
-  );
-  if (candidates.length <= 1) return candidates[0];
-  const exactISO = date.toDateString();
-  return candidates.sort((a, b) => {
-    // 1º: con rango (weekLabel). 2º: fecha exacta. 3º: más antigua.
-    const aw = a.weekLabel ? 0 : 1;
-    const bw = b.weekLabel ? 0 : 1;
-    if (aw !== bw) return aw - bw;
-    const ae = a.date.toDateString() === exactISO ? 0 : 1;
-    const be = b.date.toDateString() === exactISO ? 0 : 1;
-    if (ae !== be) return ae - be;
-    return a.date.getTime() - b.date.getTime();
-  })[0];
-}
+// La regla vive en src/lib/meeting-week.ts: la usa también la asignación
+// automática, para no tener dos criterios parecidos pero distintos.
 
 export type RespCell = {
   name: string;
