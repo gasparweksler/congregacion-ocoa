@@ -16,6 +16,7 @@ import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
+import { ProgramDataForm } from "@/components/forms/ProgramDataForm";
 import {
   MeetingDonePanel,
   type DoneItem,
@@ -121,22 +122,13 @@ export default async function ReunionDetallePage({
   });
 
   // Lo que la planilla trae de la semana, sin inventar nada: si un dato no
-  // estaba en el Excel, se muestra vacío.
-  const datosPrograma = [
-    { label: "Lectura semanal de la Biblia", valor: meeting.weeklyReading ?? "" },
-    {
-      label: "Canción de inicio",
-      valor: meeting.songStart ? `Canción ${meeting.songStart}` : "",
-    },
-    {
-      label: "Canción de Nuestra Vida Cristiana",
-      valor: meeting.songMiddle ? `Canción ${meeting.songMiddle}` : "",
-    },
-    {
-      label: "Canción final",
-      valor: meeting.songEnd ? `Canción ${meeting.songEnd}` : "",
-    },
-  ];
+  // estaba en el Excel, queda vacío y se puede escribir a mano.
+  const datosPrograma = {
+    weeklyReading: meeting.weeklyReading ?? "",
+    songStart: meeting.songStart ?? "",
+    songMiddle: meeting.songMiddle ?? "",
+    songEnd: meeting.songEnd ?? "",
+  };
 
   return (
     <>
@@ -154,33 +146,10 @@ export default async function ReunionDetallePage({
       <Card className="mb-6">
         <CardHeader
           title="Programa de la semana"
-          description="Canciones y lectura semanal, tal como vienen en la planilla de Vida y Ministerio."
+          description="Canciones y lectura semanal. Llegan de la planilla al importarla, y se pueden corregir aquí."
         />
         <CardBody>
-          {datosPrograma.some((d) => d.valor) ? (
-            <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {datosPrograma.map((d) => (
-                <div
-                  key={d.label}
-                  className="rounded-xl border border-border bg-surface px-3 py-2"
-                >
-                  <dt className="text-xs text-muted">{d.label}</dt>
-                  <dd className="mt-0.5 font-semibold text-foreground">
-                    {d.valor || <span className="text-muted">—</span>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="text-sm text-muted">
-              Esta reunión no tiene canciones ni lectura semanal guardadas. Se
-              toman del Excel al importarlo: escríbelas en la planilla (la
-              lectura a la derecha del encabezado de la semana, y el número
-              junto a cada «Canción y oración») y vuelve a subirla. Las
-              asignaciones y las confirmaciones no se tocan: solo se completan
-              estos datos.
-            </p>
-          )}
+          <ProgramDataForm meetingId={meeting.id} data={datosPrograma} />
         </CardBody>
       </Card>
 

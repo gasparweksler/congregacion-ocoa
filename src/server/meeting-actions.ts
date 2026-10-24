@@ -19,6 +19,10 @@ import {
   MONTHLY_RESP_KEYS,
   sectionAllowsSecondary,
 } from "@/lib/constants";
+import {
+  parseSongNumber,
+  parseWeeklyReading,
+} from "@/lib/meeting-program";
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
@@ -384,6 +388,58 @@ export async function setMeetingConfirmadorAction(
 
   revalidatePath("/reuniones");
   revalidatePath(`/reuniones/${meetingId}`);
+}
+
+/**
+ * Canciones y lectura semanal de una reunión.
+ *
+ * Normalmente llegan de la planilla al importarla; esto permite corregirlas o
+ * escribirlas a mano sin volver a subir el Excel. Dejar un campo vacío lo borra
+ * (queda sin dato, que es distinto de inventarse un número).
+ */
+export async function setProgramDataAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireMeetingsAccess();
+  const meetingId = String(formData.get("meetingId") ?? "").trim();
+  if (!meetingId) return { error: "Falta la reunión." };
+
+  const cancion = (campo: string) =>
+    parseSongNumber(String(formData.get(campo) ?? ""));
+
+  const songStart = cancion("songStart");
+  const songMiddle = cancion("songMiddle");
+  const songEnd = cancion("songEnd");
+  if (songStart === undefined || songMiddle === undefined || songEnd === undefined) {
+    return {
+      error: "El número de canción debe ser un número entre 1 y 999, o quedar vacío.",
+    };
+  }
+
+  const weeklyReading = parseWeeklyReading(
+    String(formData.get("weeklyReading") ?? ""),
+  );
+
+  const actualizada = await prisma.meeting.updateMany({
+    where: { id: meetingId, congregationId: congregationId(user) },
+    data: { weeklyReading, songStart, songMiddle, songEnd },
+  });
+  if (actualizada.count === 0) return { error: "No se encontró la reunión." };
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Reunion",
+    entityId: meetingId,
+    details:
+      `Programa de la semana: lectura "${weeklyReading ?? "(vacía)"}", ` +
+      `canciones ${songStart ?? "-"}/${songMiddle ?? "-"}/${songEnd ?? "-"}.`,
+  });
+
+  revalidatePath(`/reuniones/${meetingId}`);
+  revalidatePath("/reuniones");
+  return { success: "Canciones y lectura semanal guardadas." };
 }
 
 /**

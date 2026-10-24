@@ -237,6 +237,36 @@ console.log("\n6. Volver a subir la planilla completa una reunión ya cargada");
   );
 }
 
+console.log("\n7. Lo que se escribe a mano en el editor de la reunión");
+{
+  const { parseSongNumber, parseWeeklyReading } = await import(
+    "../src/lib/meeting-program.js"
+  );
+  // Números válidos.
+  check(parseSongNumber("33") === "33", "«33» vale");
+  check(parseSongNumber("  7 ") === "7", "«  7 » se recorta a «7»");
+  check(parseSongNumber("033") === "33", "«033» se normaliza a «33»");
+  check(parseSongNumber("151") === "151", "«151» vale");
+  // Vacío = borrar el dato, no es un error.
+  check(parseSongNumber("") === null, "vacío borra el dato (null, no error)");
+  check(parseSongNumber("   ") === null, "solo espacios también borra");
+  // Lo que no es un número de canción se rechaza.
+  for (const malo of ["Canción 33", "33a", "-5", "3.5", "0", "1000", "abc", "3,5"]) {
+    check(parseSongNumber(malo) === undefined, `«${malo}» se rechaza`);
+  }
+
+  // Lectura semanal.
+  check(
+    parseWeeklyReading("  JEREMÍAS   40, 41 ") === "JEREMÍAS 40, 41",
+    "la lectura se limpia de espacios de más",
+  );
+  check(parseWeeklyReading("") === null, "lectura vacía borra el dato");
+  check(
+    parseWeeklyReading("x".repeat(200))?.length === 120,
+    "una lectura larguísima se recorta a 120 caracteres",
+  );
+}
+
 // Para revisarlo a ojo: SALIDA=ruta.pdf npx tsx scripts/test-programa-canciones.mts
 const salida = process.env.SALIDA;
 if (salida) {
