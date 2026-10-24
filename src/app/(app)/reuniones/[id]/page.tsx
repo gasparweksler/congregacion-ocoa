@@ -120,6 +120,24 @@ export default async function ReunionDetallePage({
     };
   });
 
+  // Lo que la planilla trae de la semana, sin inventar nada: si un dato no
+  // estaba en el Excel, se muestra vacío.
+  const datosPrograma = [
+    { label: "Lectura semanal de la Biblia", valor: meeting.weeklyReading ?? "" },
+    {
+      label: "Canción de inicio",
+      valor: meeting.songStart ? `Canción ${meeting.songStart}` : "",
+    },
+    {
+      label: "Canción de Nuestra Vida Cristiana",
+      valor: meeting.songMiddle ? `Canción ${meeting.songMiddle}` : "",
+    },
+    {
+      label: "Canción final",
+      valor: meeting.songEnd ? `Canción ${meeting.songEnd}` : "",
+    },
+  ];
+
   return (
     <>
       <AutoRefresh seconds={8} />
@@ -130,6 +148,41 @@ export default async function ReunionDetallePage({
         )} · Última modificación ${formatDate(meeting.updatedAt)}`}
         action={<BackButton href="/reuniones" />}
       />
+
+      {/* Datos del programa que no son asignación de nadie: se leen de la
+          planilla al importar y se usan también para el PDF del programa. */}
+      <Card className="mb-6">
+        <CardHeader
+          title="Programa de la semana"
+          description="Canciones y lectura semanal, tal como vienen en la planilla de Vida y Ministerio."
+        />
+        <CardBody>
+          {datosPrograma.some((d) => d.valor) ? (
+            <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {datosPrograma.map((d) => (
+                <div
+                  key={d.label}
+                  className="rounded-xl border border-border bg-surface px-3 py-2"
+                >
+                  <dt className="text-xs text-muted">{d.label}</dt>
+                  <dd className="mt-0.5 font-semibold text-foreground">
+                    {d.valor || <span className="text-muted">—</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-sm text-muted">
+              Esta reunión no tiene canciones ni lectura semanal guardadas. Se
+              toman del Excel al importarlo: escríbelas en la planilla (la
+              lectura a la derecha del encabezado de la semana, y el número
+              junto a cada «Canción y oración») y vuelve a subirla. Las
+              asignaciones y las confirmaciones no se tocan: solo se completan
+              estos datos.
+            </p>
+          )}
+        </CardBody>
+      </Card>
 
       <MeetingEditor
         meetingId={meeting.id}
