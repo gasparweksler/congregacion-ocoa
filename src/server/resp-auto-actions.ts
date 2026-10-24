@@ -317,6 +317,11 @@ export async function applyAutoAssignAction(
   year: number,
   month: number,
   proposals: Proposal[],
+  /**
+   * Se guarda por tandas (una fecha cada vez) para poder enseñar el avance.
+   * Solo la última tanda deja la anotación en Auditoría, con el total.
+   */
+  resumen?: { anotar: boolean; total: number; conConflicto: number },
 ): Promise<ApplyResult> {
   const user = await requireMeetingsAccess();
   const cong = congregationId(user);
@@ -389,20 +394,25 @@ export async function applyAutoAssignAction(
     guardadas += resto.length;
   }
 
-  const conConflicto = proposals.filter((p) => p.conflict).length;
-  await logAudit({
-    userId: user.id,
-    action: "EDITAR",
-    entity: "Responsabilidades",
-    details:
-      `Asignación automática de ${monthName(month)} ${year}: ${guardadas} responsabilidad(es)` +
-      (conConflicto ? `, ${conConflicto} con conflicto aceptado.` : "."),
-  });
+  const conConflicto = resumen?.conConflicto ?? proposals.filter((p) => p.conflict).length;
+  const total = resumen?.total ?? guardadas;
+
+  // Una sola anotación por reparto, no una por tanda.
+  if (!resumen || resumen.anotar) {
+    await logAudit({
+      userId: user.id,
+      action: "EDITAR",
+      entity: "Responsabilidades",
+      details:
+        `Asignación automática de ${monthName(month)} ${year}: ${total} responsabilidad(es)` +
+        (conConflicto ? `, ${conConflicto} con conflicto aceptado.` : "."),
+    });
+  }
 
   return {
     ok: true,
     message:
-      `Se guardaron ${guardadas} responsabilidad(es) de ${monthName(month)} ${year}.` +
+      `Se guardaron ${total} responsabilidad(es) de ${monthName(month)} ${year}.` +
       (conConflicto
         ? ` ${conConflicto} se asignaron a hermanos que ya tenían una parte en esa reunión.`
         : ""),

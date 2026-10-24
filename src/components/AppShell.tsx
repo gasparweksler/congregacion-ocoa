@@ -7,14 +7,20 @@
 //  Estilo limpio y espacioso inspirado en jw.org (identidad propia en teal).
 // ============================================================================
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { logoutAction } from "@/server/auth-actions";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export type NavItem = { href: string; label: string; icon: string };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  /** Encabezado bajo el que se agrupa en el menú (p. ej. "Reuniones"). */
+  group?: string;
+};
 
 export function AppShell({
   user,
@@ -42,8 +48,21 @@ export function AppShell({
   // durante el render (no en un efecto) para no encadenar un repintado extra.
   if (!isPending && navTarget) setNavTarget(null);
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/");
+  /**
+   * Una sección está activa si es la ruta actual, o si la contiene y ninguna
+   * otra entrada del menú encaja mejor. Sin esto, estando en
+   * /reuniones/estadisticas se marcarían las dos entradas de Reuniones.
+   */
+  const isActive = (href: string) => {
+    if (pathname === href) return true;
+    if (!pathname.startsWith(href + "/")) return false;
+    return !navItems.some(
+      (o) =>
+        o.href !== href &&
+        o.href.length > href.length &&
+        (pathname === o.href || pathname.startsWith(o.href + "/")),
+    );
+  };
 
   const go = (href: string) => {
     setOpen(false);
@@ -54,14 +73,24 @@ export function AppShell({
 
   const nav = (
     <nav className="flex flex-col gap-1">
-      <p className="px-3 pb-2 pt-1 text-[0.7rem] font-semibold uppercase tracking-wider text-white/40">
-        Menú
-      </p>
-      {navItems.map((item) => {
+      {navItems.map((item, i) => {
         const loading = navTarget === item.href;
+        // Encabezado cuando empieza un grupo nuevo: con 13 entradas seguidas
+        // cuesta encontrar nada, sobre todo en el móvil.
+        const nuevoGrupo = item.group && item.group !== navItems[i - 1]?.group;
         return (
+          <Fragment key={item.href}>
+            {nuevoGrupo ? (
+              <p
+                className={cn(
+                  "px-3 pb-1 text-[0.7rem] font-semibold uppercase tracking-wider text-white/40",
+                  i === 0 ? "pt-1" : "pt-3",
+                )}
+              >
+                {item.group}
+              </p>
+            ) : null}
           <button
-            key={item.href}
             type="button"
             onClick={() => go(item.href)}
             aria-busy={loading}
@@ -86,6 +115,7 @@ export function AppShell({
               </span>
             ) : null}
           </button>
+          </Fragment>
         );
       })}
     </nav>

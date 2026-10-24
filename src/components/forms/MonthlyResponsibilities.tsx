@@ -26,6 +26,17 @@ export function MonthlyResponsibilities({
 }) {
   const [pending, startTransition] = useTransition();
   const [savedKey, setSavedKey] = useState<string | null>(null);
+  // Fechas plegadas. Arrancan plegadas las que ya están completas.
+  const [plegadas, setPlegadas] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const r of rows) {
+      const todas = MONTHLY_RESPONSIBILITIES.every((x) =>
+        (r.values[x.key]?.name ?? "").trim(),
+      );
+      if (todas) s.add(r.dateISO);
+    }
+    return s;
+  });
 
   const initialValues = () => {
     const o: Record<string, string> = {};
@@ -91,19 +102,48 @@ export function MonthlyResponsibilities({
         ))}
       </datalist>
 
-      {rows.map((row) => (
-        <div
+      {rows.map((row) => {
+        const puestas = MONTHLY_RESPONSIBILITIES.filter((r) =>
+          (local[`${row.dateISO}_${r.key}`] ?? "").trim(),
+        ).length;
+        const completa = puestas === MONTHLY_RESPONSIBILITIES.length;
+        return (
+        <details
           key={row.dateISO}
+          // Las fechas ya completas se pliegan: con 8 casillas por fecha, un
+          // mes entero son ~80 campos de scroll en el móvil.
+          open={!plegadas.has(row.dateISO)}
+          onToggle={(e) => {
+            const abierto = (e.currentTarget as HTMLDetailsElement).open;
+            setPlegadas((prev) => {
+              const next = new Set(prev);
+              if (abierto) next.delete(row.dateISO);
+              else next.add(row.dateISO);
+              return next;
+            });
+          }}
           className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-border bg-slate-50 px-4 py-2.5">
-            <span className="font-semibold text-foreground">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 border-b border-border bg-slate-50 px-4 py-2.5">
+            <span className="min-w-0 font-semibold text-foreground">
               {weekdayNameOfISO(row.dateISO)} {formatDateISO(row.dateISO)}
             </span>
-            {!row.meetingId ? (
-              <span className="text-[0.7rem] text-muted">Sin asignar aún</span>
-            ) : null}
-          </div>
+            <span className="flex shrink-0 items-center gap-2 text-[0.7rem]">
+              {!row.meetingId ? (
+                <span className="text-muted">Sin asignar aún</span>
+              ) : null}
+              <span
+                className={
+                  completa ? "font-semibold text-emerald-700" : "text-muted"
+                }
+              >
+                {puestas} de {MONTHLY_RESPONSIBILITIES.length}
+              </span>
+              <span aria-hidden className="text-muted">
+                {plegadas.has(row.dateISO) ? "▸" : "▾"}
+              </span>
+            </span>
+          </summary>
           <table className="w-full border-collapse text-sm">
             <tbody>
               {MONTHLY_RESPONSIBILITIES.map((resp) => {
@@ -164,7 +204,9 @@ export function MonthlyResponsibilities({
                                 (e.target as HTMLInputElement).blur();
                               }
                             }}
-                            placeholder="Escribe el nombre…"
+                            // Corto a propósito: en el móvil el campo es
+                            // estrecho y el texto largo salía cortado.
+                            placeholder="Nombre…"
                             autoComplete="off"
                             aria-label={`${resp.label} — ${row.dateISO}`}
                             className={inputClass}
@@ -186,8 +228,9 @@ export function MonthlyResponsibilities({
               })}
             </tbody>
           </table>
-        </div>
-      ))}
+        </details>
+        );
+      })}
     </div>
   );
 }

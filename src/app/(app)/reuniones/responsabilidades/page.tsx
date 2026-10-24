@@ -2,7 +2,11 @@ import { requireMeetingsAccess,
   congregationId,
 } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { monthName, RESP_MANAGED_CATEGORIES } from "@/lib/constants";
+import {
+  monthName,
+  RESP_CATEGORIES,
+  RESP_MANAGED_CATEGORIES,
+} from "@/lib/constants";
 import { getVolunteersByCategory } from "@/lib/resp-volunteers";
 import { parsePeriod } from "@/lib/period";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
@@ -48,6 +52,12 @@ export default async function ResponsabilidadesMensualPage({
   const publisherOptions = publishersRaw.map((p) => ({ id: p.id, name: p.fullName }));
   const groups = groupsRaw.map((g) => g.name);
   const videoSameAsAudio = ajustes?.videoSameAsAudio ?? false;
+  // Cuántos hermanos hay apuntados en total (sin contar la Atalaya, que no es
+  // una responsabilidad que se reparta).
+  const totalDisponibles = RESP_CATEGORIES.reduce(
+    (n, c) => n + (volunteers[c.key]?.length ?? 0),
+    0,
+  );
 
   return (
     <>
@@ -82,7 +92,11 @@ export default async function ResponsabilidadesMensualPage({
             publishers={publisherOptions}
           />
           <div className="border-t border-border pt-4">
-            <AutoAssignButton year={year} month={month} />
+            <AutoAssignButton
+              year={year}
+              month={month}
+              disponibles={totalDisponibles}
+            />
           </div>
         </CardBody>
       </Card>
@@ -100,6 +114,12 @@ export default async function ResponsabilidadesMensualPage({
           />
         </CardBody>
       </Card>
+
+      {/* El selector se repite al final: con un mes entero de fechas, volver
+          arriba para cambiar de mes obliga a un scroll largo. */}
+      <div className="mt-4 flex justify-center">
+        <PeriodSelector year={year} month={month} />
+      </div>
     </>
   );
 }

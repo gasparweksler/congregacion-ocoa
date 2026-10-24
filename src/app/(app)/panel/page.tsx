@@ -8,6 +8,7 @@ import {
   getPendingCountByGroup,
   getPendingPublishers,
 } from "@/lib/stats";
+import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -20,6 +21,7 @@ import {
 import { StatsTiles } from "@/components/StatsTiles";
 import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 import { PendingGroupRow } from "@/components/PendingGroupRow";
+import { FirstSteps } from "@/components/FirstSteps";
 
 export default async function PanelPage() {
   const user = await requireReportsAccess();
@@ -37,12 +39,51 @@ export default async function PanelPage() {
     month,
   );
 
+  // Primeros pasos: solo para el Administrador, que es quien puede darlos.
+  const primerosPasos = secretary
+    ? await (async () => {
+        const [grupos, publicadores, usuarios] = await Promise.all([
+          prisma.group.count({ where: { congregationId: cong } }),
+          prisma.publisher.count({ where: { congregationId: cong } }),
+          prisma.user.count({ where: { congregationId: cong } }),
+        ]);
+        return [
+          {
+            label: "Crear los grupos de predicación",
+            description: "Los publicadores se reparten por grupos.",
+            href: "/grupos",
+            done: grupos > 0,
+          },
+          {
+            label: "Dar de alta a los publicadores",
+            description: "Hace falta para registrar informes y asignaciones.",
+            href: "/publicadores",
+            done: publicadores > 0,
+          },
+          {
+            label: "Crear los usuarios de la congregación",
+            description:
+              "Para que superintendentes y auxiliares entren con su propia clave.",
+            href: "/usuarios",
+            // Siempre hay al menos el propio Administrador: hace falta más de uno.
+            done: usuarios > 1,
+          },
+        ];
+      })()
+    : [];
+
   return (
     <>
       <PageHeader
         title={`Hola, ${user.name ?? user.username}`}
         description={`${roleLabel(user.role)} · Resumen de ${periodLabel}`}
       />
+
+      {primerosPasos.length > 0 ? (
+        <div className="mb-6">
+          <FirstSteps steps={primerosPasos} />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-6">
         {/* Accesos rápidos: primero en celular, segundo en escritorio. */}

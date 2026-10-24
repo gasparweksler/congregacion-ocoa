@@ -11,7 +11,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireMeetingsAccess, congregationId } from "@/lib/access";
+import {
+  requireMeetingsAccess,
+  requireSecretary,
+  congregationId,
+} from "@/lib/access";
 import {
   slotsForDay,
   MEETING_DAYS,
@@ -502,7 +506,9 @@ async function archivarAsignaciones(
 }
 
 export async function deleteAllMeetingsAction(formData: FormData): Promise<void> {
-  const user = await requireMeetingsAccess();
+  // Borrar TODAS las reuniones es cosa del Administrador, no de quien solo
+  // gestiona confirmaciones.
+  const user = await requireSecretary();
   const cong = congregationId(user);
   const conservar = guardarHistorial(formData);
 

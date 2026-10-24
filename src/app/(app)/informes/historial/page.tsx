@@ -83,7 +83,7 @@ export default async function HistorialInformesPage({
   return (
     <>
       <PageHeader
-        title="Historial de informes"
+        title="Informes guardados"
         description="Todos los informes subidos. Filtra, ábrelos, edítalos o elimínalos."
         action={
           <LinkButton href="/informes" variant="secondary">

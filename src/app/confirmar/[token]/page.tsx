@@ -69,9 +69,18 @@ export default async function ConfirmarPage({
         <h1 className="text-lg font-semibold text-foreground">
           Enlace no válido
         </h1>
+        {/* El caso corriente no es un enlace "roto": es que la asignación
+            cambió de manos y el enlace anterior dejó de valer. Conviene
+            decirlo, porque si no parece un fallo de la aplicación. */}
         <p className="mt-2 text-sm text-muted">
-          Este enlace de confirmación no existe o fue actualizado. Pide al
-          responsable que te envíe el mensaje nuevamente.
+          Lo más probable es que <strong>esta asignación haya cambiado</strong>:
+          cuando se cambia el nombre de una parte o de una responsabilidad, el
+          enlace que se había enviado deja de valer.
+        </p>
+        <p className="mt-2 text-sm text-muted">
+          No hace falta que hagas nada. Si esperabas confirmar algo, habla con
+          el responsable de confirmaciones de tu congregación y te enviará el
+          mensaje nuevo.
         </p>
       </Shell>
     );

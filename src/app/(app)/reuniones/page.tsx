@@ -193,7 +193,10 @@ export default async function ReunionesPage({
                   : `${todas.length} reunión(es) registradas.`
               }
               action={
-                todas.length > 0 ? (
+                // Borrar TODAS las reuniones de la congregación lo hace solo el
+                // Administrador: antes podía también un Responsable de
+                // Confirmaciones.
+                todas.length > 0 && isSecretary(user) ? (
                   <DeleteMeetingButton
                     action={deleteAllMeetingsAction}
                     title="Eliminar TODAS las reuniones"
@@ -212,7 +215,7 @@ export default async function ReunionesPage({
                 {[
                   {
                     key: MEETING_DAYS.JUEVES,
-                    label: "Reunión de Entresemana",
+                    label: "Reunión de Entre semana",
                     n: totalEntreSemana,
                   },
                   {
@@ -265,7 +268,9 @@ export default async function ReunionesPage({
                     rejected = 0,
                     pending = 0,
                     asignaciones = 0,
-                    responsabilidades = 0;
+                    asignacionesPuestas = 0,
+                    responsabilidades = 0,
+                    responsabilidadesPuestas = 0;
                   for (const a of m.assignments) {
                     // Las responsabilidades se cuentan aparte de las
                     // asignaciones del programa de la reunión.
@@ -273,8 +278,17 @@ export default async function ReunionesPage({
                       a.section === "RESPONSABILIDADES" ||
                       a.section === "SAB_RESPONSABILIDADES" ||
                       MONTHLY_RESP_KEYS.includes(a.slotKey);
-                    if (esResponsabilidad) responsabilidades++;
-                    else asignaciones++;
+                    // Se cuentan las casillas y, aparte, las que ya tienen a
+                    // alguien: el número de casillas solo decía cuántas
+                    // existen, no cuánto trabajo quedaba hecho.
+                    const puesta = !!(a.primaryName?.trim() || a.secondaryName?.trim());
+                    if (esResponsabilidad) {
+                      responsabilidades++;
+                      if (puesta) responsabilidadesPuestas++;
+                    } else {
+                      asignaciones++;
+                      if (puesta) asignacionesPuestas++;
+                    }
 
                     if (a.primaryName) {
                       if (a.primaryStatus === CONFIRM_STATUS.CONFIRMADO)
@@ -314,9 +328,10 @@ export default async function ReunionesPage({
                               </Badge>
                             </div>
                             <p className="mt-0.5 text-sm text-muted">
-                              Total de asignaciones: {asignaciones}
+                              Asignadas {asignacionesPuestas} de {asignaciones}
                               <span className="mx-1.5 text-border">·</span>
-                              Total de responsabilidades: {responsabilidades}
+                              Responsabilidades {responsabilidadesPuestas} de{" "}
+                              {responsabilidades}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5">

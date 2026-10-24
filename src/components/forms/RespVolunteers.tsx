@@ -103,7 +103,7 @@ function Categoria({
             type="text"
             name="name"
             list={`resp-vol-${cat.key}`}
-            placeholder="Escribe el nombre del hermano…"
+            placeholder="Nombre del hermano…"
             aria-label={`Añadir a ${cat.label}`}
             autoComplete="off"
           />
@@ -197,7 +197,23 @@ export function RespVolunteers({
   /** Video repite la lista de Audio. */
   videoSameAsAudio: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  // Qué categorías de reparto están todavía sin nadie. La Atalaya no cuenta:
+  // es opcional, no un puesto que haya que cubrir.
+  const sinNadie = categories
+    .filter((c) => c.key !== WATCHTOWER_CATEGORY.key)
+    .filter((c) => {
+      const propios = byCategory[c.key]?.length ?? 0;
+      // Video con el interruptor puesto se nutre de Audio.
+      if (c.key === "VIDEO" && videoSameAsAudio) {
+        return (byCategory.AUDIO?.length ?? 0) === 0;
+      }
+      return propios === 0;
+    })
+    .map((c) => c.label);
+
+  // Mientras falte alguna categoría por cubrir, la ventana arranca abierta: si
+  // está cerrada no se ve que falta gente ni dónde se añade.
+  const [open, setOpen] = useState(sinNadie.length > 0);
   const total = categories.reduce(
     (n, c) => n + (byCategory[c.key]?.length ?? 0),
     0,
@@ -207,9 +223,19 @@ export function RespVolunteers({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 text-sm text-muted">
-          {total === 0
-            ? "Todavía no hay hermanos registrados. Hace falta para poder asignar automáticamente."
-            : `${total} registro(s) en ${categories.length} tipos de responsabilidad.`}
+          {total === 0 ? (
+            "Todavía no hay hermanos registrados. Hace falta para poder asignar automáticamente."
+          ) : sinNadie.length > 0 ? (
+            <>
+              {total} registro(s).{" "}
+              <strong className="text-amber-600">
+                Faltan: {sinNadie.join(", ")}
+              </strong>
+              .
+            </>
+          ) : (
+            `${total} registro(s) en ${categories.length} tipos de responsabilidad.`
+          )}
         </p>
         <Button
           type="button"

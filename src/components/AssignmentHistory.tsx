@@ -120,7 +120,55 @@ export function AssignmentHistory({
             </div>
 
             {open ? (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-border">
+              <>
+                {/* En el móvil, una tarjeta por participación: la tabla de 6
+                    columnas no cabe y quedaba con scroll propio y las palabras
+                    cortadas. */}
+                <ul className="mt-3 space-y-2 sm:hidden">
+                  {b.participations.map((p, i) => (
+                    <li
+                      key={i}
+                      className="rounded-lg border border-border bg-surface p-3 text-sm"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                        <span className="font-semibold text-foreground">
+                          {p.weekLabel ?? fecha(p.date)}
+                        </span>
+                        <span className="text-xs text-muted">{p.dayLabel}</span>
+                      </div>
+                      {p.deleted ? (
+                        <p className="text-xs font-medium text-amber-600">
+                          Reunión eliminada
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-foreground">{p.label}</p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {MEETING_SECTION_LABELS[p.section] ?? p.section}
+                        <span className="mx-1.5 text-border">·</span>
+                        {p.role === "responsable" ? "Responsable" : "Auxiliar"}
+                        <span className="mx-1.5 text-border">·</span>
+                        {CONFIRM_STATUS_LABELS[p.confirmStatus as ConfirmStatus] ??
+                          p.confirmStatus}
+                      </p>
+                      <div className="mt-1.5">
+                        <Badge
+                          tone={
+                            p.done === "realizada"
+                              ? "green"
+                              : p.done === "no_realizada"
+                                ? "red"
+                                : "slate"
+                          }
+                        >
+                          {DONE_LABELS[p.done]}
+                        </Badge>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* En pantalla ancha sigue la tabla, que se lee de un vistazo. */}
+                <div className="mt-3 hidden overflow-x-auto rounded-lg border border-border sm:block">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-left">
@@ -176,7 +224,8 @@ export function AssignmentHistory({
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             ) : null}
           </div>
         );

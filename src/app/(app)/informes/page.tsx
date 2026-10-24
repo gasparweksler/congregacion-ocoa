@@ -141,7 +141,7 @@ export default async function InformesPage({
       {secretary ? (
         <div className="mb-4 flex flex-wrap gap-2">
           <LinkButton href="/informes/historial" variant="secondary">
-            📋 Historial de informes
+            📋 Informes guardados
           </LinkButton>
           {user.groupId ? (
             <LinkButton

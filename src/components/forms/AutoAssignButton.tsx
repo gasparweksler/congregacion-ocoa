@@ -13,6 +13,7 @@ import {
   type AutoAssignPreview,
 } from "@/server/resp-auto-actions";
 import { Alert, Button } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { weekdayNameOfISO } from "@/lib/dates";
 import { monthName } from "@/lib/constants";
 
@@ -24,9 +25,12 @@ function fechaCorta(iso: string): string {
 export function AutoAssignButton({
   year,
   month,
+  /** Cuántos hermanos hay registrados como disponibles. */
+  disponibles,
 }: {
   year: number;
   month: number;
+  disponibles: number;
 }) {
   const router = useRouter();
   const [preview, setPreview] = useState<AutoAssignPreview | null>(null);
@@ -34,6 +38,10 @@ export function AutoAssignButton({
   const [calculando, calcular] = useTransition();
   const [guardando, guardar] = useTransition();
   const [limpiando, limpiarMes] = useTransition();
+  const [confirmarLimpieza, setConfirmarLimpieza] = useState(false);
+  const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(
+    null,
+  );
 
   const proponer = () => {
     setMensaje(null);
@@ -49,16 +57,7 @@ export function AutoAssignButton({
   };
 
   const limpiar = () => {
-    if (
-      !confirm(
-        `¿Dejar en blanco todas las responsabilidades de ${monthName(month)} ${year}?\n\n` +
-          "Se vacían Acomodadores, Pasa Micrófono, Plataforma, Audio y Video para poder repartirlas otra vez.\n" +
-          "La Limpieza por Grupos y las partes de las reuniones NO se tocan.\n\n" +
-          "No se puede deshacer.",
-      )
-    ) {
-      return;
-    }
+    setConfirmarLimpieza(false);
     setPreview(null);
     setMensaje(null);
     limpiarMes(async () => {
@@ -70,11 +69,41 @@ export function AutoAssignButton({
 
   const confirmar = () => {
     if (!preview) return;
+    const todas = preview.proposals;
+    const conConflicto = todas.filter((p) => p.conflict).length;
+    // Se guarda por fechas para poder ir enseñando el avance: una sola llamada
+    // dejaba el botón quieto sin decir por dónde iba.
+    const porFechaLista = new Map<string, typeof todas>();
+    for (const p of todas) {
+      if (!porFechaLista.has(p.dateISO)) porFechaLista.set(p.dateISO, []);
+      porFechaLista.get(p.dateISO)!.push(p);
+    }
+    const tandas = [...porFechaLista.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+
     guardar(async () => {
-      const r = await applyAutoAssignAction(year, month, preview.proposals);
-      setMensaje({ ok: r.ok, texto: r.message });
+      let hechas = 0;
+      setProgreso({ hechas: 0, total: todas.length });
+      for (let i = 0; i < tandas.length; i++) {
+        const [, delDia] = tandas[i];
+        const r = await applyAutoAssignAction(year, month, delDia, {
+          anotar: i === tandas.length - 1,
+          total: todas.length,
+          conConflicto,
+        });
+        if (!r.ok) {
+          setMensaje({ ok: false, texto: r.message });
+          setProgreso(null);
+          return;
+        }
+        hechas += delDia.length;
+        setProgreso({ hechas, total: todas.length });
+        if (i === tandas.length - 1) setMensaje({ ok: true, texto: r.message });
+      }
+      setProgreso(null);
       setPreview(null);
-      if (r.ok) router.refresh();
+      router.refresh();
     });
   };
 
@@ -93,18 +122,37 @@ export function AutoAssignButton({
         <Button
           type="button"
           onClick={proponer}
-          disabled={calculando || guardando || limpiando}
+          disabled={calculando || guardando || limpiando || disponibles === 0}
         >
           {calculando ? "Calculando…" : "🎲 Asignar responsabilidades automáticamente"}
         </Button>
+        {/* Sin nadie registrado no hay nada que repartir: mejor decirlo aquí
+            que dejar pulsar y responder con un error. */}
+        {disponibles === 0 ? (
+          <span className="text-xs text-muted">
+            Añade primero hermanos disponibles, arriba.
+          </span>
+        ) : null}
         <Button
           type="button"
           variant="danger"
-          onClick={limpiar}
+          onClick={() => setConfirmarLimpieza(true)}
           disabled={calculando || guardando || limpiando}
         >
           {limpiando ? "Limpiando…" : "🧹 Limpiar Mes"}
         </Button>
+
+        {/* Misma ventana de confirmación que el resto de la aplicación. */}
+        <ConfirmDialog
+          open={confirmarLimpieza}
+          title={`¿Dejar en blanco las responsabilidades de ${monthName(month)} ${year}?`}
+          description="Se vacían Acomodadores, Pasa Micrófono, Plataforma, Audio y Video para poder repartirlas otra vez. La Limpieza por Grupos y las partes de las reuniones no se tocan. No se puede deshacer."
+          confirmLabel="Sí, limpiar el mes"
+          pendingLabel="Limpiando…"
+          pending={limpiando}
+          onCancel={() => setConfirmarLimpieza(false)}
+          onConfirm={limpiar}
+        />
         {preview ? (
           <span className="text-xs text-muted">
             Nada se ha guardado todavía: revisa la propuesta y confirma.
@@ -219,17 +267,25 @@ export function AutoAssignButton({
               tarda. Más vale decirlo que dejar el botón quieto. */}
           {guardando ? (
             <Alert tone="warning">
-              <strong>Guardando las {preview.proposals.length} responsabilidades…</strong>
+              <strong>
+                Guardando{" "}
+                {progreso ? `${progreso.hechas} de ${progreso.total}` : ""}{" "}
+                responsabilidades…
+              </strong>
               <br />
-              Esto puede tardar un par de minutos: se guarda cada una por
-              separado. No cierres ni recargues la página; al terminar se
-              actualizará sola y verás los nombres en la tabla de abajo.
+              Puede tardar un par de minutos. No cierres ni recargues la
+              página; al terminar se actualizará sola y verás los nombres en la
+              tabla de abajo.
             </Alert>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={confirmar} disabled={guardando}>
-              {guardando ? "Guardando… puede tardar un par de minutos" : "Confirmar y guardar"}
+              {guardando
+                ? `Guardando ${progreso ? progreso.hechas : 0} de ${
+                    progreso ? progreso.total : preview.proposals.length
+                  }…`
+                : "Confirmar y guardar"}
             </Button>
             <Button
               type="button"

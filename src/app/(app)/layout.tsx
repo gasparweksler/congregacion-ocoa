@@ -48,31 +48,66 @@ export default async function AppLayout({
 
   // Menú según rol.
   const reportsItems: NavItem[] = [
-    { href: "/panel", label: "Panel", icon: "🏠" },
-    { href: "/publicadores", label: "Publicadores", icon: "👥" },
-    { href: "/informes", label: "Informes", icon: "📝" },
-    { href: "/estadisticas", label: "Estadísticas", icon: "📊" },
-    { href: "/historial", label: "Historial", icon: "🕓" },
+    { href: "/panel", label: "Panel", icon: "🏠", group: "Informes" },
+    { href: "/publicadores", label: "Publicadores", icon: "👥", group: "Informes" },
+    { href: "/informes", label: "Informes", icon: "📝", group: "Informes" },
+    // "Estadísticas" a secas se confundía con las de asignaciones, que viven
+    // en Reuniones; y "Historial" con el historial de informes guardados.
+    {
+      href: "/estadisticas",
+      label: "Estadísticas de Informes",
+      icon: "📊",
+      group: "Informes",
+    },
+    { href: "/historial", label: "Años anteriores", icon: "🕓", group: "Informes" },
   ];
-  const meetingsItem: NavItem = {
-    href: "/reuniones",
-    label: "Reuniones",
-    icon: "📅",
-  };
+  const meetingsItems: NavItem[] = [
+    { href: "/reuniones", label: "Reuniones", icon: "📅", group: "Reuniones" },
+    // Antes solo se alcanzaba desde dentro de Reuniones: quien las buscaba en
+    // el menú no las encontraba.
+    {
+      href: "/reuniones/estadisticas",
+      label: "Estadísticas de Asignaciones",
+      icon: "📈",
+      group: "Reuniones",
+    },
+  ];
   const secretaryItems: NavItem[] = [
-    { href: "/precursores-auxiliares", label: "Precursores Auxiliares", icon: "🙋" },
-    { href: "/grupos", label: "Grupos", icon: "🗂️" },
-    { href: "/usuarios", label: "Usuarios", icon: "🔑" },
-    { href: "/credenciales", label: "Ver Credenciales", icon: "👁️" },
-    { href: "/exportar", label: "Exportar", icon: "⬇️" },
-    { href: "/auditoria", label: "Auditoría", icon: "🛡️" },
+    {
+      href: "/precursores-auxiliares",
+      label: "Precursores Auxiliares",
+      icon: "🙋",
+      group: "Administración",
+    },
+    { href: "/grupos", label: "Grupos", icon: "🗂️", group: "Administración" },
+    { href: "/usuarios", label: "Usuarios", icon: "🔑", group: "Administración" },
+    {
+      href: "/credenciales",
+      label: "Ver Credenciales",
+      icon: "👁️",
+      group: "Administración",
+    },
+    { href: "/exportar", label: "Exportar", icon: "⬇️", group: "Administración" },
+    { href: "/auditoria", label: "Auditoría", icon: "🛡️", group: "Administración" },
   ];
   const accountItems: NavItem[] = [
-    { href: "/cambiar-contrasena", label: "Mi contraseña", icon: "⚙️" },
+    {
+      href: "/cambiar-contrasena",
+      label: "Mi contraseña",
+      icon: "⚙️",
+      group: "Mi cuenta",
+    },
   ];
   // Solo el Superadministrador ve el panel de plataforma.
   const platformItems: NavItem[] = isSuperadmin
-    ? [{ href: "/plataforma", label: "Plataforma", icon: "🌐" }]
+    ? [
+        {
+          href: "/plataforma",
+          label: "Plataforma",
+          icon: "🌐",
+          group: "Plataforma",
+        },
+      ]
     : [];
 
   let navItems: NavItem[];
@@ -81,13 +116,13 @@ export default async function AppLayout({
     navItems = [...platformItems, ...accountItems];
   } else if (isPureConfirmador) {
     // Solo la sección Reuniones.
-    navItems = [meetingsItem, ...accountItems];
+    navItems = [...meetingsItems, ...accountItems];
   } else if (isSecretary) {
     // Acceso completo: Informes + Reuniones + administración.
     navItems = [
       ...platformItems,
       ...reportsItems,
-      meetingsItem,
+      ...meetingsItems,
       ...secretaryItems,
       ...accountItems,
     ];
@@ -96,7 +131,7 @@ export default async function AppLayout({
     // tiene la capacidad de confirmaciones.
     navItems = [
       ...reportsItems,
-      ...(alsoConfirmador ? [meetingsItem] : []),
+      ...(alsoConfirmador ? meetingsItems : []),
       ...accountItems,
     ];
   }
