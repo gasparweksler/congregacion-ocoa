@@ -19,7 +19,9 @@ export function Card({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,40,38,0.04),0_10px_30px_-18px_rgba(16,40,38,0.25)]",
+        // Esquinas generosas (24px) y superficie plana con una sombra muy
+        // suave, como las tarjetas de canva.com: sin el borde marcado de antes.
+        "min-w-0 rounded-3xl border border-border bg-surface shadow-[0_1px_3px_rgba(15,22,21,0.03),0_12px_32px_-20px_rgba(15,22,21,0.18)]",
         className,
       )}
     >
@@ -38,9 +40,10 @@ export function CardHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <div className="flex flex-col gap-3 px-6 pb-3 pt-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="min-w-0">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">
+        {/* Sin línea divisoria y con el título algo mayor: el aire separa. */}
+        <h2 className="text-[1.0625rem] font-bold tracking-tight text-foreground">
           {title}
         </h2>
         {description ? (
@@ -59,7 +62,7 @@ export function CardBody({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn("px-5 py-4", className)}>{children}</div>;
+  return <div className={cn("px-6 pb-6 pt-1", className)}>{children}</div>;
 }
 
 // --- Botón ------------------------------------------------------------------
@@ -85,7 +88,8 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        // Radio 10px y más aire a los lados, como los botones de canva.com.
+        "inline-flex items-center justify-center gap-2 rounded-[10px] px-5 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         buttonVariants[variant],
         className,
       )}
@@ -109,7 +113,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-[10px] px-5 py-2.5 text-sm font-semibold transition-colors",
         buttonVariants[variant],
         className,
       )}
@@ -141,7 +145,7 @@ export function Label({
 }
 
 const fieldClasses =
-  "w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:bg-slate-50";
+  "w-full rounded-[10px] border border-border bg-white px-3.5 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:bg-slate-50";
 
 export const Input = React.forwardRef<
   HTMLInputElement,
@@ -208,7 +212,7 @@ export function Alert({
     warning: "bg-amber-50 text-amber-900 border-amber-200",
   };
   return (
-    <div className={cn("rounded-lg border px-4 py-3 text-sm", tones[tone])}>
+    <div className={cn("rounded-xl border px-4 py-3 text-sm", tones[tone])}>
       {children}
     </div>
   );

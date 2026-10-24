@@ -8,11 +8,13 @@
    ========================================================================== */
 
 :root {
-  --background: #f3f5f6; /* gris muy claro y neutro */
+  /* Superficies casi blancas y bordes muy tenues: el peso visual lo llevan el
+     espacio y la tipografía, no las líneas (referencia: canva.com). */
+  --background: #f7f8f8;
   --surface: #ffffff;
-  --foreground: #142523; /* casi negro con matiz teal */
+  --foreground: #0f1615; /* casi negro, como el #0f1015 de Canva */
   --muted: #5d6e6c; /* gris-teal para texto secundario */
-  --border: #8fa19e; /* gris-teal marcado para delimitar bien los recuadros */
+  --border: #e3e8e7; /* hairline: antes era #8fa19e y dominaba la pantalla */
 
   --primary: #0f766e; /* teal-700 */
   --primary-hover: #115e59; /* teal-800 */
@@ -47,11 +49,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Títulos con un poco más de carácter (estilo editorial) */
+/* Títulos grandes y apretados, al estilo de canva.com: el tamaño y el peso
+   hacen la jerarquía, sin necesitar líneas ni cajas. */
 h1,
 h2,
 h3 {
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+}
+h1 {
+  letter-spacing: -0.03em;
 }
 
 /* Mejoras de accesibilidad: foco visible y consistente */
@@ -103,7 +109,8 @@ textarea {
   --surface-3: #313a3b; /* hover */
   --foreground: #e7edec;
   --muted: #a3b2b0;
-  --border: #3b4546;
+  /* Hairline también en oscuro, para que el aire mande igual que en claro. */
+  --border: #2d3637;
 
   /* El primario se mantiene oscuro para que el texto blanco encima siga
      legible; para TEXTO en primario se usa un teal claro (más abajo). */
