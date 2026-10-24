@@ -9,6 +9,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import {
@@ -385,18 +386,96 @@ export async function setMeetingConfirmadorAction(
   revalidatePath(`/reuniones/${meetingId}`);
 }
 
-export async function deleteAllMeetingsAction(): Promise<void> {
-  const user = await requireMeetingsAccess();
-  const res = await prisma.meeting.deleteMany({
-    where: { congregationId: congregationId(user) },
+/**
+ * ¿Pidió quien elimina que se conserve el historial?
+ *
+ * La casilla llega marcada por defecto; solo se descarta el historial si se
+ * desmarca a propósito (p. ej. una importación mal hecha que no debe ensuciar
+ * las Estadísticas).
+ */
+function guardarHistorial(formData: FormData): boolean {
+  return String(formData.get("keepHistory") ?? "") !== "no";
+}
+
+/**
+ * Copia a AssignmentHistory las asignaciones CON NOMBRE de las reuniones
+ * indicadas. Debe ejecutarse dentro de la misma transacción que el borrado:
+ * así nunca queda una reunión borrada sin su historial, ni historial de una
+ * reunión que al final no se borró.
+ *
+ * Devuelve cuántas filas se archivaron.
+ */
+async function archivarAsignaciones(
+  tx: Prisma.TransactionClient,
+  meetingIds: string[],
+  cong: string,
+  userId: string | null,
+): Promise<number> {
+  if (meetingIds.length === 0) return 0;
+  const asignaciones = await tx.meetingAssignment.findMany({
+    where: {
+      meetingId: { in: meetingIds },
+      // Una casilla sin nadie asignado no aporta nada al historial.
+      OR: [{ NOT: { primaryName: null } }, { NOT: { secondaryName: null } }],
+    },
+    include: { meeting: { select: { id: true, date: true, day: true, weekLabel: true } } },
   });
+  if (asignaciones.length === 0) return 0;
+
+  await tx.assignmentHistory.createMany({
+    data: asignaciones.map((a) => ({
+      congregationId: cong,
+      meetingId: a.meeting.id,
+      meetingDate: a.meeting.date,
+      day: a.meeting.day,
+      weekLabel: a.meeting.weekLabel,
+      slotKey: a.slotKey,
+      section: a.section,
+      label: a.label,
+      order: a.order,
+      primaryName: a.primaryName,
+      primaryStatus: a.primaryStatus,
+      primaryDone: a.primaryDone,
+      secondaryName: a.secondaryName,
+      secondaryStatus: a.secondaryStatus,
+      secondaryDone: a.secondaryDone,
+      deletedById: userId,
+    })),
+  });
+  return asignaciones.length;
+}
+
+export async function deleteAllMeetingsAction(formData: FormData): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const conservar = guardarHistorial(formData);
+
+  const { borradas, archivadas } = await prisma.$transaction(async (tx) => {
+    const ids = (
+      await tx.meeting.findMany({
+        where: { congregationId: cong },
+        select: { id: true },
+      })
+    ).map((m) => m.id);
+    const archivadas = conservar
+      ? await archivarAsignaciones(tx, ids, cong, user.id)
+      : 0;
+    const res = await tx.meeting.deleteMany({ where: { congregationId: cong } });
+    return { borradas: res.count, archivadas };
+  });
+
   await logAudit({
     userId: user.id,
     action: "ELIMINAR",
     entity: "Reunion",
-    details: `Se eliminaron TODAS las reuniones (${res.count}).`,
+    details:
+      `Se eliminaron TODAS las reuniones (${borradas}). ` +
+      (conservar
+        ? `Historial conservado: ${archivadas} asignación(es).`
+        : "Historial descartado a petición de quien eliminó."),
   });
   revalidatePath("/reuniones");
+  revalidatePath("/reuniones/estadisticas");
   redirect("/reuniones");
 }
 
@@ -404,19 +483,38 @@ export async function deleteMeetingAction(formData: FormData): Promise<void> {
   const user = await requireMeetingsAccess();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  // deleteMany acota por congregación: no se puede borrar una reunión ajena.
-  const borrada = await prisma.meeting.deleteMany({
-    where: { id, congregationId: congregationId(user) },
+  const cong = congregationId(user);
+  const conservar = guardarHistorial(formData);
+
+  const { borrada, archivadas } = await prisma.$transaction(async (tx) => {
+    // Se comprueba la congregación antes de archivar: no se puede tocar una
+    // reunión ajena, ni guardar su historial.
+    const propia = await tx.meeting.findFirst({
+      where: { id, congregationId: cong },
+      select: { id: true },
+    });
+    if (!propia) return { borrada: 0, archivadas: 0 };
+    const archivadas = conservar
+      ? await archivarAsignaciones(tx, [id], cong, user.id)
+      : 0;
+    const res = await tx.meeting.deleteMany({ where: { id, congregationId: cong } });
+    return { borrada: res.count, archivadas };
   });
-  if (borrada.count === 0) return;
+
+  if (borrada === 0) return;
   await logAudit({
     userId: user.id,
     action: "ELIMINAR",
     entity: "Reunion",
     entityId: id,
-    details: "Reunión eliminada.",
+    details:
+      "Reunión eliminada. " +
+      (conservar
+        ? `Historial conservado: ${archivadas} asignación(es).`
+        : "Historial descartado a petición de quien eliminó."),
   });
   revalidatePath("/reuniones");
+  revalidatePath("/reuniones/estadisticas");
   redirect("/reuniones");
 }
 

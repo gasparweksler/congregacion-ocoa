@@ -134,6 +134,13 @@ export function AssignmentHistory({
                           <span className="block text-xs text-muted">
                             {p.dayLabel}
                           </span>
+                          {/* Viene del historial guardado al borrar la reunión:
+                              sigue contando, pero ya no se puede abrir. */}
+                          {p.deleted ? (
+                            <span className="mt-0.5 block text-xs font-medium text-amber-600">
+                              Reunión eliminada
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-3 py-2 text-muted">
                           {MEETING_SECTION_LABELS[p.section] ?? p.section}

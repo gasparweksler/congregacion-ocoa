@@ -49,6 +49,7 @@ model Congregation {
   auxiliaryPioneerSignups AuxiliaryPioneerSignup[]
   auxPioneerSettings      AuxPioneerSetting[]
   auditLogs               AuditLog[]
+  assignmentHistory       AssignmentHistory[]
 }
 
 // ----------------------------------------------------------------------------
@@ -265,6 +266,51 @@ model Meeting {
 
 // Una casilla de asignación/responsabilidad dentro de una reunión.
 // Puede tener 1 o 2 hermanos (principal = Responsable, secundario = Auxiliar).
+/**
+ * Historial de asignaciones de reuniones ya eliminadas.
+ *
+ * Al borrar una reunión, sus asignaciones se copian aquí antes de desaparecer
+ * (en la misma transacción), para que las Estadísticas de Asignaciones no
+ * pierdan el historial. Los datos van desnormalizados a propósito: la reunión
+ * ya no existe, así que la fecha y la etiqueta de la semana se guardan aquí.
+ *
+ * Son filas congeladas: no se editan ni se vuelven a marcar como realizadas.
+ */
+model AssignmentHistory {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  // Datos de la reunión eliminada.
+  meetingDate  DateTime
+  day          String // JUEVES (entre semana) | SABADO (fin de semana)
+  weekLabel    String?
+  // Id original, solo informativo: la reunión ya no existe.
+  meetingId    String?
+
+  // Datos de la asignación, tal como estaban al eliminarla.
+  slotKey String
+  section String
+  label   String
+  order   Int     @default(0)
+
+  primaryName   String?
+  primaryStatus String?
+  primaryDone   Boolean?
+
+  secondaryName   String?
+  secondaryStatus String?
+  secondaryDone   Boolean?
+
+  // Cuándo se eliminó la reunión y quién la eliminó.
+  deletedAt   DateTime @default(now())
+  deletedById String?
+
+  @@index([congregationId])
+  @@index([meetingDate])
+}
+
 model MeetingAssignment {
   id        String  @id @default(cuid())
   meetingId String

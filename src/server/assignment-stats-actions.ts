@@ -7,7 +7,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
-import { meetingDayLabel, MONTHLY_RESP_KEYS } from "@/lib/constants";
+import {
+  meetingDayLabel,
+  MONTHLY_RESP_KEYS,
+  CONFIRM_STATUS,
+} from "@/lib/constants";
 import {
   type BrotherStats,
   type Participation,
@@ -47,6 +51,12 @@ export type StatsResult = {
   };
 };
 
+/** Menor y mayor de dos fechas que pueden faltar. */
+const menorFecha = (a: Date | null, b: Date | null): Date | null =>
+  !a ? b : !b ? a : a < b ? a : b;
+const mayorFecha = (a: Date | null, b: Date | null): Date | null =>
+  !a ? b : !b ? a : a > b ? a : b;
+
 /** Historial completo de asignaciones de la congregación, ya agrupado. */
 export async function getAssignmentStats(
   filters: StatsFilters = {},
@@ -57,7 +67,7 @@ export async function getAssignmentStats(
   const desde = filters.desde ? new Date(`${filters.desde}T00:00:00`) : null;
   const hasta = filters.hasta ? new Date(`${filters.hasta}T23:59:59`) : null;
 
-  const [assignments, publishers, rango] = await Promise.all([
+  const [assignments, historial, publishers, rango] = await Promise.all([
     prisma.meetingAssignment.findMany({
       where: {
         meeting: {
@@ -90,6 +100,24 @@ export async function getAssignmentStats(
       },
       orderBy: { meeting: { date: "desc" } },
     }),
+    // Historial de reuniones ya eliminadas: se guardó al borrarlas para que
+    // las estadísticas no pierdan lo que pasó.
+    prisma.assignmentHistory.findMany({
+      where: {
+        congregationId: cong,
+        ...(desde || hasta
+          ? {
+              meetingDate: {
+                ...(desde && !isNaN(desde.getTime()) ? { gte: desde } : {}),
+                ...(hasta && !isNaN(hasta.getTime()) ? { lte: hasta } : {}),
+              },
+            }
+          : {}),
+        ...(filters.section ? { section: filters.section } : {}),
+        OR: [{ NOT: { primaryName: null } }, { NOT: { secondaryName: null } }],
+      },
+      orderBy: { meetingDate: "desc" },
+    }),
     prisma.publisher.findMany({
       where: { congregationId: cong },
       orderBy: { fullName: "asc" },
@@ -107,6 +135,20 @@ export async function getAssignmentStats(
       _count: true,
     }),
   ]);
+
+  // Reuniones eliminadas que aún aportan historial: se cuentan aparte porque
+  // ya no están en la tabla de reuniones. Si no quedó su id, se identifican
+  // por fecha y tipo de día.
+  const reunionesBorradas = new Set(
+    historial.map((h) => h.meetingId ?? `${h.meetingDate.toISOString()}_${h.day}`),
+  );
+  const fechasBorradas = historial.reduce<{ min: Date | null; max: Date | null }>(
+    (acc, h) => ({
+      min: !acc.min || h.meetingDate < acc.min ? h.meetingDate : acc.min,
+      max: !acc.max || h.meetingDate > acc.max ? h.meetingDate : acc.max,
+    }),
+    { min: null, max: null },
+  );
 
   // Índice para el emparejamiento exacto (la parte barata).
   const indice = new Map(publishers.map((p) => [normalizeName(p.fullName), p]));
@@ -167,7 +209,66 @@ export async function getAssignmentStats(
     }
   };
 
-  for (const a of assignments) {
+  // Las dos fuentes se tratan igual: las asignaciones vivas y las de reuniones
+  // ya eliminadas (que se guardaron al borrarlas). Lo único que las distingue
+  // es `deleted`, para poder avisarlo en la pantalla.
+  type Fila = {
+    assignmentId: string;
+    meetingId: string;
+    date: Date;
+    day: string;
+    weekLabel: string | null;
+    slotKey: string;
+    section: string;
+    label: string;
+    primaryName: string | null;
+    primaryStatus: string | null;
+    primaryDone: boolean | null;
+    secondaryName: string | null;
+    secondaryStatus: string | null;
+    secondaryDone: boolean | null;
+    deleted: boolean;
+  };
+
+  const filas: Fila[] = [
+    ...assignments.map((a) => ({
+      assignmentId: a.id,
+      meetingId: a.meeting.id,
+      date: a.meeting.date,
+      day: a.meeting.day,
+      weekLabel: a.meeting.weekLabel,
+      slotKey: a.slotKey,
+      section: a.section,
+      label: a.label,
+      primaryName: a.primaryName,
+      primaryStatus: a.primaryStatus,
+      primaryDone: a.primaryDone,
+      secondaryName: a.secondaryName,
+      secondaryStatus: a.secondaryStatus,
+      secondaryDone: a.secondaryDone,
+      deleted: false,
+    })),
+    ...historial.map((h) => ({
+      assignmentId: h.id,
+      // La reunión ya no existe; se guarda su id solo como referencia.
+      meetingId: h.meetingId ?? "",
+      date: h.meetingDate,
+      day: h.day,
+      weekLabel: h.weekLabel,
+      slotKey: h.slotKey,
+      section: h.section,
+      label: h.label,
+      primaryName: h.primaryName,
+      primaryStatus: h.primaryStatus,
+      primaryDone: h.primaryDone,
+      secondaryName: h.secondaryName,
+      secondaryStatus: h.secondaryStatus,
+      secondaryDone: h.secondaryDone,
+      deleted: true,
+    })),
+  ];
+
+  for (const a of filas) {
     const esResponsabilidad =
       a.section === "RESPONSABILIDADES" ||
       a.section === "SAB_RESPONSABILIDADES" ||
@@ -176,19 +277,20 @@ export async function getAssignmentStats(
     secciones.add(a.section);
 
     const comun = {
-      assignmentId: a.id,
-      meetingId: a.meeting.id,
-      date: a.meeting.date,
-      dayLabel: meetingDayLabel(a.meeting.day, a.meeting.date),
-      weekLabel: a.meeting.weekLabel,
+      assignmentId: a.assignmentId,
+      meetingId: a.meetingId,
+      date: a.date,
+      dayLabel: meetingDayLabel(a.day, a.date),
+      weekLabel: a.weekLabel,
       section: a.section,
       label: a.label,
+      deleted: a.deleted,
     };
     if (a.primaryName?.trim()) {
       añadir(a.primaryName, {
         ...comun,
         role: "responsable",
-        confirmStatus: a.primaryStatus,
+        confirmStatus: a.primaryStatus ?? CONFIRM_STATUS.PENDIENTE,
         done: doneStateOf(a.primaryDone),
       });
     }
@@ -196,7 +298,7 @@ export async function getAssignmentStats(
       añadir(a.secondaryName, {
         ...comun,
         role: "auxiliar",
-        confirmStatus: a.secondaryStatus,
+        confirmStatus: a.secondaryStatus ?? CONFIRM_STATUS.PENDIENTE,
         done: doneStateOf(a.secondaryDone),
       });
     }
@@ -239,9 +341,10 @@ export async function getAssignmentStats(
       realizadas,
       noRealizadas,
       sinRegistrar,
-      meetings: rango._count,
-      primeraReunion: rango._min.date,
-      ultimaReunion: rango._max.date,
+      // Las reuniones eliminadas también cuentan: su historial sigue aquí.
+      meetings: rango._count + reunionesBorradas.size,
+      primeraReunion: menorFecha(rango._min.date, fechasBorradas.min),
+      ultimaReunion: mayorFecha(rango._max.date, fechasBorradas.max),
     },
   };
 }

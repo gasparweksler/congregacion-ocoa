@@ -32,6 +32,11 @@ export type Participation = {
   /** Confirmación PREVIA (PENDIENTE | CONFIRMADO | RECHAZADO). */
   confirmStatus: string;
   done: DoneState;
+  /**
+   * La reunión se eliminó: esta participación viene del historial guardado al
+   * borrarla. Sigue contando, pero ya no se puede abrir ni editar.
+   */
+  deleted?: boolean;
 };
 
 export type BrotherStats = {

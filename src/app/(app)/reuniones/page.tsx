@@ -22,7 +22,7 @@ import { MeetingImport } from "@/components/forms/MeetingImport";
 import { ProgramaPdfDownload } from "@/components/forms/ProgramaPdfDownload";
 import { MeetingDaysForm } from "@/components/forms/MeetingDaysForm";
 import { getMeetingDays } from "@/lib/meeting-days";
-import { ConfirmButton } from "@/components/ConfirmButton";
+import { DeleteMeetingButton } from "@/components/DeleteMeetingButton";
 import { EnterMeetingButton } from "@/components/EnterMeetingButton";
 import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 import {
@@ -169,12 +169,13 @@ export default async function ReunionesPage() {
               description={`${meetings.length} reunión(es) registradas.`}
               action={
                 meetings.length > 0 ? (
-                  <ConfirmButton
+                  <DeleteMeetingButton
                     action={deleteAllMeetingsAction}
-                    confirmText="¿Eliminar TODAS las reuniones? Esta acción no se puede deshacer."
+                    title="Eliminar TODAS las reuniones"
+                    description={`Se eliminarán las ${meetings.length} reuniones de la congregación con sus asignaciones y sus enlaces de confirmación. Las reuniones no se pueden recuperar.`}
                   >
                     Eliminar todas
-                  </ConfirmButton>
+                  </DeleteMeetingButton>
                 ) : undefined
               }
             />
@@ -261,15 +262,16 @@ export default async function ReunionesPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <EnterMeetingButton meetingId={m.id} />
-                        <ConfirmButton
+                        <DeleteMeetingButton
                           action={deleteMeetingAction}
                           hidden={{ id: m.id }}
-                          confirmText={`¿Eliminar la reunión "${
+                          title="Eliminar reunión"
+                          description={`Se eliminará la reunión "${
                             m.weekLabel ?? formatDate(m.date)
-                          }"? No se puede deshacer.`}
+                          }" con sus asignaciones y sus enlaces de confirmación. La reunión no se puede recuperar.`}
                         >
                           🗑️ Eliminar
-                        </ConfirmButton>
+                        </DeleteMeetingButton>
                       </div>
                     </div>
                   );

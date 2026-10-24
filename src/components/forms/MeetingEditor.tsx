@@ -21,7 +21,7 @@ import {
   Badge,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { ConfirmButton } from "@/components/ConfirmButton";
+import { DeleteMeetingButton } from "@/components/DeleteMeetingButton";
 import { CONFIRM_STATUS, sectionAllowsSecondary } from "@/lib/constants";
 import {
   MeetingResponsibilities,
@@ -741,13 +741,14 @@ export function MeetingEditor({
       </form>
 
       <div className="mt-4">
-        <ConfirmButton
+        <DeleteMeetingButton
           action={deleteMeetingAction}
           hidden={{ id: meetingId }}
-          confirmText="¿Eliminar esta reunión y todas sus asignaciones? No se puede deshacer."
+          title="Eliminar reunión"
+          description="Se eliminará esta reunión con todas sus asignaciones y sus enlaces de confirmación. La reunión no se puede recuperar."
         >
           Eliminar reunión
-        </ConfirmButton>
+        </DeleteMeetingButton>
       </div>
     </>
   );
