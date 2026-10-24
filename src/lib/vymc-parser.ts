@@ -72,12 +72,13 @@ const BULLET = /^[•●▪◦·*-]\s*/;
 /**
  * Número de canción escrito en una línea del programa.
  *
- * La plantilla trae "● Canción y oración:" sin número (lo escribe quien
- * prepara el programa) y "● Canción 49" ya numerada. Se devuelve solo el
- * número; si no hay, cadena vacía, para no inventar ninguno.
+ * Se admiten las formas que ha usado la planilla: "● Canción: 33" (la actual,
+ * con dos puntos y un "xx" a sustituir), "● Canción 33 y oración:" (la
+ * anterior) y "● Canción 49" ya numerada. Se devuelve solo el número; si no
+ * hay ninguno —por ejemplo si quedó el "xx"— cadena vacía, para no inventarlo.
  */
 function songNumber(text: string): string {
-  const m = text.match(/canci[oó]n\s*(?:n[°º.]?\s*)?(\d{1,3})\b/i);
+  const m = text.match(/canci[oó]n\s*[:·-]?\s*(?:n[°º.]?\s*)?(\d{1,3})\b/i);
   return m ? m[1] : "";
 }
 

@@ -48,6 +48,13 @@ function semana(
     cancionMedio?: string;
     cancionFinal?: string;
   },
+  /**
+   * "nuevo": la planilla actual, con la canción y la oración separadas
+   *   ("● Canción: 33" | "Oración:" … "● Canción 38" | "Oración final:").
+   * "antiguo": la anterior, con las dos juntas ("● Canción 33 y oración:").
+   * Se prueban las dos porque se puede subir un archivo de antes.
+   */
+  formato: "nuevo" | "antiguo" = "nuevo",
 ): number {
   let r = fila;
   ws.getCell(`A${r}`).value = datos.encabezado;
@@ -58,9 +65,14 @@ function semana(
   r++;
 
   // Canción + oración de inicio | Palabras de introducción (presidente)
-  ws.getCell(`A${r}`).value = datos.cancionInicio
-    ? `● Canción ${datos.cancionInicio} y oración:`
-    : "● Canción y oración:";
+  if (formato === "nuevo") {
+    ws.getCell(`A${r}`).value = `● Canción: ${datos.cancionInicio ?? "xx"}`;
+    ws.getRow(r).getCell(2).value = "Oración:";
+  } else {
+    ws.getCell(`A${r}`).value = datos.cancionInicio
+      ? `● Canción ${datos.cancionInicio} y oración:`
+      : "● Canción y oración:";
+  }
   ws.getRow(r).getCell(3).value = "Hermano Oracion";
   ws.getRow(r).getCell(9).value = "Hermano Presidente";
   r++;
@@ -90,9 +102,14 @@ function semana(
 
   // Conclusión | canción y oración final
   ws.getCell(`A${r}`).value = "● Palabras de conclusión (3 min)";
-  ws.getRow(r).getCell(7).value = datos.cancionFinal
-    ? `● Canción ${datos.cancionFinal} y oración`
-    : "● Canción y oración";
+  if (formato === "nuevo") {
+    ws.getRow(r).getCell(6).value = `● Canción ${datos.cancionFinal ?? "xx"}`;
+    ws.getRow(r).getCell(7).value = "Oración final:";
+  } else {
+    ws.getRow(r).getCell(7).value = datos.cancionFinal
+      ? `● Canción ${datos.cancionFinal} y oración`
+      : "● Canción y oración";
+  }
   ws.getRow(r).getCell(9).value = "Hermano Final";
   r += 2;
   return r;
@@ -237,7 +254,58 @@ console.log("\n6. Volver a subir la planilla completa una reunión ya cargada");
   );
 }
 
-console.log("\n7. Lo que se escribe a mano en el editor de la reunión");
+console.log("\n7. Un archivo con el formato ANTERIOR se sigue leyendo");
+{
+  const viejo = new ExcelJS.Workbook();
+  const hv = viejo.addWorksheet("Programa 2026");
+  semana(
+    hv,
+    1,
+    {
+      encabezado: "SEMANA 5-11 DE OCTUBRE",
+      lectura: "JEREMÍAS 40, 41",
+      cancionInicio: "33",
+      cancionMedio: "49",
+      cancionFinal: "38",
+    },
+    "antiguo",
+  );
+  const [w] = parseVymc(viejo, 2026);
+  check(w.reading === "JEREMÍAS 40, 41", `lectura: «${w.reading}»`);
+  check(w.songStart === "33", `canción de inicio: «${w.songStart}»`);
+  check(w.songMiddle === "49", `canción de Nuestra Vida Cristiana: «${w.songMiddle}»`);
+  check(w.songEnd === "38", `canción final: «${w.songEnd}»`);
+  check(w.pres === "Hermano Presidente", "y los nombres siguen igual");
+}
+
+console.log("\n8. La planilla del proyecto, tal cual se descarga");
+{
+  const plantilla = new ExcelJS.Workbook();
+  await plantilla.xlsx.readFile("src/assets/plantilla-vymc.xlsx");
+  const semanas = parseVymc(plantilla, 2026);
+  check(semanas.length > 0, `se reconocen ${semanas.length} semanas`);
+  // Viene en blanco: la canción de inicio y la final llevan "xx" a sustituir,
+  // así que no debe leerse ningún número inventado.
+  check(
+    semanas.every((s) => s.songStart === "" && s.songEnd === ""),
+    "no inventa la canción de inicio ni la final (en la plantilla son «xx»)",
+  );
+  check(
+    semanas.every((s) => s.reading !== ""),
+    "sí trae la lectura semanal de cada semana",
+  );
+  const medias = semanas.map((s) => s.songMiddle).filter(Boolean);
+  check(
+    medias.length === semanas.length,
+    `y la canción de Nuestra Vida Cristiana ya numerada: ${medias.join(", ")}`,
+  );
+  const nombres = semanas.flatMap((s) =>
+    [s.pres, s.orac, s.clos, ...[...s.tesoros, ...s.smm, ...s.vc].flatMap((x) => [x.name, x.name2])].filter(Boolean),
+  );
+  check(nombres.length === 0, `sigue sin nombres (${nombres.length})`);
+}
+
+console.log("\n9. Lo que se escribe a mano en el editor de la reunión");
 {
   const { parseSongNumber, parseWeeklyReading } = await import(
     "../src/lib/meeting-program.js"
