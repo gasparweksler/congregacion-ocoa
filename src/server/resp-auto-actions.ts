@@ -18,6 +18,7 @@
 //  un nombre puesto: solo se rellenan las casillas vacías.
 // ============================================================================
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import {
@@ -25,6 +26,7 @@ import {
   categoryOfSlot,
   monthName,
   WATCHTOWER_CATEGORY,
+  CONFIRM_STATUS,
 } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
 import { getMeetingDays } from "@/lib/meeting-days";
@@ -228,6 +230,84 @@ export async function proposeAutoAssignAction(
     uncovered: resultado.uncovered,
     kept,
     loads: resultado.loads.filter((l) => l.total > 0),
+  };
+}
+
+/**
+ * "Limpiar Mes": deja en blanco las responsabilidades de publicador del mes,
+ * para poder volver a repartirlas.
+ *
+ * NO toca las partes de las reuniones (Tesoros, Seamos Mejores Maestros…) ni
+ * "Limpieza por Grupos", que se lleva aparte y el reparto automático no sabría
+ * reponer.
+ *
+ * Deja los campos igual que al borrar un nombre a mano en la pantalla: sin
+ * nombre, sin enlace de confirmación y en estado Pendiente.
+ */
+export async function clearMonthResponsibilitiesAction(
+  year: number,
+  month: number,
+): Promise<ApplyResult> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+
+  const dias = await getMeetingDays(cong);
+  const fechas = meetingDatesInMonth(year, month, dias);
+  if (fechas.length === 0) {
+    return { ok: false, message: "El mes seleccionado no tiene fechas de reunión." };
+  }
+
+  // Las reuniones de la ventana del mes (±8 días por las de rango semanal).
+  const meetings = await prisma.meeting.findMany({
+    where: {
+      congregationId: cong,
+      date: {
+        gte: new Date(year, month - 1, 1 - 8, 0, 0, 0),
+        lt: new Date(year, month, 1 + 8, 0, 0, 0),
+      },
+    },
+    select: { id: true, date: true, day: true, weekLabel: true },
+  });
+
+  // Solo las reuniones que de verdad corresponden a una fecha de ESTE mes.
+  const ids = new Set<string>();
+  for (const { date, day } of fechas) {
+    const m = findWeekMeeting(meetings, date, day);
+    if (m) ids.add(m.id);
+  }
+  if (ids.size === 0) {
+    return { ok: false, message: "No hay reuniones de ese mes que limpiar." };
+  }
+
+  const res = await prisma.meetingAssignment.updateMany({
+    where: {
+      meetingId: { in: [...ids] },
+      slotKey: { in: SLOTS_PUBLICADOR.map((r) => r.key) },
+      NOT: { primaryName: null },
+    },
+    data: {
+      primaryName: null,
+      primaryToken: null,
+      primaryStatus: CONFIRM_STATUS.PENDIENTE,
+    },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Responsabilidades",
+    details: `Limpiar mes ${monthName(month)} ${year}: ${res.count} responsabilidad(es) vaciadas.`,
+  });
+
+  revalidatePath("/reuniones/responsabilidades");
+  revalidatePath("/reuniones");
+
+  return {
+    ok: true,
+    message:
+      res.count === 0
+        ? `No había responsabilidades que limpiar en ${monthName(month)} ${year}.`
+        : `Se vaciaron ${res.count} responsabilidad(es) de ${monthName(month)} ${year}. La Limpieza por Grupos y las partes de las reuniones no se tocaron.`,
   };
 }
 

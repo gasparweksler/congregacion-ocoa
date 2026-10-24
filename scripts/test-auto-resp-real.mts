@@ -284,6 +284,12 @@ try {
     // hermanos el total nunca puede salir igual entre categorías distintas.
     const cargaPor = new Map(r.loads.map((l) => [normalizeName(l.name), l.total]));
     for (const cat of RESP_CATEGORIES) {
+      // Con "Repetir los de Sonido" puesto, los apuntados en Video se ignoran
+      // (la lista efectiva es la de Audio), así que no hay nada que comparar.
+      if (cat.key === "VIDEO" && repetirSonido) {
+        console.log("   Video: usa la lista de Audio (interruptor puesto)");
+        continue;
+      }
       const delCat = voluntarios
         .filter((v) => v.category === cat.key)
         // Quien conduce la Atalaya solo puede entre semana, así que recibe

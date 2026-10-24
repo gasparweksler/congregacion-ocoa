@@ -25,6 +25,7 @@
     "test:canciones": "tsx scripts/test-programa-canciones.mts",
     "test:auto-resp": "tsx scripts/test-asignacion-automatica.mts",
     "test:auto-resp-real": "tsx scripts/test-auto-resp-real.mts",
+    "test:limpiar-mes": "tsx scripts/test-limpiar-mes.mts",
     "test:dias": "tsx scripts/test-dias-reunion.mts",
     "test:historial-borrado": "tsx scripts/test-historial-borrado.mts",
     "test:estadisticas-pasadas": "tsx scripts/test-estadisticas-pasadas.mts",

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import {
   requireMeetingsAccess,
   congregationId,
@@ -30,9 +31,19 @@ import {
   deleteAllMeetingsAction,
 } from "@/server/meeting-actions";
 
-export default async function ReunionesPage() {
+export default async function ReunionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dia?: string }>;
+}) {
   const user = await requireMeetingsAccess();
   const cong = congregationId(user);
+
+  // Filtro por tipo de reunión, para no verlas mezcladas. Va por la URL para
+  // que sobreviva al refresco automático de la pantalla.
+  const { dia } = await searchParams;
+  const filtro =
+    dia === MEETING_DAYS.JUEVES || dia === MEETING_DAYS.SABADO ? dia : null;
 
   // Días de reunión de esta congregación (antes estaban fijos: jueves/sábado).
   const meetingDays = await getMeetingDays(cong);
@@ -44,10 +55,16 @@ export default async function ReunionesPage() {
   // Orden por cercanía a la fecha de hoy: la más cercana primero, la más lejana
   // al final (sirve tanto para reuniones próximas como pasadas).
   const now = Date.now();
-  const meetings = meetingsRaw.sort(
+  const todas = meetingsRaw.sort(
     (a, b) =>
       Math.abs(a.date.getTime() - now) - Math.abs(b.date.getTime() - now),
   );
+  // Cuántas hay de cada tipo (se muestran en los botones aunque haya filtro).
+  const totalEntreSemana = todas.filter(
+    (m) => m.day === MEETING_DAYS.JUEVES,
+  ).length;
+  const totalFinDeSemana = todas.length - totalEntreSemana;
+  const meetings = filtro ? todas.filter((m) => m.day === filtro) : todas;
 
   // Responsables de Confirmación disponibles para el desplegable de cada reunión.
   const confirmadoresUsers = await prisma.user.findMany({
@@ -166,23 +183,80 @@ export default async function ReunionesPage() {
           <Card>
             <CardHeader
               title="Reuniones"
-              description={`${meetings.length} reunión(es) registradas.`}
+              description={
+                filtro
+                  ? `${meetings.length} de ${todas.length} reunión(es): solo ${
+                      filtro === MEETING_DAYS.JUEVES
+                        ? "las de entre semana"
+                        : "las de fin de semana"
+                    }.`
+                  : `${todas.length} reunión(es) registradas.`
+              }
               action={
-                meetings.length > 0 ? (
+                todas.length > 0 ? (
                   <DeleteMeetingButton
                     action={deleteAllMeetingsAction}
                     title="Eliminar TODAS las reuniones"
-                    description={`Se eliminarán las ${meetings.length} reuniones de la congregación con sus asignaciones y sus enlaces de confirmación. Las reuniones no se pueden recuperar.`}
+                    description={`Se eliminarán las ${todas.length} reuniones de la congregación con sus asignaciones y sus enlaces de confirmación, incluidas las que ahora no se ven por el filtro. Las reuniones no se pueden recuperar.`}
                   >
                     Eliminar todas
                   </DeleteMeetingButton>
                 ) : undefined
               }
             />
+
+            {/* Separa las reuniones por tipo: pulsar el filtro activo lo quita
+                y vuelven a verse todas. */}
+            {todas.length > 0 ? (
+              <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-5">
+                {[
+                  {
+                    key: MEETING_DAYS.JUEVES,
+                    label: "Reunión de Entresemana",
+                    n: totalEntreSemana,
+                  },
+                  {
+                    key: MEETING_DAYS.SABADO,
+                    label: "Reunión de Fin de Semana",
+                    n: totalFinDeSemana,
+                  },
+                ].map((b) => {
+                  const activo = filtro === b.key;
+                  return (
+                    <Link
+                      key={b.key}
+                      href={activo ? "/reuniones" : `/reuniones?dia=${b.key}`}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors",
+                        activo
+                          ? "border-primary bg-primary text-white"
+                          : "border-border bg-surface text-foreground hover:bg-slate-50",
+                      )}
+                    >
+                      {b.label}
+                      <span
+                        className={cn(
+                          "tabular-nums",
+                          activo ? "text-white/80" : "text-muted",
+                        )}
+                      >
+                        {b.n}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
             {meetings.length === 0 ? (
               <EmptyState
-                title="Aún no hay reuniones"
-                description="Crea la primera reunión con el formulario de la izquierda."
+                title={
+                  filtro ? "Ninguna reunión de este tipo" : "Aún no hay reuniones"
+                }
+                description={
+                  filtro
+                    ? "No hay reuniones de este tipo registradas. Pulsa otra vez el filtro para ver todas."
+                    : "Crea la primera reunión con el formulario de la izquierda."
+                }
               />
             ) : (
               <div className="divide-y divide-border">

@@ -9,10 +9,12 @@ import { useRouter } from "next/navigation";
 import {
   proposeAutoAssignAction,
   applyAutoAssignAction,
+  clearMonthResponsibilitiesAction,
   type AutoAssignPreview,
 } from "@/server/resp-auto-actions";
 import { Alert, Button } from "@/components/ui";
 import { weekdayNameOfISO } from "@/lib/dates";
+import { monthName } from "@/lib/constants";
 
 function fechaCorta(iso: string): string {
   const [, , d] = iso.split("-");
@@ -31,6 +33,7 @@ export function AutoAssignButton({
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
   const [calculando, calcular] = useTransition();
   const [guardando, guardar] = useTransition();
+  const [limpiando, limpiarMes] = useTransition();
 
   const proponer = () => {
     setMensaje(null);
@@ -42,6 +45,26 @@ export function AutoAssignButton({
         return;
       }
       setPreview(r);
+    });
+  };
+
+  const limpiar = () => {
+    if (
+      !confirm(
+        `¿Dejar en blanco todas las responsabilidades de ${monthName(month)} ${year}?\n\n` +
+          "Se vacían Acomodadores, Pasa Micrófono, Plataforma, Audio y Video para poder repartirlas otra vez.\n" +
+          "La Limpieza por Grupos y las partes de las reuniones NO se tocan.\n\n" +
+          "No se puede deshacer.",
+      )
+    ) {
+      return;
+    }
+    setPreview(null);
+    setMensaje(null);
+    limpiarMes(async () => {
+      const r = await clearMonthResponsibilitiesAction(year, month);
+      setMensaje({ ok: r.ok, texto: r.message });
+      if (r.ok) router.refresh();
     });
   };
 
@@ -67,8 +90,20 @@ export function AutoAssignButton({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={proponer} disabled={calculando || guardando}>
+        <Button
+          type="button"
+          onClick={proponer}
+          disabled={calculando || guardando || limpiando}
+        >
           {calculando ? "Calculando…" : "🎲 Asignar responsabilidades automáticamente"}
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          onClick={limpiar}
+          disabled={calculando || guardando || limpiando}
+        >
+          {limpiando ? "Limpiando…" : "🧹 Limpiar Mes"}
         </Button>
         {preview ? (
           <span className="text-xs text-muted">
