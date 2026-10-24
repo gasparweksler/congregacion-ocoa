@@ -358,13 +358,35 @@ export async function applyAutoAssignAction(
   }
 
   // --- Guardado ---
-  // Se usa la MISMA función que al escribir un nombre a mano, una casilla cada
-  // vez. Es más lento que una escritura en bloque, pero evita un segundo camino
-  // de escritura que pudiera comportarse distinto.
-  let guardadas = 0;
+  // Se usa la MISMA función que al escribir un nombre a mano, para no tener un
+  // segundo camino de escritura que pudiera comportarse distinto.
+  //
+  // Para que no tarde minutos: las fechas van en orden (así la reunión de cada
+  // fecha se crea una sola vez, si hacía falta) y las casillas de una misma
+  // fecha se guardan a la vez. Antes iban las ~70 de una en una.
+  const porFecha = new Map<string, Proposal[]>();
   for (const p of proposals) {
-    await setMonthlyResponsibility(p.dateISO, p.day, p.slotKey, p.name);
+    if (!porFecha.has(p.dateISO)) porFecha.set(p.dateISO, []);
+    porFecha.get(p.dateISO)!.push(p);
+  }
+
+  let guardadas = 0;
+  for (const [, delDia] of [...porFecha.entries()].sort()) {
+    // La primera crea la reunión si no existía; las demás ya la encuentran.
+    const [primera, ...resto] = delDia;
+    await setMonthlyResponsibility(
+      primera.dateISO,
+      primera.day,
+      primera.slotKey,
+      primera.name,
+    );
     guardadas++;
+    await Promise.all(
+      resto.map((p) =>
+        setMonthlyResponsibility(p.dateISO, p.day, p.slotKey, p.name),
+      ),
+    );
+    guardadas += resto.length;
   }
 
   const conConflicto = proposals.filter((p) => p.conflict).length;

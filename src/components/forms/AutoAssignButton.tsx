@@ -215,9 +215,21 @@ export function AutoAssignButton({
             </details>
           ) : null}
 
+          {/* El guardado escribe una casilla por responsabilidad, así que
+              tarda. Más vale decirlo que dejar el botón quieto. */}
+          {guardando ? (
+            <Alert tone="warning">
+              <strong>Guardando las {preview.proposals.length} responsabilidades…</strong>
+              <br />
+              Esto puede tardar un par de minutos: se guarda cada una por
+              separado. No cierres ni recargues la página; al terminar se
+              actualizará sola y verás los nombres en la tabla de abajo.
+            </Alert>
+          ) : null}
+
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={confirmar} disabled={guardando}>
-              {guardando ? "Guardando…" : "Confirmar y guardar"}
+              {guardando ? "Guardando… puede tardar un par de minutos" : "Confirmar y guardar"}
             </Button>
             <Button
               type="button"
