@@ -86,17 +86,26 @@ function keywordOf(text: string): string | null {
   return null;
 }
 
-const DATE_RE =
-  /^(?:(JUEVES|JUEV|JUE|SABADO|SAB)\.?\s*)?(\d{1,2})(?:\s*[/-]\s*\d{1,2})?$/;
+// El día de reunión ya no es fijo (cada congregación elige el suyo), así que se
+// acepta el nombre de cualquier día delante del número: "Martes 4", "Dom 6"…
+// La lista es cerrada a propósito: con un patrón libre, una celda como
+// "GRUPO 1" se leería como si fuera una fecha.
+const MIDWEEK_WORDS = "LUNES|LUN|MARTES|MAR|MIERCOLES|MIER|MIE|JUEVES|JUEV|JUE|VIERNES|VIER|VIE";
+const WEEKEND_WORDS = "SABADO|SAB|DOMINGO|DOM";
+const DATE_RE = new RegExp(
+  `^(?:(${MIDWEEK_WORDS}|${WEEKEND_WORDS})\\.?\\s*)?(\\d{1,2})(?:\\s*[/-]\\s*\\d{1,2})?$`,
+);
+const IS_MIDWEEK = new RegExp(`^(${MIDWEEK_WORDS})$`);
 
-/** Interpreta la primera celda de una fila: "Jueves 4", "Sáb 6", "4"… */
+/** Interpreta la primera celda de una fila: "Jueves 4", "Mar 6", "4"… */
 function parseDateCell(text: string): { day?: "JUEVES" | "SABADO"; dayNum: number } | null {
   const m = DATE_RE.exec(norm(text));
   if (!m) return null;
   const dayNum = Number(m[2]);
   if (!dayNum || dayNum < 1 || dayNum > 31) return null;
   const w = m[1];
-  const day = !w ? undefined : w.startsWith("J") ? "JUEVES" : "SABADO";
+  // Sin nombre de día, el número basta para encontrar la reunión del mes.
+  const day = !w ? undefined : IS_MIDWEEK.test(w) ? ("JUEVES" as const) : ("SABADO" as const);
   return { day, dayNum };
 }
 

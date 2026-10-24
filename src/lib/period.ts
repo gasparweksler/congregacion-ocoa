@@ -1,5 +1,7 @@
 // Utilidades de período (año/mes) para informes y estadísticas.
 
+import { DEFAULT_MEETING_DAYS, type MeetingDays } from "@/lib/constants";
+
 export type Period = { year: number; month: number };
 
 /** Período actual (año y mes 1..12). */
@@ -31,20 +33,25 @@ export function yearOptions(startYear = 2024): number[] {
 }
 
 /**
- * Todas las fechas de reunión (jueves y sábados) de un mes, en orden.
- * Devuelve la fecha (mediodía local) y el día de reunión (JUEVES | SABADO).
+ * Todas las fechas de reunión de un mes, en orden.
+ *
+ * Los días dependen de cada congregación (`midweekDay` y `weekendDay`, 0 =
+ * domingo … 6 = sábado); si no se indican se usan los de siempre, jueves y
+ * sábado. Devuelve la fecha (mediodía local) y el TIPO de reunión:
+ * "JUEVES" = entre semana, "SABADO" = fin de semana.
  */
 export function meetingDatesInMonth(
   year: number,
   month: number,
+  days: MeetingDays = DEFAULT_MEETING_DAYS,
 ): Array<{ date: Date; day: "JUEVES" | "SABADO" }> {
   const out: Array<{ date: Date; day: "JUEVES" | "SABADO" }> = [];
   const daysInMonth = new Date(year, month, 0).getDate();
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month - 1, d, 12, 0, 0);
-    const wd = date.getDay(); // 0=Dom ... 4=Jue, 6=Sáb
-    if (wd === 4) out.push({ date, day: "JUEVES" });
-    else if (wd === 6) out.push({ date, day: "SABADO" });
+    const wd = date.getDay();
+    if (wd === days.midweekDay) out.push({ date, day: "JUEVES" });
+    else if (wd === days.weekendDay) out.push({ date, day: "SABADO" });
   }
   return out;
 }

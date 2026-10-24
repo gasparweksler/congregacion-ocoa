@@ -10,13 +10,12 @@ import autoTable from "jspdf-autotable";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
 import { parsePeriod } from "@/lib/period";
 import { monthName } from "@/lib/constants";
+import { weekdayNameOfISO } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
-const DAY_LABEL: Record<string, string> = {
-  JUEVES: "Jueves",
-  SABADO: "Sábado",
-};
+// El día de cada fecha se toma de la fecha misma (weekdayNameOfISO): el día de
+// reunión ya no es fijo, lo elige cada congregación.
 
 // Colores suaves rotativos para los grupos de limpieza (como la referencia).
 const GROUP_FILLS: [number, number, number][] = [
@@ -43,7 +42,7 @@ export async function GET(request: Request) {
   const marginX = 36;
 
   const dateCol = (r: (typeof rows)[number]) =>
-    `${DAY_LABEL[r.day]} ${Number(r.dateISO.split("-")[2])}`;
+    `${weekdayNameOfISO(r.dateISO)} ${Number(r.dateISO.split("-")[2])}`;
 
   // ---- Tabla 1: Audio y Video ----
   doc.setFont("helvetica", "bold");

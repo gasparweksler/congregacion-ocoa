@@ -125,7 +125,7 @@ export default async function ReunionDetallePage({
       <AutoRefresh seconds={8} />
       <PageHeader
         title={`Reunión · ${meeting.weekLabel ?? formatDate(meeting.date)}`}
-        description={`${meetingDayLabel(meeting.day)} · Creada ${formatDate(
+        description={`${meetingDayLabel(meeting.day, meeting.date)} · Creada ${formatDate(
           meeting.createdAt,
         )} · Última modificación ${formatDate(meeting.updatedAt)}`}
         action={<BackButton href="/reuniones" />}
@@ -134,7 +134,7 @@ export default async function ReunionDetallePage({
       <MeetingEditor
         meetingId={meeting.id}
         day={meeting.day}
-        dayLabel={meetingDayLabel(meeting.day)}
+        dayLabel={meetingDayLabel(meeting.day, meeting.date)}
         dateLabel={formatDate(meeting.date)}
         confirmadorName={meeting.confirmadorName ?? ""}
         currentUserName={user.name ?? user.username}

@@ -179,7 +179,7 @@ export async function getAssignmentStats(
       assignmentId: a.id,
       meetingId: a.meeting.id,
       date: a.meeting.date,
-      dayLabel: meetingDayLabel(a.meeting.day),
+      dayLabel: meetingDayLabel(a.meeting.day, a.meeting.date),
       weekLabel: a.meeting.weekLabel,
       section: a.section,
       label: a.label,

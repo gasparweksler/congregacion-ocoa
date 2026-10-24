@@ -3,12 +3,8 @@
 import { useState, useTransition } from "react";
 import { setMonthlyResponsibility } from "@/server/monthly-resp-actions";
 import { MONTHLY_RESPONSIBILITIES } from "@/lib/constants";
+import { weekdayNameOfISO } from "@/lib/dates";
 import type { MonthlyMeetingRow } from "@/server/monthly-resp-actions";
-
-const DAY_LABEL: Record<string, string> = {
-  JUEVES: "Jueves",
-  SABADO: "Sábado",
-};
 
 function formatDateISO(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);
@@ -84,7 +80,7 @@ export function MonthlyResponsibilities({
         >
           <div className="flex items-center justify-between gap-2 border-b border-border bg-slate-50 px-4 py-2.5">
             <span className="font-semibold text-foreground">
-              {DAY_LABEL[row.day]} {formatDateISO(row.dateISO)}
+              {weekdayNameOfISO(row.dateISO)} {formatDateISO(row.dateISO)}
             </span>
             {!row.meetingId ? (
               <span className="text-[0.7rem] text-muted">Sin asignar aún</span>

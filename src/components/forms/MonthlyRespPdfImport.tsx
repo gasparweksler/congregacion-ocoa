@@ -9,13 +9,13 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MONTHLY_RESPONSIBILITIES } from "@/lib/constants";
+import { weekdayNameOfISO } from "@/lib/dates";
 import {
   previewResponsibilitiesPdfAction,
   applyResponsibilitiesPdfAction,
   type PdfPreviewResult,
 } from "@/server/monthly-resp-pdf-actions";
 
-const DAY_LABEL: Record<string, string> = { JUEVES: "Jueves", SABADO: "Sábado" };
 const MESES = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
@@ -205,7 +205,7 @@ export function MonthlyRespPdfImport({
                 className="overflow-hidden rounded-xl border border-border"
               >
                 <div className="border-b border-border bg-slate-50 px-3 py-2 font-semibold text-foreground">
-                  {DAY_LABEL[row.day]} {formatDateISO(row.dateISO)}
+                  {weekdayNameOfISO(row.dateISO)} {formatDateISO(row.dateISO)}
                 </div>
                 <table className="w-full border-collapse text-sm">
                   <tbody>

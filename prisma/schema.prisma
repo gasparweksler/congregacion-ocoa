@@ -29,6 +29,15 @@ model Congregation {
   slug   String  @unique // identificador corto para enlaces (p. ej. "ocoa")
   active Boolean @default(true)
 
+  // Días de reunión de ESTA congregación, como los devuelve Date.getDay():
+  // 0 = domingo … 6 = sábado. Cada congregación tiene los suyos.
+  //   midweekDay: la reunión de entre semana (lunes a viernes)
+  //   weekendDay: la reunión de fin de semana (sábado o domingo)
+  // Los valores por defecto son los que tenía el sistema cuando estaban fijos
+  // en el código (jueves y sábado).
+  midweekDay Int @default(4)
+  weekendDay Int @default(6)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

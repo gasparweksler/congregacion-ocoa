@@ -20,6 +20,7 @@ import { requireMeetingsAccess,
 } from "@/lib/access";
 import { MONTHLY_RESPONSIBILITIES } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
+import { getMeetingDays } from "@/lib/meeting-days";
 import { extractPdfItems } from "@/lib/pdf-text";
 import { parseResponsibilitiesPdf } from "@/lib/resp-pdf-parser";
 import {
@@ -118,7 +119,11 @@ export async function previewResponsibilitiesPdfAction(
     };
   }
 
-  const validDates = meetingDatesInMonth(year, month).map(({ date, day }) => ({
+  const validDates = meetingDatesInMonth(
+    year,
+    month,
+    await getMeetingDays(congregationId(user)),
+  ).map(({ date, day }) => ({
     dateISO: `${year}-${String(month).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
     day,
   }));

@@ -96,7 +96,7 @@ export default async function ConfirmarPage({
       <div className="mt-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm">
         <p className="font-medium text-foreground">{assignment.label}</p>
         <p className="mt-0.5 text-muted">
-          {meetingDayLabel(assignment.meeting.day)} ·{" "}
+          {meetingDayLabel(assignment.meeting.day, assignment.meeting.date)} ·{" "}
           {formatDate(assignment.meeting.date)}
         </p>
         {assignment.note ? (

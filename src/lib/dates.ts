@@ -1,5 +1,7 @@
 // Utilidades de fecha para la interfaz.
 
+import { weekdayName } from "@/lib/constants";
+
 /** Convierte una fecha a "yyyy-mm-dd" (para inputs type=date). */
 export function toInputDate(date: Date | null | undefined): string {
   if (!date) return "";
@@ -30,4 +32,17 @@ export function ageFrom(date: Date | null | undefined): number | null {
   const m = now.getMonth() - b.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
   return age;
+}
+
+/**
+ * Nombre del día de una fecha "YYYY-MM-DD" ("Jueves", "Domingo"…).
+ *
+ * Se calcula de la fecha y no del tipo de reunión, porque el día de reunión ya
+ * no es fijo: cada congregación elige el suyo. Se construye con las partes
+ * sueltas (y a mediodía) para que no se desplace por la zona horaria.
+ */
+export function weekdayNameOfISO(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return weekdayName(new Date(y, m - 1, d, 12, 0, 0).getDay());
 }

@@ -184,10 +184,48 @@ export const MEETING_DAYS = {
 
 export type MeetingDay = (typeof MEETING_DAYS)[keyof typeof MEETING_DAYS];
 
+/**
+ * Etiqueta del TIPO de reunión. El día concreto ya no es fijo: lo elige cada
+ * congregación (ver MeetingDays), así que aquí solo va el tipo.
+ */
 export const MEETING_DAY_LABELS: Record<MeetingDay, string> = {
-  JUEVES: "Jueves (Entre semana)",
-  SABADO: "Sábado (Fin de semana)",
+  JUEVES: "Entre semana",
+  SABADO: "Fin de semana",
 };
+
+// ---------------------------------------------------------------------------
+//  DÍAS DE REUNIÓN DE CADA CONGREGACIÓN
+//  Se guardan como los devuelve Date.getDay(): 0 = domingo … 6 = sábado.
+// ---------------------------------------------------------------------------
+export const WEEKDAY_NAMES = [
+  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
+] as const;
+
+/** Opciones ofrecidas para cada reunión. */
+export const MIDWEEK_DAY_OPTIONS = [1, 2, 3, 4, 5] as const; // lunes a viernes
+export const WEEKEND_DAY_OPTIONS = [6, 0] as const; // sábado o domingo
+
+/** Valores por defecto: los que el sistema tenía fijos en el código. */
+export const DEFAULT_MEETING_DAYS = { midweekDay: 4, weekendDay: 6 };
+
+export type MeetingDays = { midweekDay: number; weekendDay: number };
+
+export function weekdayName(n: number): string {
+  return WEEKDAY_NAMES[n] ?? String(n);
+}
+
+/** ¿Es un día válido para la reunión de entre semana / de fin de semana? */
+export function isMidweekDay(n: number): boolean {
+  return (MIDWEEK_DAY_OPTIONS as readonly number[]).includes(n);
+}
+export function isWeekendDay(n: number): boolean {
+  return (WEEKEND_DAY_OPTIONS as readonly number[]).includes(n);
+}
+
+/** El día (0..6) que corresponde a un tipo de reunión en una congregación. */
+export function weekdayOfMeetingDay(day: string, days: MeetingDays): number {
+  return day === MEETING_DAYS.SABADO ? days.weekendDay : days.midweekDay;
+}
 
 /** Secciones (encabezados) dentro de una reunión. */
 export const MEETING_SECTION_LABELS: Record<string, string> = {
@@ -269,8 +307,19 @@ export function slotsForDay(day: string): MeetingSlot[] {
   return day === MEETING_DAYS.SABADO ? SABADO_SLOTS : JUEVES_SLOTS;
 }
 
-export function meetingDayLabel(day: string): string {
-  return MEETING_DAY_LABELS[day as MeetingDay] ?? day;
+/**
+ * Etiqueta de una reunión: "Jueves (Entre semana)".
+ *
+ * El día se toma de la FECHA de la reunión, no de la configuración de la
+ * congregación: así una reunión ya creada sigue mostrando el día que de verdad
+ * tiene, aunque después se cambien los días de reunión.
+ */
+export function meetingDayLabel(day: string, date?: Date | string | null): string {
+  const tipo = MEETING_DAY_LABELS[day as MeetingDay] ?? day;
+  if (!date) return tipo;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return tipo;
+  return `${weekdayName(d.getDay())} (${tipo})`;
 }
 
 /** Orden de aparición de las secciones por día. */

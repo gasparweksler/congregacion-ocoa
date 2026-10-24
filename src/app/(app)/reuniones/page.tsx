@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { requireMeetingsAccess,
+import {
+  requireMeetingsAccess,
   congregationId,
+  isSecretary,
 } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
@@ -18,6 +20,8 @@ import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
 import { ProgramaPdfDownload } from "@/components/forms/ProgramaPdfDownload";
+import { MeetingDaysForm } from "@/components/forms/MeetingDaysForm";
+import { getMeetingDays } from "@/lib/meeting-days";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EnterMeetingButton } from "@/components/EnterMeetingButton";
 import { LoadingLinkButton } from "@/components/LoadingLinkButton";
@@ -29,6 +33,9 @@ import {
 export default async function ReunionesPage() {
   const user = await requireMeetingsAccess();
   const cong = congregationId(user);
+
+  // Días de reunión de esta congregación (antes estaban fijos: jueves/sábado).
+  const meetingDays = await getMeetingDays(cong);
 
   const meetingsRaw = await prisma.meeting.findMany({
     where: { congregationId: cong },
@@ -106,9 +113,22 @@ export default async function ReunionesPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-1">
           <Card>
+            <CardHeader
+              title="Selecciona tu día de reunión"
+              description="Cada congregación tiene sus propios días."
+            />
+            <CardBody>
+              <MeetingDaysForm
+                days={meetingDays}
+                canEdit={isSecretary(user)}
+              />
+            </CardBody>
+          </Card>
+
+          <Card>
             <CardHeader title="Nueva reunión" />
             <CardBody>
-              <MeetingCreateForm />
+              <MeetingCreateForm days={meetingDays} />
             </CardBody>
           </Card>
 
@@ -211,7 +231,7 @@ export default async function ReunionesPage() {
                               <span className="font-semibold text-foreground">
                                 {m.weekLabel ?? formatDate(m.date)}
                               </span>
-                              <Badge tone="blue">{meetingDayLabel(m.day)}</Badge>
+                              <Badge tone="blue">{meetingDayLabel(m.day, m.date)}</Badge>
                             </div>
                             <p className="mt-0.5 text-sm text-muted">
                               Total de asignaciones: {asignaciones}

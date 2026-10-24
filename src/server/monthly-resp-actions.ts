@@ -18,6 +18,7 @@ import {
   slotsForDay,
 } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
+import { getMeetingDays } from "@/lib/meeting-days";
 import { logAudit } from "@/lib/audit";
 import { isUniqueViolation } from "@/server/actions-shared";
 
@@ -98,7 +99,8 @@ export async function getMonthlyResponsibilities(
     include: { assignments: true },
   });
 
-  const dates = meetingDatesInMonth(year, month);
+  // Los días de reunión los fija cada congregación.
+  const dates = meetingDatesInMonth(year, month, await getMeetingDays(cong));
   return dates.map(({ date, day }) => {
     const meeting = findWeekMeeting(meetings, date, day);
     const values: Record<string, RespCell> = {};
