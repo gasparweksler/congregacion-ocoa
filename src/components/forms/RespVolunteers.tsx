@@ -10,7 +10,7 @@ import {
   removeVolunteerAction,
 } from "@/server/resp-volunteers-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
-import { Alert, Select, Button } from "@/components/ui";
+import { Alert, Input, Button } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { RespCategory } from "@/lib/constants";
 import type { VolunteerEntry } from "@/lib/resp-volunteers";
@@ -71,19 +71,24 @@ function Categoria({
         </p>
       )}
 
+      {/* Solo se sugieren los que todavía no están en esta categoría. */}
+      <datalist id={`resp-vol-${cat.key}`}>
+        {libres.map((p) => (
+          <option key={p.id} value={p.name} />
+        ))}
+      </datalist>
+
       <form action={action} className="mt-2 flex flex-wrap items-end gap-2">
         <input type="hidden" name="category" value={cat.key} />
         <div className="min-w-0 flex-1">
-          <Select name="publisherId" defaultValue="" aria-label={`Añadir a ${cat.label}`}>
-            <option value="" disabled>
-              — Añadir hermano —
-            </option>
-            {libres.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
+          <Input
+            type="text"
+            name="name"
+            list={`resp-vol-${cat.key}`}
+            placeholder="Escribe el nombre del hermano…"
+            aria-label={`Añadir a ${cat.label}`}
+            autoComplete="off"
+          />
         </div>
         <SubmitButton pendingText="Añadiendo…" variant="secondary">
           Añadir

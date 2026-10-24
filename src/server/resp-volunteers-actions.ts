@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import { RESP_CATEGORIES } from "@/lib/constants";
+import { matchPublisher, normalizeName } from "@/lib/assignment-stats";
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
@@ -31,15 +32,27 @@ export async function addVolunteerAction(
   const cat = categoria(formData);
   if (!cat) return { error: "Tipo de responsabilidad desconocido." };
 
-  const publisherId = String(formData.get("publisherId") ?? "").trim();
-  if (!publisherId) return { error: "Elige un hermano de la lista." };
+  // Se escribe el nombre (con autocompletado) y aquí se resuelve a un
+  // publicador real: así no puede guardarse un nombre que no exista.
+  const escrito = String(formData.get("name") ?? "").replace(/\s+/g, " ").trim();
+  if (!escrito) return { error: "Escribe el nombre del hermano." };
 
-  // El publicador tiene que ser de esta congregación.
-  const pub = await prisma.publisher.findFirst({
-    where: { id: publisherId, congregationId: cong },
-    select: { fullName: true },
+  const publicadores = await prisma.publisher.findMany({
+    where: { congregationId: cong },
+    select: { id: true, fullName: true },
   });
-  if (!pub) return { error: "Ese publicador no es de tu congregación." };
+  // Mismo emparejado que usan las estadísticas: exacto o, si no, por palabras
+  // y solo cuando no hay ambigüedad.
+  const indice = new Map(
+    publicadores.map((x) => [normalizeName(x.fullName), x]),
+  );
+  const pub = matchPublisher(escrito, publicadores, indice);
+  if (!pub) {
+    return {
+      error: `No hay ningún publicador que coincida con "${escrito}". Escríbelo como aparece en Publicadores (la lista te va sugiriendo).`,
+    };
+  }
+  const publisherId = pub.id;
 
   try {
     await prisma.responsibilityVolunteer.create({
