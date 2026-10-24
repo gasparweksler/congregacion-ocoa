@@ -39,6 +39,24 @@ export function MonthlyResponsibilities({
   const [local, setLocal] = useState<Record<string, string>>(initialValues);
   const [saved, setSaved] = useState<Record<string, string>>(initialValues);
 
+  // Si los datos del servidor cambian (p. ej. tras la asignación automática),
+  // hay que volver a cargarlos: antes el estado se fijaba una sola vez y las
+  // casillas seguían viéndose vacías aunque ya estuvieran guardadas.
+  // Se ajusta en render, no en un efecto, para que no haya un parpadeo.
+  const firma = rows
+    .map(
+      (r) =>
+        `${r.dateISO}:${MONTHLY_RESPONSIBILITIES.map((x) => r.values[x.key]?.name ?? "").join("|")}`,
+    )
+    .join("//");
+  const [firmaPrevia, setFirmaPrevia] = useState(firma);
+  if (firma !== firmaPrevia) {
+    setFirmaPrevia(firma);
+    const v = initialValues();
+    setLocal(v);
+    setSaved(v);
+  }
+
   // Guarda el valor de una celda si cambió respecto al último guardado.
   const commit = (row: MonthlyMeetingRow, key: string, explicit?: string) => {
     const cellKey = `${row.dateISO}_${key}`;

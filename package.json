@@ -32,6 +32,7 @@
     "db:migrate-dias": "tsx scripts/migrate-dias-reunion.mts",
     "db:migrate-historial": "tsx scripts/migrate-historial-asignaciones.mts",
     "db:migrate-responsables": "tsx scripts/migrate-responsables.mts",
+    "db:migrate-atalaya": "tsx scripts/migrate-atalaya-video.mts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

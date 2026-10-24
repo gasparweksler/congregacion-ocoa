@@ -12,14 +12,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
-import { RESP_CATEGORIES } from "@/lib/constants";
+import { RESP_MANAGED_CATEGORIES } from "@/lib/constants";
 import { matchPublisher, normalizeName } from "@/lib/assignment-stats";
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
 function categoria(formData: FormData) {
   const key = String(formData.get("category") ?? "").trim();
-  return RESP_CATEGORIES.find((c) => c.key === key) ?? null;
+  return RESP_MANAGED_CATEGORIES.find((c) => c.key === key) ?? null;
 }
 
 export async function addVolunteerAction(
@@ -100,6 +100,32 @@ export async function removeVolunteerAction(formData: FormData): Promise<void> {
     action: "EDITAR",
     entity: "Responsabilidades",
     details: `${pub?.fullName ?? publisherId} quitado de ${cat.label}.`,
+  });
+
+  revalidatePath("/reuniones/responsabilidades");
+}
+
+/**
+ * Interruptor "Repetir los de Sonido" de la categoría Video: los disponibles
+ * de Video pasan a ser exactamente los de Audio.
+ */
+export async function setVideoSameAsAudioAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const activo = String(formData.get("value") ?? "") === "si";
+
+  await prisma.congregation.update({
+    where: { id: cong },
+    data: { videoSameAsAudio: activo },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Responsabilidades",
+    details: `Video: repetir los de Sonido ${activo ? "activado" : "desactivado"}.`,
   });
 
   revalidatePath("/reuniones/responsabilidades");

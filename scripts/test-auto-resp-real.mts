@@ -44,9 +44,23 @@ if (!cong) {
 }
 console.log(`Congregación: ${cong.name}\n`);
 
+// Cuántos disponibles tiene de verdad, para comprobar al final que quedó igual.
+const realesDeLaCongregacion = await p.responsibilityVolunteer.count({
+  where: { congregationId: cong.id },
+});
+
 try {
   await p.$transaction(async (tx) => {
     // --- Preparación: apuntar hermanos reales a cada categoría ---
+    // Se parte de cero DENTRO de la transacción, para que la prueba no dependa
+    // de los disponibles que ya tenga registrados la congregación. Al revertir,
+    // los suyos siguen intactos.
+    const realesAntes = await tx.responsibilityVolunteer.count({
+      where: { congregationId: cong.id },
+    });
+    await tx.responsibilityVolunteer.deleteMany({ where: { congregationId: cong.id } });
+    console.log(`  (la congregación tiene ${realesAntes} disponibles reales; se parte de cero y se revierte)`);
+
     const pubs = await tx.publisher.findMany({
       where: { congregationId: cong.id, active: true },
       select: { id: true, fullName: true },
@@ -66,6 +80,11 @@ try {
     // Uno con dos funciones: el primero de audio también hace vídeo.
     const multi = apuntados.find((a) => a.category === "AUDIO")!;
     apuntados.push({ category: "VIDEO", publisherId: multi.publisherId, name: multi.name });
+    // Y uno conduce la Atalaya: debe quedar libre el fin de semana. Se elige a
+    // alguien que SÍ está en una categoría de reparto, para que la exclusión
+    // tenga efecto observable.
+    const atalaya = apuntados.find((a) => a.category === "ACOMODADORES")!;
+    apuntados.push({ category: "ATALAYA", publisherId: atalaya.publisherId, name: atalaya.name });
 
     await tx.responsibilityVolunteer.createMany({
       data: apuntados.map((a) => ({
@@ -97,7 +116,9 @@ try {
     // --- Se replica lo que hace proposeAutoAssignAction ---
     const dias = { midweekDay: cong.midweekDay, weekendDay: cong.weekendDay };
     const year = 2026;
-    const month = 10;
+    // Un mes SIN responsabilidades puestas: si se usa uno ya repartido no hay
+    // casillas vacías y no se comprueba nada.
+    const month = 11;
     const fechas = meetingDatesInMonth(year, month, dias);
     const meetings = await tx.meeting.findMany({
       where: {
@@ -153,18 +174,32 @@ try {
       }
     }
 
+    // Igual que la acción: la Atalaya excluye del fin de semana, y el
+    // interruptor hace que Video sea exactamente Audio.
+    const conduceAtalaya = new Set(
+      voluntarios.filter((v) => v.category === "ATALAYA").map((v) => v.publisherId),
+    );
+    const repetirSonido = await tx.congregation
+      .findUnique({ where: { id: cong.id }, select: { videoSameAsAudio: true } })
+      .then((c) => c?.videoSameAsAudio ?? false);
+
     const porPublicador = new Map<string, Candidate>();
     for (const v of voluntarios) {
+      if (v.category === "ATALAYA") continue;
+      if (repetirSonido && v.category === "VIDEO") continue;
+      const cats = [v.category];
+      if (repetirSonido && v.category === "AUDIO") cats.push("VIDEO");
       const prev = porPublicador.get(v.publisherId);
       if (prev) {
-        prev.categories.push(v.category);
+        for (const c of cats) if (!prev.categories.includes(c)) prev.categories.push(c);
         continue;
       }
       porPublicador.set(v.publisherId, {
         publisherId: v.publisherId,
         name: v.publisher.fullName,
-        categories: [v.category],
+        categories: cats,
         loadBefore: cargaPrevia.get(normalizeName(v.publisher.fullName)) ?? 0,
+        ...(conduceAtalaya.has(v.publisherId) ? { unavailableDays: ["SABADO"] } : {}),
       });
     }
 
@@ -224,7 +259,26 @@ try {
       console.log("   (solo hay una congregación; se omite)");
     }
 
-    console.log("\n6. Equidad del reparto");
+    console.log("\n6. El conductor de la Atalaya");
+    {
+      const suyas = r.proposals.filter(
+        (x) => normalizeName(x.name) === normalizeName(atalaya.name),
+      );
+      const finDeSemana = suyas.filter((x) => x.day === "SABADO");
+      console.log(
+        `   "${atalaya.name}": ${suyas.length} responsabilidad(es), de ellas ${finDeSemana.length} en fin de semana`,
+      );
+      check(
+        finDeSemana.length === 0,
+        "no recibe ninguna responsabilidad en la reunión de fin de semana",
+      );
+      check(
+        suyas.length > 0,
+        "pero sí entre semana (sigue disponible el resto)",
+      );
+    }
+
+    console.log("\n7. Equidad del reparto");
     // La comparación justa es DENTRO de cada categoría: "Acomodadores" tiene
     // dos casillas por reunión y "Audio" una, así que con el mismo número de
     // hermanos el total nunca puede salir igual entre categorías distintas.
@@ -232,6 +286,9 @@ try {
     for (const cat of RESP_CATEGORIES) {
       const delCat = voluntarios
         .filter((v) => v.category === cat.key)
+        // Quien conduce la Atalaya solo puede entre semana, así que recibe
+        // menos y no se puede comparar con los que están disponibles siempre.
+        .filter((v) => v.publisherId !== atalaya.publisherId)
         .map((v) => cargaPor.get(normalizeName(v.publisher.fullName)) ?? 0);
       if (delCat.length === 0) continue;
       const max = Math.max(...delCat);
@@ -253,9 +310,16 @@ try {
 }
 
 console.log("\n--- La base quedó intacta ---");
-const quedan = await p.responsibilityVolunteer.count();
+// Los disponibles reales de la congregación siguen ahí: la transacción se
+// revirtió, así que ni se borraron los suyos ni quedaron los de prueba.
+const quedan = await p.responsibilityVolunteer.count({
+  where: { congregationId: cong.id },
+});
 console.log(`  disponibles registrados: ${quedan}`);
-check(quedan === 0, "no quedó ningún registro de prueba");
+check(
+  quedan === realesDeLaCongregacion,
+  `siguen los ${realesDeLaCongregacion} registros reales, sin los de prueba`,
+);
 
 await p.$disconnect();
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);

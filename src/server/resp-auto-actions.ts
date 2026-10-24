@@ -24,6 +24,7 @@ import {
   MONTHLY_RESPONSIBILITIES,
   categoryOfSlot,
   monthName,
+  WATCHTOWER_CATEGORY,
 } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
 import { getMeetingDays } from "@/lib/meeting-days";
@@ -177,19 +178,44 @@ export async function proposeAutoAssignAction(
     };
   }
 
+  // Quién conduce la Atalaya: no es una responsabilidad que se reparta, es una
+  // exclusión para la reunión de fin de semana.
+  const conduceAtalaya = new Set(
+    voluntarios
+      .filter((v) => v.category === WATCHTOWER_CATEGORY.key)
+      .map((v) => v.publisherId),
+  );
+
+  // "Repetir los de Sonido": los de Video son exactamente los de Audio.
+  const repetirSonido = await prisma.congregation
+    .findUnique({ where: { id: cong }, select: { videoSameAsAudio: true } })
+    .then((c) => c?.videoSameAsAudio ?? false);
+
   // Candidatos: un hermano por publicador, con todas sus categorías.
   const porPublicador = new Map<string, Candidate>();
   for (const v of voluntarios) {
+    // La Atalaya no es una categoría de reparto.
+    if (v.category === WATCHTOWER_CATEGORY.key) continue;
+    // Con el interruptor puesto, Video es EXACTAMENTE Audio: lo que hubiera
+    // apuntado en Video se ignora mientras esté activo.
+    if (repetirSonido && v.category === "VIDEO") continue;
+
+    const cats = [v.category];
+    if (repetirSonido && v.category === "AUDIO") cats.push("VIDEO");
+
     const prev = porPublicador.get(v.publisherId);
     if (prev) {
-      prev.categories.push(v.category);
+      for (const c of cats) if (!prev.categories.includes(c)) prev.categories.push(c);
       continue;
     }
     porPublicador.set(v.publisherId, {
       publisherId: v.publisherId,
       name: v.publisher.fullName,
-      categories: [v.category],
+      categories: cats,
       loadBefore: cargaPrevia.get(normalizeName(v.publisher.fullName)) ?? 0,
+      ...(conduceAtalaya.has(v.publisherId)
+        ? { unavailableDays: ["SABADO"] }
+        : {}),
     });
   }
 

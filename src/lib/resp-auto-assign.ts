@@ -48,6 +48,12 @@ export type Candidate = {
   categories: string[];
   /** Responsabilidades que YA tiene este mes antes de repartir. */
   loadBefore: number;
+  /**
+   * Tipos de reunión en los que NO está disponible, pase lo que pase. Se usa
+   * para quien conduce el Estudio de La Atalaya: ya está ocupado en la reunión
+   * de fin de semana, así que no puede recibir además una responsabilidad.
+   */
+  unavailableDays?: string[];
 };
 
 export type Proposal = {
@@ -136,13 +142,21 @@ export function autoAssign(
   const uncovered: Uncovered[] = [];
 
   for (const pos of orden) {
-    const pool = porCategoria.get(pos.category) ?? [];
+    // Quien no está disponible ese tipo de reunión (p. ej. conduce la Atalaya
+    // el fin de semana) ni siquiera entra en la lista.
+    const pool = (porCategoria.get(pos.category) ?? []).filter(
+      (c) => !c.unavailableDays?.includes(pos.day),
+    );
     if (pool.length === 0) {
+      const registrados = (porCategoria.get(pos.category) ?? []).length;
       uncovered.push({
         dateISO: pos.dateISO,
         slotKey: pos.slotKey,
         slotLabel: pos.slotLabel,
-        reason: "No hay ningún hermano registrado para esta responsabilidad.",
+        reason:
+          registrados === 0
+            ? "No hay ningún hermano registrado para esta responsabilidad."
+            : "Los hermanos registrados no están disponibles en esa reunión.",
       });
       continue;
     }

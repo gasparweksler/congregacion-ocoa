@@ -265,5 +265,47 @@ console.log("\n8. Varía entre repartos, pero es reproducible");
   check(distintas.size > 1, `con semillas distintas, repartos distintos (${distintas.size}/5)`);
 }
 
+// --- 9. Quien conduce la Atalaya no recibe nada el fin de semana ----------
+console.log("\n9. El conductor de la Atalaya, libre el fin de semana");
+{
+  const slotsFin: Position[] = ["2026-11-01", "2026-11-08"].flatMap((dateISO) => [
+    { dateISO, day: "SABADO" as const, slotKey: "r_audio", slotLabel: "Audio", category: "AUDIO" },
+  ]);
+  const slotsSemana: Position[] = ["2026-11-05", "2026-11-12"].flatMap((dateISO) => [
+    { dateISO, day: "JUEVES" as const, slotKey: "r_audio", slotLabel: "Audio", category: "AUDIO" },
+  ]);
+  const fechas = ["2026-11-01", "2026-11-05", "2026-11-08", "2026-11-12"];
+
+  // Mara conduce la Atalaya; Nico no.
+  const cands: Candidate[] = [
+    { ...hermano("Mara", ["AUDIO"]), unavailableDays: ["SABADO"] },
+    hermano("Nico", ["AUDIO"]),
+  ];
+  const r = autoAssign([...slotsFin, ...slotsSemana], reuniones(fechas), cands, makeRandom(4));
+  const finDeSemana = r.proposals.filter((x) => x.day === "SABADO");
+  const entreSemana = r.proposals.filter((x) => x.day === "JUEVES");
+  check(
+    finDeSemana.every((x) => x.name !== "Mara"),
+    `no aparece en el fin de semana (${finDeSemana.map((x) => x.name).join(", ")})`,
+  );
+  check(
+    finDeSemana.length === 2,
+    "y el puesto del fin de semana se cubre con el otro hermano",
+  );
+  check(
+    entreSemana.some((x) => x.name === "Mara"),
+    `pero sí entre semana (${entreSemana.map((x) => x.name).join(", ")})`,
+  );
+
+  // Si el único disponible conduce la Atalaya, el puesto queda sin cubrir y se
+  // dice por qué (no se le asigna igualmente).
+  const r2 = autoAssign(slotsFin, reuniones(fechas), [cands[0]], makeRandom(4));
+  check(r2.proposals.length === 0, "si es el único, no se le asigna");
+  check(
+    r2.uncovered.every((u) => u.reason.includes("no están disponibles en esa reunión")),
+    "y se explica que no está disponible en esa reunión",
+  );
+}
+
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);
 process.exit(fallos === 0 ? 0 : 1);

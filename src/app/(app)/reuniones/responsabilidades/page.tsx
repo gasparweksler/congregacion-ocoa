@@ -2,7 +2,7 @@ import { requireMeetingsAccess,
   congregationId,
 } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { monthName, RESP_CATEGORIES } from "@/lib/constants";
+import { monthName, RESP_MANAGED_CATEGORIES } from "@/lib/constants";
 import { getVolunteersByCategory } from "@/lib/resp-volunteers";
 import { parsePeriod } from "@/lib/period";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
@@ -24,7 +24,7 @@ export default async function ResponsabilidadesMensualPage({
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);
 
-  const [publishersRaw, groupsRaw, rows, volunteers] = await Promise.all([
+  const [publishersRaw, groupsRaw, rows, volunteers, ajustes] = await Promise.all([
     prisma.publisher.findMany({
       where: { congregationId: cong },
       orderBy: { fullName: "asc" },
@@ -37,12 +37,17 @@ export default async function ResponsabilidadesMensualPage({
     }),
     getMonthlyResponsibilities(year, month),
     getVolunteersByCategory(cong),
+    prisma.congregation.findUnique({
+      where: { id: cong },
+      select: { videoSameAsAudio: true },
+    }),
   ]);
 
   const publishers = publishersRaw.map((p) => p.fullName);
   // Para los desplegables de la ventana de disponibles (hace falta el id).
   const publisherOptions = publishersRaw.map((p) => ({ id: p.id, name: p.fullName }));
   const groups = groupsRaw.map((g) => g.name);
+  const videoSameAsAudio = ajustes?.videoSameAsAudio ?? false;
 
   return (
     <>
@@ -71,7 +76,8 @@ export default async function ResponsabilidadesMensualPage({
         />
         <CardBody className="space-y-4">
           <RespVolunteers
-            categories={RESP_CATEGORIES}
+            categories={RESP_MANAGED_CATEGORIES}
+            videoSameAsAudio={videoSameAsAudio}
             byCategory={volunteers}
             publishers={publisherOptions}
           />

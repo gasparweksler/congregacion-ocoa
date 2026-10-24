@@ -415,7 +415,26 @@ export const RESP_CATEGORIES: RespCategory[] = [
   { key: "VIDEO", label: "Video", slots: ["r_video"] },
 ];
 
-export const RESP_CATEGORY_KEYS = RESP_CATEGORIES.map((c) => c.key);
+/**
+ * Quién conduce el Estudio de La Atalaya el fin de semana.
+ *
+ * No es una responsabilidad que se reparta: se registra para que el reparto
+ * automático NO le dé nada en la reunión de fin de semana, porque ya está
+ * ocupado conduciendo.
+ */
+export const WATCHTOWER_CATEGORY: RespCategory = {
+  key: "ATALAYA",
+  label: "¿Quién conduce la Atalaya el fin de semana?",
+  slots: [],
+};
+
+/** Lo que se gestiona en la ventana (incluye la Atalaya). */
+export const RESP_MANAGED_CATEGORIES: RespCategory[] = [
+  ...RESP_CATEGORIES,
+  WATCHTOWER_CATEGORY,
+];
+
+export const RESP_CATEGORY_KEYS = RESP_MANAGED_CATEGORIES.map((c) => c.key);
 
 /** La categoría a la que pertenece una casilla, o null si no la cubre ninguna. */
 export function categoryOfSlot(slotKey: string): RespCategory | null {

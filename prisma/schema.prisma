@@ -38,6 +38,10 @@ model Congregation {
   midweekDay Int @default(4)
   weekendDay Int @default(6)
 
+  // "Repetir los de Sonido" en la categoría Video: los disponibles de Video
+  // son exactamente los de Audio, sin tener que escribirlos otra vez.
+  videoSameAsAudio Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
