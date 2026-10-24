@@ -25,6 +25,7 @@
     "test:canciones": "tsx scripts/test-programa-canciones.mts",
     "test:dias": "tsx scripts/test-dias-reunion.mts",
     "test:historial-borrado": "tsx scripts/test-historial-borrado.mts",
+    "test:estadisticas-pasadas": "tsx scripts/test-estadisticas-pasadas.mts",
     "db:migrate-canciones": "tsx scripts/migrate-programa-canciones.mts",
     "db:migrate-dias": "tsx scripts/migrate-dias-reunion.mts",
     "db:migrate-historial": "tsx scripts/migrate-historial-asignaciones.mts",

@@ -11,6 +11,7 @@ import {
   meetingDayLabel,
   MONTHLY_RESP_KEYS,
   CONFIRM_STATUS,
+  PUBLISHER_STATUS,
 } from "@/lib/constants";
 import {
   type BrotherStats,
@@ -37,6 +38,11 @@ export type StatsResult = {
   brothers: BrotherStats[];
   /** Nombres de las asignaciones que no casaron con ningún publicador. */
   unmatched: { name: string; count: number }[];
+  /**
+   * Publicadores activos de la congregación SIN ninguna asignación en el
+   * período: no han tenido participación.
+   */
+  neverAssigned: { name: string; groupName: string | null; status: string }[];
   /** Secciones presentes, para el desplegable de filtros. */
   sections: string[];
   /** Totales, para poder explicar de dónde salen los números. */
@@ -67,20 +73,27 @@ export async function getAssignmentStats(
   const desde = filters.desde ? new Date(`${filters.desde}T00:00:00`) : null;
   const hasta = filters.hasta ? new Date(`${filters.hasta}T23:59:59`) : null;
 
+  /**
+   * Tope duro: las estadísticas solo miran lo que ya pasó.
+   *
+   * Una reunión de fecha futura está programada, no realizada, y contarla
+   * falsearía tanto los totales como los días sin asignación. Se aplica además
+   * del filtro de fechas que ponga el usuario, así que manda el más estricto.
+   * La fecha guardada de cada reunión es el inicio de su semana, de modo que
+   * "antes de hoy" equivale a semanas ya empezadas antes de hoy.
+   */
+  const hoyInicio = new Date();
+  hoyInicio.setHours(0, 0, 0, 0);
+  const rangoFechas = {
+    ...(desde && !isNaN(desde.getTime()) ? { gte: desde } : {}),
+    ...(hasta && !isNaN(hasta.getTime()) ? { lte: hasta } : {}),
+    lt: hoyInicio,
+  };
+
   const [assignments, historial, publishers, rango] = await Promise.all([
     prisma.meetingAssignment.findMany({
       where: {
-        meeting: {
-          congregationId: cong,
-          ...(desde || hasta
-            ? {
-                date: {
-                  ...(desde && !isNaN(desde.getTime()) ? { gte: desde } : {}),
-                  ...(hasta && !isNaN(hasta.getTime()) ? { lte: hasta } : {}),
-                },
-              }
-            : {}),
-        },
+        meeting: { congregationId: cong, date: rangoFechas },
         ...(filters.section ? { section: filters.section } : {}),
         // Al menos uno de los dos puestos tiene hermano asignado.
         OR: [{ NOT: { primaryName: null } }, { NOT: { secondaryName: null } }],
@@ -105,14 +118,7 @@ export async function getAssignmentStats(
     prisma.assignmentHistory.findMany({
       where: {
         congregationId: cong,
-        ...(desde || hasta
-          ? {
-              meetingDate: {
-                ...(desde && !isNaN(desde.getTime()) ? { gte: desde } : {}),
-                ...(hasta && !isNaN(hasta.getTime()) ? { lte: hasta } : {}),
-              },
-            }
-          : {}),
+        meetingDate: rangoFechas,
         ...(filters.section ? { section: filters.section } : {}),
         OR: [{ NOT: { primaryName: null } }, { NOT: { secondaryName: null } }],
       },
@@ -125,11 +131,13 @@ export async function getAssignmentStats(
         id: true,
         fullName: true,
         status: true,
+        active: true,
         group: { select: { name: true } },
       },
     }),
     prisma.meeting.aggregate({
-      where: { congregationId: cong },
+      // Solo las reuniones ya pasadas: las futuras no son historial.
+      where: { congregationId: cong, date: { lt: hoyInicio } },
       _min: { date: true },
       _max: { date: true },
       _count: true,
@@ -313,6 +321,26 @@ export async function getAssignmentStats(
 
   let brothers = [...porClave.values()];
 
+  // Publicadores que NO aparecen en ninguna asignación del período: nunca han
+  // participado. Se calcula antes del filtro de búsqueda, para que escribir un
+  // nombre no cambie esta lista. Se dejan fuera los inactivos, que no entran en
+  // el reparto de asignaciones.
+  const conAlgo = new Set(
+    brothers.map((b) => b.publisherId).filter((id): id is string => !!id),
+  );
+  const neverAssigned = publishers
+    .filter(
+      (p) =>
+        !conAlgo.has(p.id) &&
+        p.active &&
+        p.status !== PUBLISHER_STATUS.INACTIVO,
+    )
+    .map((p) => ({
+      name: p.fullName,
+      groupName: p.group?.name ?? null,
+      status: p.status,
+    }));
+
   // Búsqueda por nombre: también por las variantes, para que encuentre tanto
   // "Benjamín Saavedra" como "Benjamin Saavedra G.".
   const q = normalizeName(filters.q ?? "");
@@ -332,6 +360,7 @@ export async function getAssignmentStats(
 
   return {
     brothers,
+    neverAssigned,
     unmatched: [...sinEmparejar.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "es")),

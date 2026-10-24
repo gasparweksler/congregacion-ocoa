@@ -18,6 +18,7 @@ import {
   AssignmentHistory,
   type BrotherRow,
 } from "@/components/AssignmentHistory";
+import { WithoutAssignmentTile } from "@/components/WithoutAssignmentTile";
 import { getAssignmentStats } from "@/server/assignment-stats-actions";
 
 export default async function EstadisticasAsignacionesPage({
@@ -38,7 +39,8 @@ export default async function EstadisticasAsignacionesPage({
   const dias = Math.min(3650, Math.max(1, Number(sp.dias) || 90));
   const incluirResponsabilidades = sp.resp === "1";
 
-  const { brothers, unmatched, sections, totals } = await getAssignmentStats({
+  const { brothers, neverAssigned, unmatched, sections, totals } =
+    await getAssignmentStats({
     q: sp.q,
     section: sp.section,
     desde: sp.desde,
@@ -56,9 +58,26 @@ export default async function EstadisticasAsignacionesPage({
     })),
   }));
 
-  const conAviso = rows.filter(
-    (b) => b.daysSinceDone !== null && b.daysSinceDone > dias,
-  ).length;
+  // Quiénes están detrás del aviso, no solo cuántos (el ojo del recuadro).
+  const avisados = rows
+    .filter((b) => b.daysSinceDone !== null && b.daysSinceDone > dias)
+    .map((b) => ({
+      name: b.name,
+      groupName: b.groupName,
+      days: b.daysSinceDone,
+    }))
+    .sort(
+      (a, b) =>
+        (b.days ?? 0) - (a.days ?? 0) || a.name.localeCompare(b.name, "es"),
+    );
+  // Publicadores activos sin ninguna asignación en el período.
+  const sinParticipacion = neverAssigned
+    .map((p) => ({ name: p.name, groupName: p.groupName, days: null }))
+    .sort(
+      (a, b) =>
+        (a.groupName ?? "").localeCompare(b.groupName ?? "", "es") ||
+        a.name.localeCompare(b.name, "es"),
+    );
   const sinNinguna = rows.filter((b) => b.lastDone === null).length;
 
   return (
@@ -96,14 +115,11 @@ export default async function EstadisticasAsignacionesPage({
             {totals.sinRegistrar}
           </p>
         </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted">
-            Más de {dias} días sin asignación
-          </p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600">
-            {conAviso}
-          </p>
-        </Card>
+        <WithoutAssignmentTile
+          dias={dias}
+          conAviso={avisados}
+          sinParticipacion={sinParticipacion}
+        />
         <Card className="p-4">
           <p className="text-sm text-muted">Sin ninguna registrada</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700">
