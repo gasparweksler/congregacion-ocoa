@@ -42,7 +42,10 @@
     "db:studio": "prisma studio",
     "test:confirmaciones": "tsx scripts/test-confirmaciones-estadisticas.mts",
     "test:planilla-pub": "tsx scripts/test-planilla-publicadores.mts",
-    "test:import-pub": "tsx scripts/test-import-publicadores-real.mts"
+    "test:import-pub": "tsx scripts/test-import-publicadores-real.mts",
+    "test:simultaneo": "tsx scripts/test-simultaneo.mts",
+    "test:latencia": "tsx scripts/test-latencia.mts",
+    "test:carreras": "tsx scripts/test-carreras-alta.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
