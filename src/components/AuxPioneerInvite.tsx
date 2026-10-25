@@ -27,7 +27,7 @@ export function AuxPioneerInvite({
 }) {
   const [which, setWhich] = useState<"curso" | "siguiente">("curso");
   const [copied, setCopied] = useState(false);
-  const [, startTransition] = useTransition();
+  const [guardando15, startTransition] = useTransition();
   // Estado local del switch de 15 horas por mes (curso/siguiente).
   const [allow15, setAllow15] = useState<{ curso: boolean; siguiente: boolean }>(
     { curso: curso.allow15, siguiente: siguiente.allow15 },
@@ -132,8 +132,10 @@ export function AuxPioneerInvite({
           aria-checked={fifteenOn}
           aria-label="Permitir inscripción de 15 horas"
           onClick={toggleFifteen}
+          disabled={guardando15}
+          aria-busy={guardando15}
           className={
-            "relative h-6 w-11 shrink-0 rounded-full transition-colors " +
+            "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-wait " +
             (fifteenOn ? "bg-primary" : "bg-slate-300")
           }
         >
@@ -145,6 +147,10 @@ export function AuxPioneerInvite({
             }
           />
         </button>
+        {/* El switch cambia al momento; esto solo confirma que ya se guardó. */}
+        {guardando15 ? (
+          <span className="shrink-0 text-xs text-muted">Guardando…</span>
+        ) : null}
       </div>
 
       {/* Vista previa del mensaje */}

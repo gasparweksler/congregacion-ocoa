@@ -9,12 +9,12 @@ import { reportTypeWhere } from "@/lib/report-filters";
 import { yearOptions } from "@/lib/period";
 import { statusTone } from "@/lib/ui-helpers";
 import { PageHeader } from "@/components/PageHeader";
+import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 import {
   Card,
   CardHeader,
   EmptyState,
   Badge,
-  LinkButton,
   Table,
   Th,
   Td,
@@ -24,6 +24,7 @@ import { deleteSingleReportAction } from "@/server/report-actions";
 import { deleteAllReportsAction } from "@/server/maintenance-actions";
 import { HistoryFilters } from "@/components/HistoryFilters";
 import { MoveReportsForm } from "@/components/forms/MoveReportsForm";
+import { DownloadButton } from "@/components/DownloadButton";
 
 export default async function HistorialInformesPage({
   searchParams,
@@ -86,9 +87,9 @@ export default async function HistorialInformesPage({
         title="Informes guardados"
         description="Todos los informes subidos. Filtra, ábrelos, edítalos o elimínalos."
         action={
-          <LinkButton href="/informes" variant="secondary">
+          <LoadingLinkButton href="/informes" variant="secondary">
             ← Informes
-          </LinkButton>
+          </LoadingLinkButton>
         }
       />
 
@@ -96,16 +97,17 @@ export default async function HistorialInformesPage({
         <HistoryFilters years={yearOptions()} groups={groups} />
         <div className="flex flex-wrap items-center gap-2">
           {/* Descarga lo que muestran los filtros (incluido "todos"). */}
-          <a
+          <DownloadButton
             href={`/api/historial-excel?todos=1${
               !isNaN(year) ? `&anio=${year}` : ""
             }${!isNaN(month) ? `&mes=${month}` : ""}${
               grupo ? `&grupo=${grupo}` : ""
             }${tipo ? `&tipo=${tipo}` : ""}`}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)]"
+            variant="primary"
+            pendingText="Generando Excel…"
           >
             📥 Descargar Historial
-          </a>
+          </DownloadButton>
         {reports.length > 0 ? (
           <ConfirmButton
             action={deleteAllReportsAction}

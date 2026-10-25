@@ -15,7 +15,6 @@ import {
   CardHeader,
   CardBody,
   Alert,
-  LinkButton,
   EmptyState,
 } from "@/components/ui";
 import { StatsTiles } from "@/components/StatsTiles";
@@ -185,7 +184,7 @@ async function PendingByGroup({
           <EmptyState
             title="Aún no hay grupos"
             description="Crea grupos para comenzar."
-            action={<LinkButton href="/grupos">Crear grupos</LinkButton>}
+            action={<LoadingLinkButton href="/grupos">Crear grupos</LoadingLinkButton>}
           />
         ) : groupsWithPending.length === 0 ? (
           <Alert tone="success">

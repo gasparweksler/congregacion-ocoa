@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { Label, Select } from "@/components/ui";
 import { monthName } from "@/lib/constants";
+import { DownloadButton } from "@/components/DownloadButton";
 
 export type ProgramaPeriod = { year: number; month: number; count: number };
 
@@ -41,12 +42,12 @@ export function ProgramaPdfDownload({ periods }: { periods: ProgramaPeriod[] }) 
           </option>
         ))}
       </Select>
-      <a
+      <DownloadButton
         href={`/api/programa-pdf?anio=${anio}&mes=${mes}`}
-        className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-slate-50"
+        pendingText="Generando PDF…"
       >
         🖨️ Descargar PDF
-      </a>
+      </DownloadButton>
       <p className="text-xs text-muted">
         Programa completo de Vida y Ministerio, con todas las semanas del mes y
         el hermano asignado a cada parte.

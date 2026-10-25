@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { Button, Label, Input, Select } from "@/components/ui";
+import { DownloadButton } from "@/components/DownloadButton";
 import {
   PUBLISHER_STATUS_VALUES,
   PUBLISHER_STATUS_LABELS,
@@ -128,12 +129,16 @@ export function CardsDownload({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <a
+            {/* Puede ser un PDF o un ZIP con decenas de tarjetas: lo que más
+                tarda de toda la aplicación. */}
+            <DownloadButton
               href={href}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)]"
+              variant="primary"
+              pendingText="Generando tarjetas…"
+              hint="Se está armando el archivo. Con muchas tarjetas puede tardar un poco."
             >
               📥 Descargar
-            </a>
+            </DownloadButton>
             <Button variant="ghost" onClick={limpiar}>
               Limpiar filtros
             </Button>

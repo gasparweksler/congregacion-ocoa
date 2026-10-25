@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   updatePublisherAction,
   deletePublisherAction,
@@ -36,6 +37,8 @@ export function PublisherRow({
   groups: GroupOption[];
 }) {
   const [editing, setEditing] = useState(false);
+  const router = useRouter();
+  const [abriendo, abrirTarjeta] = useTransition();
   const [state, action] = useActionState(
     updatePublisherAction,
     EMPTY_FORM_STATE,
@@ -142,12 +145,29 @@ export function PublisherRow({
         ) : null}
       </div>
       <div className="flex items-center gap-1">
-        <Link
-          href={`/publicadores/${publisher.id}`}
-          className="rounded-md px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        {/* La tarjeta carga todo el historial de informes del hermano, así que
+            tarda: sin aviso parecía que no respondía. */}
+        <button
+          type="button"
+          disabled={abriendo}
+          aria-busy={abriendo}
+          onClick={() =>
+            abrirTarjeta(() => router.push(`/publicadores/${publisher.id}`))
+          }
+          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-wait"
         >
-          Ver Tarjeta
-        </Link>
+          {abriendo ? (
+            <>
+              <span
+                aria-hidden
+                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+              />
+              Abriendo…
+            </>
+          ) : (
+            "Ver Tarjeta"
+          )}
+        </button>
         <button
           type="button"
           onClick={() => setEditing(true)}

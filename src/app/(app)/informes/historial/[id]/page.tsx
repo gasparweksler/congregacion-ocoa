@@ -5,7 +5,8 @@ import { requireSecretary,
 import { prisma } from "@/lib/prisma";
 import { monthName, isPioneer } from "@/lib/constants";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardHeader, CardBody, LinkButton } from "@/components/ui";
+import { LoadingLinkButton } from "@/components/LoadingLinkButton";
+import { Card, CardHeader, CardBody } from "@/components/ui";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { deleteSingleReportAction } from "@/server/report-actions";
 import { SingleReportEditor } from "@/components/forms/SingleReportEditor";
@@ -47,9 +48,9 @@ export default async function ReporteDetallePage({
             : ""
         }`}
         action={
-          <LinkButton href="/informes/historial" variant="secondary">
+          <LoadingLinkButton href="/informes/historial" variant="secondary">
             ← Historial
-          </LinkButton>
+          </LoadingLinkButton>
         }
       />
 

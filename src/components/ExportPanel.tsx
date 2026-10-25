@@ -5,12 +5,16 @@ import { useState } from "react";
 import { Select, Label } from "@/components/ui";
 import { MONTH_NAMES } from "@/lib/constants";
 import { yearOptions, currentPeriod } from "@/lib/period";
+import { useFileDownload } from "@/components/DownloadButton";
 
 export function ExportPanel({
   groups,
 }: {
   groups: { id: string; name: string }[];
 }) {
+  // Generar un Excel tarda: se muestra el avance y se bloquean los tres
+  // botones mientras tanto, para no lanzar varias generaciones a la vez.
+  const { descargar, pending, error } = useFileDownload();
   const now = currentPeriod();
   const [year, setYear] = useState(now.year);
   const [month, setMonth] = useState(now.month);
@@ -84,21 +88,43 @@ export function ExportPanel({
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {downloads.map((d) => (
-          <a
-            key={d.title}
-            href={d.href}
-            className="flex flex-col rounded-xl border border-border bg-surface p-4 shadow-sm transition hover:border-primary hover:shadow"
-          >
-            <span className="text-2xl">{d.icon}</span>
-            <span className="mt-2 font-semibold text-foreground">{d.title}</span>
-            <span className="mt-1 text-sm text-muted">{d.desc}</span>
-            <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
-              Descargar Excel ⬇
-            </span>
-          </a>
-        ))}
+        {downloads.map((d) => {
+          const generando = pending === d.href;
+          return (
+            <button
+              key={d.title}
+              type="button"
+              onClick={() => descargar(d.href)}
+              disabled={pending !== null}
+              aria-busy={generando}
+              className="flex flex-col rounded-xl border border-border bg-surface p-4 text-left shadow-sm transition hover:border-primary hover:shadow disabled:cursor-wait disabled:opacity-70"
+            >
+              <span className="text-2xl">{d.icon}</span>
+              <span className="mt-2 font-semibold text-foreground">{d.title}</span>
+              <span className="mt-1 text-sm text-muted">{d.desc}</span>
+              <span className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary">
+                {generando ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    />
+                    Generando Excel…
+                  </>
+                ) : (
+                  "Descargar Excel ⬇"
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {error ? (
+        <p className="mt-3 text-sm text-red-600">
+          {error} Puedes volver a intentarlo.
+        </p>
+      ) : null}
     </div>
   );
 }

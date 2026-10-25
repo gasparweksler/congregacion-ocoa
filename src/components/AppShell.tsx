@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { Fragment, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { logoutAction } from "@/server/auth-actions";
@@ -184,6 +185,31 @@ function Brand({ congregationName }: { congregationName?: string | null }) {
   );
 }
 
+/** Cerrar sesión avisa mientras tanto: el botón no se puede repulsar. */
+function LogoutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/20 disabled:cursor-wait disabled:opacity-70"
+    >
+      {pending ? (
+        <>
+          <span
+            aria-hidden
+            className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+          />
+          Cerrando sesión…
+        </>
+      ) : (
+        "Cerrar sesión"
+      )}
+    </button>
+  );
+}
+
 function UserBox({
   user,
 }: {
@@ -203,12 +229,7 @@ function UserBox({
         <p className="text-xs text-white/60">{user.groupName}</p>
       ) : null}
       <form action={logoutAction} className="mt-3">
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/20"
-        >
-          Cerrar sesión
-        </button>
+        <LogoutButton />
       </form>
     </div>
   );

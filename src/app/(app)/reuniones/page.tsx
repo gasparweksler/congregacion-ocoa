@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DownloadButton } from "@/components/DownloadButton";
 import { cn } from "@/lib/cn";
 import {
   requireMeetingsAccess,
@@ -158,12 +159,12 @@ export default async function ReunionesPage({
               {/* La planilla en blanco se descarga tal cual, para completarla y
                   subirla después aquí mismo. */}
               <div>
-                <a
+                <DownloadButton
                   href="/api/plantilla-vymc"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-slate-50"
+                  pendingText="Preparando…"
                 >
                   📄 Descargar Planilla Excel
-                </a>
+                </DownloadButton>
                 <p className="mt-1.5 text-xs text-muted">
                   Complétala con el programa del mes y súbela aquí abajo.
                 </p>

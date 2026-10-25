@@ -1,13 +1,87 @@
 "use client";
 
 // Panel de mantenimiento de datos (acciones destructivas con confirmación).
-import { useState } from "react";
+//
+// Borrar informes de un año recorre toda la congregación y tarda: el botón
+// queda deshabilitado y la ventana de confirmación enseña el avance, para que
+// no se vuelva a pulsar pensando que no pasó nada.
+import { useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Select, Label, Alert } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   deleteReportsByYearAction,
   deleteAllReportsAction,
 } from "@/server/maintenance-actions";
 import { yearOptions } from "@/lib/period";
+import { cn } from "@/lib/cn";
+
+/**
+ * Botón que pide confirmación y, mientras el borrado corre, lo dice. Va dentro
+ * del <form> para que useFormStatus vea el envío.
+ */
+function BorrarBoton({
+  children,
+  pendingText,
+  title,
+  description,
+  className,
+}: {
+  children: React.ReactNode;
+  pendingText: string;
+  title: string;
+  description: string;
+  className: string;
+}) {
+  const { pending } = useFormStatus();
+  const [open, setOpen] = useState(false);
+  // Al acabar el borrado se cierra la confirmación sola.
+  const enviado = useRef(false);
+  if (pending) enviado.current = true;
+  useEffect(() => {
+    if (!pending && enviado.current) {
+      enviado.current = false;
+      setOpen(false);
+    }
+  }, [pending]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={pending}
+        aria-busy={pending}
+        className={cn(
+          "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-wait disabled:opacity-70",
+          className,
+        )}
+      >
+        {pending ? (
+          <>
+            <span
+              aria-hidden
+              className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+            />
+            {pendingText}
+          </>
+        ) : (
+          children
+        )}
+      </button>
+
+      <ConfirmDialog
+        open={open}
+        title={title}
+        description={description}
+        confirmLabel="Sí, eliminar"
+        pendingLabel={pendingText}
+        pending={pending}
+        onCancel={() => setOpen(false)}
+      />
+    </>
+  );
+}
 
 export function MaintenancePanel() {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -34,45 +108,29 @@ export function MaintenancePanel() {
             ))}
           </Select>
         </div>
-        <form
-          action={deleteReportsByYearAction}
-          onSubmit={(e) => {
-            if (
-              !confirm(
-                `¿Eliminar TODOS los informes del año ${year}? Esta acción no se puede deshacer.`,
-              )
-            )
-              e.preventDefault();
-          }}
-        >
+        <form action={deleteReportsByYearAction}>
           <input type="hidden" name="year" value={year} />
-          <button
-            type="submit"
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          <BorrarBoton
+            pendingText="Eliminando…"
+            title={`¿Eliminar todos los informes de ${year}?`}
+            description="Se borran los informes de ese año de toda la congregación. Esta acción no se puede deshacer."
+            className="bg-red-600 text-white hover:bg-red-700"
           >
             Eliminar año {year}
-          </button>
+          </BorrarBoton>
         </form>
       </div>
 
       <div className="border-t border-border pt-4">
-        <form
-          action={deleteAllReportsAction}
-          onSubmit={(e) => {
-            if (
-              !confirm(
-                "¿Eliminar TODOS los informes de TODOS los años? Esta acción no se puede deshacer.",
-              )
-            )
-              e.preventDefault();
-          }}
-        >
-          <button
-            type="submit"
-            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+        <form action={deleteAllReportsAction}>
+          <BorrarBoton
+            pendingText="Eliminando el historial…"
+            title="¿Eliminar todos los informes históricos?"
+            description="Se borran los informes de todos los años. Esta acción no se puede deshacer."
+            className="border border-red-300 text-red-700 hover:bg-red-50"
           >
             Eliminar todos los informes históricos
-          </button>
+          </BorrarBoton>
         </form>
       </div>
     </div>

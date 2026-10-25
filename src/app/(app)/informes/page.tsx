@@ -6,12 +6,12 @@ import { isPioneer, monthName } from "@/lib/constants";
 import { parsePeriod, previousPeriod } from "@/lib/period";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
+import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 import {
   Card,
   CardHeader,
   CardBody,
   EmptyState,
-  LinkButton,
 } from "@/components/ui";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { GroupFilter } from "@/components/GroupFilter";
@@ -140,16 +140,16 @@ export default async function InformesPage({
 
       {secretary ? (
         <div className="mb-4 flex flex-wrap gap-2">
-          <LinkButton href="/informes/historial" variant="secondary">
+          <LoadingLinkButton href="/informes/historial" variant="secondary">
             📋 Informes guardados
-          </LinkButton>
+          </LoadingLinkButton>
           {user.groupId ? (
-            <LinkButton
+            <LoadingLinkButton
               href={`/informes?grupo=${user.groupId}`}
               variant="primary"
             >
               📝 Subir informes de mi propio grupo
-            </LinkButton>
+            </LoadingLinkButton>
           ) : null}
         </div>
       ) : null}

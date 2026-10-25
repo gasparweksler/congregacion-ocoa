@@ -23,6 +23,7 @@ import { GroupFilter } from "@/components/GroupFilter";
 import { ReportTypeFilter } from "@/components/ReportTypeFilter";
 import { reportTypeWhere } from "@/lib/report-filters";
 import { AnnualChart } from "@/components/charts/AnnualChart";
+import { DownloadButton } from "@/components/DownloadButton";
 
 export default async function HistorialPage({
   searchParams,
@@ -95,14 +96,15 @@ export default async function HistorialPage({
           ) : null}
           <ReportTypeFilter current={sp.tipo ?? ""} />
           {/* Descarga el historial con los filtros que estén aplicados. */}
-          <a
+          <DownloadButton
             href={`/api/historial-excel?anio=${year}&mes=${month}${
               secretary && sp.grupo ? `&grupo=${sp.grupo}` : ""
             }${tipo ? `&tipo=${tipo}` : ""}`}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)]"
+            variant="primary"
+            pendingText="Generando Excel…"
           >
             📥 Descargar Historial
-          </a>
+          </DownloadButton>
         </div>
       </div>
 

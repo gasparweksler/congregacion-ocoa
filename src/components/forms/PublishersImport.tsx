@@ -15,6 +15,7 @@ import {
 } from "@/server/publisher-import-actions";
 import { Alert, Button } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
+import { DownloadButton } from "@/components/DownloadButton";
 
 const INICIAL: ReadResult = {
   ok: false,
@@ -87,12 +88,12 @@ export function PublishersImport() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <a
+        <DownloadButton
           href="/api/plantilla-publicadores"
-          className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-slate-50"
+          pendingText="Preparando…"
         >
           📄 Descargar Planilla Excel
-        </a>
+        </DownloadButton>
       </div>
 
       <form
