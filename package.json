@@ -40,7 +40,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
-    "test:confirmaciones": "tsx scripts/test-confirmaciones-estadisticas.mts"
+    "test:confirmaciones": "tsx scripts/test-confirmaciones-estadisticas.mts",
+    "test:planilla-pub": "tsx scripts/test-planilla-publicadores.mts",
+    "test:import-pub": "tsx scripts/test-import-publicadores-real.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
