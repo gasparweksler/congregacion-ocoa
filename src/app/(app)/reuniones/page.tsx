@@ -18,7 +18,14 @@ import { ConfirmadorSelect } from "@/components/ConfirmadorSelect";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardHeader, CardBody, EmptyState, Badge } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  CollapsibleCard,
+  EmptyState,
+  Badge,
+} from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
 import { ProgramaPdfDownload } from "@/components/forms/ProgramaPdfDownload";
@@ -130,18 +137,12 @@ export default async function ReunionesPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-1">
-          <Card>
-            <CardHeader
-              title="Selecciona tu día de reunión"
-              description="Cada congregación tiene sus propios días."
-            />
-            <CardBody>
-              <MeetingDaysForm
-                days={meetingDays}
-                canEdit={isSecretary(user)}
-              />
-            </CardBody>
-          </Card>
+          <CollapsibleCard
+            title="Selecciona tu día de reunión"
+            description="Cada congregación tiene sus propios días."
+          >
+            <MeetingDaysForm days={meetingDays} canEdit={isSecretary(user)} />
+          </CollapsibleCard>
 
           <Card>
             <CardHeader title="Nueva reunión" />
@@ -150,34 +151,32 @@ export default async function ReunionesPage({
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader
-              title="Carga masiva (Excel)"
-              description="Crea varias reuniones de una vez desde una plantilla."
-            />
-            <CardBody className="space-y-4">
-              {/* La planilla en blanco se descarga tal cual, para completarla y
-                  subirla después aquí mismo. */}
-              <div>
-                <DownloadButton
-                  href="/api/plantilla-vymc"
-                  pendingText="Preparando…"
-                >
-                  📄 Descargar Planilla Excel
-                </DownloadButton>
-                <p className="mt-1.5 text-xs text-muted">
-                  Complétala con el programa del mes y súbela aquí abajo.
-                </p>
-              </div>
+          <CollapsibleCard
+            title="Carga masiva (Excel)"
+            description="Crea varias reuniones de una vez desde una plantilla."
+            bodyClassName="space-y-4"
+          >
+            {/* La planilla en blanco se descarga tal cual, para completarla y
+                subirla después aquí mismo. */}
+            <div>
+              <DownloadButton
+                href="/api/plantilla-vymc"
+                pendingText="Preparando…"
+              >
+                📄 Descargar Planilla Excel
+              </DownloadButton>
+              <p className="mt-1.5 text-xs text-muted">
+                Complétala con el programa del mes y súbela aquí abajo.
+              </p>
+            </div>
 
-              {/* El programa ya cargado, en PDF para imprimir y repartir. */}
-              <div className="border-t border-border pt-4">
-                <ProgramaPdfDownload periods={programaPeriods} />
-              </div>
+            {/* El programa ya cargado, en PDF para imprimir y repartir. */}
+            <div className="border-t border-border pt-4">
+              <ProgramaPdfDownload periods={programaPeriods} />
+            </div>
 
-              <MeetingImport />
-            </CardBody>
-          </Card>
+            <MeetingImport />
+          </CollapsibleCard>
         </div>
 
         <div className="min-w-0 lg:col-span-2">

@@ -65,6 +65,73 @@ export function CardBody({
   return <div className={cn("px-6 pb-6 pt-1", className)}>{children}</div>;
 }
 
+/**
+ * Tarjeta plegable: nace cerrada y se abre al pulsar la cabecera. Para las
+ * secciones que se usan de vez en cuando y, abiertas siempre, alargaban la
+ * página sin falta.
+ *
+ * Por dentro es un <details>, así que no necesita estado ni JavaScript: se
+ * abre con el teclado igual que con el ratón, y el buscador del navegador
+ * (Ctrl+F) la despliega sola al encontrar texto dentro.
+ */
+export function CollapsibleCard({
+  title,
+  description,
+  /** Abierta desde el principio (por defecto, cerrada). */
+  defaultOpen = false,
+  className,
+  bodyClassName,
+  children,
+}: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+  bodyClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className={cn(
+        "group min-w-0 rounded-3xl border border-border bg-surface shadow-[0_1px_3px_rgba(15,22,21,0.03),0_12px_32px_-20px_rgba(15,22,21,0.18)]",
+        className,
+      )}
+    >
+      {/* list-none + ::-webkit-details-marker: fuera el triángulo del navegador. */}
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-3xl px-6 py-5 transition-colors hover:bg-slate-50 group-open:pb-3 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <h2 className="text-[1.0625rem] font-bold tracking-tight text-foreground">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-0.5 text-sm text-muted">{description}</p>
+          ) : null}
+        </div>
+
+        <span className="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-border bg-white px-3 py-1.5 text-xs font-semibold text-foreground">
+          <span className="group-open:hidden">Abrir</span>
+          <span className="hidden group-open:inline">Cerrar</span>
+          <svg
+            aria-hidden
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-3.5 w-3.5 transition-transform group-open:-rotate-180"
+          >
+            <path d="M5 7.5 10 12.5 15 7.5" />
+          </svg>
+        </span>
+      </summary>
+
+      <div className={cn("px-6 pb-6 pt-1", bodyClassName)}>{children}</div>
+    </details>
+  );
+}
+
 // --- Botón ------------------------------------------------------------------
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 const buttonVariants: Record<ButtonVariant, string> = {

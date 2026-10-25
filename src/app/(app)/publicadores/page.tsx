@@ -4,7 +4,12 @@ import { requireReportsAccess, isSecretary, scopedGroupId,
 import { prisma } from "@/lib/prisma";
 import { toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardHeader, CardBody, EmptyState } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  CollapsibleCard,
+  EmptyState,
+} from "@/components/ui";
 import { PublisherCreateForm } from "@/components/forms/PublisherCreateForm";
 import { PublishersImport } from "@/components/forms/PublishersImport";
 import { PublisherList } from "@/components/forms/PublisherList";
@@ -76,15 +81,13 @@ export default async function PublicadoresPage({
       {/* Alta en bloque desde planilla. Solo el Administrador, que es quien
           puede dar de alta en cualquier grupo. */}
       {secretary ? (
-        <Card className="mb-4">
-          <CardHeader
-            title="Dar de alta varios publicadores"
-            description="Descarga la planilla, complétala y súbela. Los grupos de predicación deben estar creados antes."
-          />
-          <CardBody>
-            <PublishersImport />
-          </CardBody>
-        </Card>
+        <CollapsibleCard
+          className="mb-4"
+          title="Dar de alta varios publicadores"
+          description="Descarga la planilla, complétala y súbela. Los grupos de predicación deben estar creados antes."
+        >
+          <PublishersImport />
+        </CollapsibleCard>
       ) : null}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
