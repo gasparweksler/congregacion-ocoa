@@ -108,10 +108,8 @@ export async function getAssignmentStats(
         label: true,
         primaryName: true,
         primaryStatus: true,
-        primaryDone: true,
         secondaryName: true,
         secondaryStatus: true,
-        secondaryDone: true,
         meeting: { select: { id: true, date: true, day: true, weekLabel: true } },
       },
       orderBy: { meeting: { date: "desc" } },
@@ -212,12 +210,12 @@ export async function getAssignmentStats(
     if (part.role === "responsable") b.asResponsable++;
     else b.asAuxiliar++;
 
-    if (part.done === "realizada") {
+    if (part.done === "confirmada") {
       b.doneCount++;
       realizadas++;
-      // Solo cuenta para "última realizada" lo que consta como realizado.
+      // Solo cuenta como "última confirmada" lo que el hermano respondió.
       if (!b.lastDone || part.date > b.lastDone) b.lastDone = part.date;
-    } else if (part.done === "no_realizada") {
+    } else if (part.done === "rechazada") {
       noRealizadas++;
     } else {
       b.unrecordedCount++;
@@ -239,10 +237,8 @@ export async function getAssignmentStats(
     label: string;
     primaryName: string | null;
     primaryStatus: string | null;
-    primaryDone: boolean | null;
     secondaryName: string | null;
     secondaryStatus: string | null;
-    secondaryDone: boolean | null;
     deleted: boolean;
   };
 
@@ -258,10 +254,8 @@ export async function getAssignmentStats(
       label: a.label,
       primaryName: a.primaryName,
       primaryStatus: a.primaryStatus,
-      primaryDone: a.primaryDone,
       secondaryName: a.secondaryName,
       secondaryStatus: a.secondaryStatus,
-      secondaryDone: a.secondaryDone,
       deleted: false,
     })),
     ...historial.map((h) => ({
@@ -276,10 +270,8 @@ export async function getAssignmentStats(
       label: h.label,
       primaryName: h.primaryName,
       primaryStatus: h.primaryStatus,
-      primaryDone: h.primaryDone,
       secondaryName: h.secondaryName,
       secondaryStatus: h.secondaryStatus,
-      secondaryDone: h.secondaryDone,
       deleted: true,
     })),
   ];
@@ -310,7 +302,7 @@ export async function getAssignmentStats(
         ...comun,
         role: "responsable",
         confirmStatus: a.primaryStatus ?? CONFIRM_STATUS.PENDIENTE,
-        done: doneStateOf(a.primaryDone),
+        done: doneStateOf(a.primaryStatus),
       });
     }
     if (a.secondaryName?.trim()) {
@@ -318,7 +310,7 @@ export async function getAssignmentStats(
         ...comun,
         role: "auxiliar",
         confirmStatus: a.secondaryStatus ?? CONFIRM_STATUS.PENDIENTE,
-        done: doneStateOf(a.secondaryDone),
+        done: doneStateOf(a.secondaryStatus),
       });
     }
   }

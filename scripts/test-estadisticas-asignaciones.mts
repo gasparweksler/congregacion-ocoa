@@ -26,11 +26,15 @@ const check = (ok: boolean, msg: string) => {
   if (!ok) fallos++;
 };
 
-// --- 1. Estado de cumplimiento ---
-console.log("1. Programada frente a realizada");
-check(doneStateOf(null) === "sin_registrar", "null es 'sin registrar', no 'realizada'");
-check(doneStateOf(true) === "realizada", "true es 'realizada'");
-check(doneStateOf(false) === "no_realizada", "false es 'no realizada'");
+// --- 1. El estado sale de la confirmación del hermano ---
+console.log("1. Programada frente a confirmada");
+check(
+  doneStateOf("PENDIENTE") === "sin_respuesta",
+  "pendiente es 'sin respuesta', no 'confirmada'",
+);
+check(doneStateOf(null) === "sin_respuesta", "sin estado, 'sin respuesta'");
+check(doneStateOf("CONFIRMADO") === "confirmada", "confirmado es 'confirmada'");
+check(doneStateOf("RECHAZADO") === "rechazada", "rechazado es 'rechazada'");
 
 // --- 2. Emparejado de nombres contra los publicadores reales ---
 console.log("\n2. Nombres escritos a mano");
@@ -88,52 +92,82 @@ console.log("\n4. Conteo con datos reales");
 class Rollback extends Error {}
 const cong = await p.congregation.findFirstOrThrow({ where: { slug: "ocoa" } });
 
+// Se cuenta igual que las Estadísticas: desde el estado de CONFIRMACIÓN de
+// cada hermano, no desde un registro aparte.
 const contar = async (tx: PrismaClient | Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0]) => {
   const asg = await tx.meetingAssignment.findMany({
     where: { meeting: { congregationId: cong.id } },
-    select: { primaryName: true, primaryDone: true, secondaryName: true, secondaryDone: true },
+    select: {
+      primaryName: true,
+      primaryStatus: true,
+      secondaryName: true,
+      secondaryStatus: true,
+    },
   });
   let realizadas = 0;
+  let rechazadas = 0;
   let participaciones = 0;
   for (const a of asg) {
-    if (a.primaryName?.trim()) {
+    for (const [nombre, estado] of [
+      [a.primaryName, a.primaryStatus],
+      [a.secondaryName, a.secondaryStatus],
+    ] as const) {
+      if (!nombre?.trim()) continue;
       participaciones++;
-      if (a.primaryDone === true) realizadas++;
-    }
-    if (a.secondaryName?.trim()) {
-      participaciones++;
-      if (a.secondaryDone === true) realizadas++;
+      if (doneStateOf(estado) === "confirmada") realizadas++;
+      else if (doneStateOf(estado) === "rechazada") rechazadas++;
     }
   }
-  return { realizadas, participaciones };
+  return { realizadas, rechazadas, participaciones };
 };
 
 const antes = await contar(p);
-console.log(`  participaciones: ${antes.participaciones} · realizadas: ${antes.realizadas}`);
-check(
-  antes.realizadas === 0,
-  "con el historial sin marcar, NINGUNA consta como realizada",
+console.log(
+  `  participaciones: ${antes.participaciones} · confirmadas: ${antes.realizadas} · rechazadas: ${antes.rechazadas}`,
 );
 
 try {
   await p.$transaction(async (tx) => {
-    const una = await tx.meetingAssignment.findFirst({
-      where: { meeting: { congregationId: cong.id }, NOT: { primaryName: null } },
+    // Dos asignaciones que todavía están pendientes de respuesta.
+    const pendientes = await tx.meetingAssignment.findMany({
+      where: {
+        meeting: { congregationId: cong.id },
+        NOT: { primaryName: null },
+        primaryStatus: "PENDIENTE",
+      },
       select: { id: true },
+      take: 2,
     });
-    if (!una) throw new Rollback();
+    if (pendientes.length < 2) throw new Rollback();
+
+    // Una confirma: debe subir el contador de confirmadas.
     await tx.meetingAssignment.update({
-      where: { id: una.id },
-      data: { primaryDone: true, doneMarkedAt: new Date() },
+      where: { id: pendientes[0].id },
+      data: { primaryStatus: "CONFIRMADO" },
     });
-    const tras = await contar(tx);
+    let tras = await contar(tx);
     check(
       tras.realizadas === antes.realizadas + 1,
-      `al marcar una, las realizadas suben a ${tras.realizadas}`,
+      `al confirmar una, las confirmadas suben a ${tras.realizadas}`,
     );
     check(
       tras.participaciones === antes.participaciones,
-      "marcarla no cambia el total de participaciones (no se duplica)",
+      "confirmar no cambia el total de participaciones (no se duplica)",
+    );
+
+    // La otra rechaza: NO debe contar como confirmada.
+    await tx.meetingAssignment.update({
+      where: { id: pendientes[1].id },
+      data: { primaryStatus: "RECHAZADO" },
+    });
+    tras = await contar(tx);
+    check(
+      tras.realizadas === antes.realizadas + 1,
+      "un rechazo no suma a las confirmadas",
+    );
+    check(
+      tras.rechazadas === antes.rechazadas + 1,
+      `y se cuenta como rechazada (${tras.rechazadas})`,
     );
     throw new Rollback();
   }, { timeout: 25000 });

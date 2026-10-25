@@ -39,7 +39,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:confirmaciones": "tsx scripts/test-confirmaciones-estadisticas.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

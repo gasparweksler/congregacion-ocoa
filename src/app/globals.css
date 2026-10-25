@@ -60,6 +60,30 @@ h1 {
   letter-spacing: -0.03em;
 }
 
+/* ==========================================================================
+   Safari en iPhone: evitar el zoom automático al tocar un campo
+   --------------------------------------------------------------------------
+   Safari amplía la página sola cuando el campo enfocado tiene la letra por
+   debajo de 16px, y luego hay que volver a ajustar el zoom a mano. Pasaba en
+   todos los campos de la app, que usan text-sm (14px) o text-xs (12px).
+
+   Se corrige poniendo 16px en los controles de formulario SOLO en pantallas
+   táctiles o estrechas: en el escritorio el diseño no cambia.
+
+   El zoom manual NO se toca: no se usa maximum-scale ni user-scalable, así que
+   se puede seguir ampliando con los dedos.
+
+   El selector lleva :root delante para ganar en especificidad a las clases de
+   Tailwind (text-sm) sin recurrir a !important.
+   ========================================================================== */
+@media (pointer: coarse), (max-width: 640px) {
+  :root input,
+  :root select,
+  :root textarea {
+    font-size: 16px;
+  }
+}
+
 /* Mejoras de accesibilidad: foco visible y consistente */
 :focus-visible {
   outline: 2px solid var(--primary);

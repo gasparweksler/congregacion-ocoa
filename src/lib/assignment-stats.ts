@@ -3,10 +3,10 @@
 //
 //  Dos ideas que conviene tener claras al leer esto:
 //
-//  1. REALIZADA no es lo mismo que CONFIRMADA. La confirmación es la respuesta
-//     al WhatsApp antes de la reunión; "realizada" es el registro posterior
-//     (`primaryDone` / `secondaryDone`). Solo se cuenta como realizada lo que
-//     alguien marcó: `null` significa "sin registrar", nunca "sí".
+//  1. Todo sale de la CONFIRMACIÓN del hermano: la respuesta que da al abrir
+//     el enlace que se le envía por WhatsApp (Confirmada, Rechazada o sin
+//     responder). No hay un registro aparte de "se realizó": lo que no se ha
+//     respondido cuenta como "sin respuesta", nunca como un sí.
 //
 //  2. El nombre del hermano en la asignación es TEXTO LIBRE, no una referencia
 //     al publicador. Aquí se normaliza (sin tildes ni mayúsculas) y se cruza
@@ -15,8 +15,16 @@
 //     vez de inventar una coincidencia.
 // ============================================================================
 
-/** Estado de cumplimiento de una asignación concreta. */
-export type DoneState = "realizada" | "no_realizada" | "sin_registrar";
+import { CONFIRM_STATUS } from "@/lib/constants";
+
+/**
+ * Estado de una participación, tomado de la CONFIRMACIÓN del hermano (el
+ * enlace que se le envía por WhatsApp), no de un registro aparte:
+ *   confirmada    = respondió que sí
+ *   rechazada     = respondió que no
+ *   sin_respuesta = todavía no ha respondido
+ */
+export type DoneState = "confirmada" | "rechazada" | "sin_respuesta";
 
 /** Una participación de un hermano en una asignación. */
 export type Participation = {
@@ -49,24 +57,23 @@ export type BrotherStats = {
   /** Variantes del nombre encontradas en las asignaciones. */
   variants: string[];
   participations: Participation[];
-  /** Solo las que constan como realizadas. */
+  /** Solo las que el hermano confirmó. */
   doneCount: number;
   asResponsable: number;
   asAuxiliar: number;
   /**
    * Fecha de la última asignación que TUVO, en una reunión ya pasada, sin
-   * importar si alguien registró su cumplimiento. Es lo que mide el aviso de
-   * "días sin asignación": para repartir las partes importa a quién le tocó,
-   * no quién pulsó después "Marcar reunión como realizada".
+   * importar si llegó a confirmarla. Es lo que mide el aviso de "días sin
+   * asignación": para repartir las partes importa a quién le tocó.
    */
   lastAssigned: Date | null;
   /** Días desde esa última asignación. null si nunca ha tenido ninguna. */
   daysSinceAssigned: number | null;
-  /** Fecha de la última asignación REALIZADA, o null si no consta ninguna. */
+  /** Fecha de la última asignación CONFIRMADA, o null si no consta ninguna. */
   lastDone: Date | null;
-  /** Días desde la última realizada. null si nunca consta una. */
+  /** Días desde la última confirmada. null si nunca consta una. */
   daysSinceDone: number | null;
-  /** Programadas cuyo cumplimiento nadie registró. */
+  /** Asignaciones que todavía no ha respondido. */
   unrecordedCount: number;
 };
 
@@ -106,8 +113,17 @@ export function matchPublisher<T extends { id: string; fullName: string }>(
   return candidatos.length === 1 ? candidatos[0] : null;
 }
 
-export const doneStateOf = (v: boolean | null | undefined): DoneState =>
-  v === true ? "realizada" : v === false ? "no_realizada" : "sin_registrar";
+/**
+ * El estado sale del campo de confirmación de la asignación (PENDIENTE,
+ * CONFIRMADO o RECHAZADO), que es lo que responde el hermano al abrir el
+ * enlace de WhatsApp.
+ */
+export const doneStateOf = (status: string | null | undefined): DoneState =>
+  status === CONFIRM_STATUS.CONFIRMADO
+    ? "confirmada"
+    : status === CONFIRM_STATUS.RECHAZADO
+      ? "rechazada"
+      : "sin_respuesta";
 
 /** Días completos entre una fecha y hoy (0 si es hoy o futura). */
 export function daysSince(date: Date, today = new Date()): number {
@@ -117,7 +133,7 @@ export function daysSince(date: Date, today = new Date()): number {
 }
 
 export const DONE_LABELS: Record<DoneState, string> = {
-  realizada: "Realizada",
-  no_realizada: "No realizada",
-  sin_registrar: "Sin registrar",
+  confirmada: "Confirmada",
+  rechazada: "Rechazada",
+  sin_respuesta: "Sin respuesta",
 };

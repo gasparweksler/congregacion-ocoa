@@ -101,27 +101,28 @@ export default async function EstadisticasAsignacionesPage({
       {totals.sinRegistrar > 0 ? (
         <div className="mb-4">
           <Alert tone="warning">
-            ⚠️ Hay <strong>{totals.sinRegistrar}</strong> asignación(es) cuyo
-            cumplimiento nadie registró todavía, de un total de{" "}
-            {totals.participations}. No se cuentan como realizadas: el sistema no
-            da por hecho que lo programado se llevó a cabo. Para registrarlo,
-            entra a cada reunión y pulsa <strong>«Marcar reunión como
-            realizada»</strong>.
+            ⚠️ Hay <strong>{totals.sinRegistrar}</strong> asignación(es) sin
+            respuesta todavía, de un total de {totals.participations}. No se
+            cuentan como confirmadas: el sistema no da por hecho que el hermano
+            haya aceptado. Se confirman con el enlace que se le envía por
+            WhatsApp desde cada reunión.
           </Alert>
         </div>
       ) : null}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-4">
         <Card className="p-4">
-          <p className="text-sm text-muted">Realizadas</p>
+          <p className="text-sm text-muted">Confirmadas</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
             {totals.realizadas}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted">Sin registrar</p>
+          <p className="text-sm text-muted">
+            Rechazadas / sin respuesta
+          </p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700">
-            {totals.sinRegistrar}
+            {totals.noRealizadas + totals.sinRegistrar}
           </p>
         </Card>
         <WithoutAssignmentTile
@@ -130,8 +131,8 @@ export default async function EstadisticasAsignacionesPage({
           sinParticipacion={sinParticipacion}
         />
         <Card className="p-4">
-          {/* Distinto del aviso de al lado: aquí sí se mira el cumplimiento. */}
-          <p className="text-sm text-muted">Sin ninguna realizada</p>
+          {/* Distinto del aviso de al lado: aquí se mira la confirmación. */}
+          <p className="text-sm text-muted">Sin ninguna confirmada</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700">
             {sinNinguna}
           </p>
@@ -184,7 +185,7 @@ export default async function EstadisticasAsignacionesPage({
 
       <p className="mt-4 text-xs text-muted">
         El resaltado indica únicamente que el hermano lleva tiempo sin una
-        asignación registrada como realizada. No significa que esté inactivo ni
+        asignación confirmada. No significa que esté inactivo ni
         supone ningún problema.
       </p>
     </>

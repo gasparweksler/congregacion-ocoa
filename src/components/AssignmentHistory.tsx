@@ -80,7 +80,7 @@ export function AssignmentHistory({
                   ) : null}
                 </div>
                 <p className="mt-0.5 text-sm text-muted">
-                  {b.doneCount} realizada(s)
+                  {b.doneCount} confirmada(s)
                   <span className="mx-1.5 text-border">·</span>
                   {b.asResponsable} como responsable
                   <span className="mx-1.5 text-border">·</span>
@@ -88,7 +88,7 @@ export function AssignmentHistory({
                   {b.unrecordedCount > 0 ? (
                     <>
                       <span className="mx-1.5 text-border">·</span>
-                      {b.unrecordedCount} sin registrar
+                      {b.unrecordedCount} sin respuesta
                     </>
                   ) : null}
                 </p>
@@ -153,9 +153,9 @@ export function AssignmentHistory({
                       <div className="mt-1.5">
                         <Badge
                           tone={
-                            p.done === "realizada"
+                            p.done === "confirmada"
                               ? "green"
-                              : p.done === "no_realizada"
+                              : p.done === "rechazada"
                                 ? "red"
                                 : "slate"
                           }
@@ -210,9 +210,9 @@ export function AssignmentHistory({
                         <td className="px-3 py-2">
                           <Badge
                             tone={
-                              p.done === "realizada"
+                              p.done === "confirmada"
                                 ? "green"
-                                : p.done === "no_realizada"
+                                : p.done === "rechazada"
                                   ? "red"
                                   : "slate"
                             }
