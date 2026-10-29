@@ -48,9 +48,12 @@ export function dibujarPrograma(
     autoTable(doc, {
       startY: y,
       margin: { left: marginX, right: marginX },
+      // El mes va ARRIBA del todo y con aspecto de cabecera: antes quedaba
+      // debajo de los títulos de columna y en blanco, así que parecía una fila
+      // más de la tabla en vez de encabezarla.
       head: [
-        tabla.cabecera.map((c) => ({ content: c })),
         [{ content: tabla.periodo, colSpan: tabla.cabecera.length }],
+        tabla.cabecera.map((c) => ({ content: c })),
       ],
       body: tabla.cuerpo,
       styles: {
@@ -70,11 +73,16 @@ export function dibujarPrograma(
         0: { fontStyle: "bold", fillColor: paleta.columnaDia, cellWidth: 90 },
       },
       didParseCell: (data) => {
-        // La fila del período (la segunda de la cabecera) va destacada.
-        if (data.section === "head" && data.row.index === 1) {
-          data.cell.styles.fillColor = [255, 255, 255];
+        if (data.section !== "head") return;
+        if (data.row.index === 0) {
+          // El mes: la fila fuerte de la paleta, algo mayor.
+          data.cell.styles.fontSize = 10.5;
+          data.cell.styles.cellPadding = 5;
+        } else {
+          // Los títulos de columna, debajo y en el tono claro, para que se vea
+          // que dependen del mes y no al revés.
+          data.cell.styles.fillColor = paleta.columnaDia;
           data.cell.styles.textColor = paleta.titulo;
-          data.cell.styles.fontStyle = "bold";
         }
       },
     });

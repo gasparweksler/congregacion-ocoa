@@ -107,6 +107,35 @@ check(
 check(!texto.includes("undefined"), "no se cuela ningún 'undefined'");
 check(!texto.includes("[object"), "ni ningún objeto sin convertir");
 
+// --- El mes encabeza su tabla, por encima de los títulos de columna ---
+// (y crece hacia arriba en un PDF: más y = más arriba en la hoja)
+const alturaDe = (texto: string) =>
+  items.find((i) => i.text.trim() === texto)?.y ?? null;
+
+const yOctubre = alturaDe("OCTUBRE 2026");
+const yNoviembre = alturaDe("NOVIEMBRE 2026");
+const yResponsable = alturaDe("RESPONSABLE");
+console.log(
+  `  alturas: OCTUBRE 2026 = ${yOctubre?.toFixed(0)}, RESPONSABLE = ${yResponsable?.toFixed(0)}`,
+);
+check(
+  yOctubre !== null && yResponsable !== null && yOctubre > yResponsable,
+  "el mes va por encima de los títulos de columna, no debajo",
+);
+
+// La primera fila de datos va debajo de los títulos de columna.
+const yPrimeraFila = alturaDe("Jueves 1");
+check(
+  yResponsable !== null && yPrimeraFila !== null && yResponsable > yPrimeraFila,
+  "y los títulos de columna por encima de la primera fecha",
+);
+
+// Cada mes encabeza SU tabla: noviembre más abajo que todo lo de octubre.
+check(
+  yNoviembre !== null && yPrimeraFila !== null && yNoviembre < yPrimeraFila,
+  "la tabla de noviembre empieza después de la de octubre",
+);
+
 // --- Un programa de una sola columna y un solo mes ---
 const simple: Programa = {
   titulo: "Salidas al servicio",
