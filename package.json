@@ -52,7 +52,8 @@
     "test:fecha-real": "tsx scripts/test-fecha-real.mts",
     "test:paletas": "tsx scripts/test-paletas.mts",
     "test:xlsx-imagen": "tsx scripts/test-xlsx-con-imagen.mts",
-    "test:simultaneo-prog": "tsx scripts/test-simultaneo-programas.mts"
+    "test:simultaneo-prog": "tsx scripts/test-simultaneo-programas.mts",
+    "test:auditoria": "tsx scripts/test-auditoria-borrado.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

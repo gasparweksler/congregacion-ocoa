@@ -65,6 +65,12 @@ async function archivar(
   return asignaciones.length;
 }
 
+// Cuánto hay ANTES de tocar nada. No se compara contra cero: esa tabla tiene
+// historial real de reuniones que se borraron guardándolo, que es justo para
+// lo que existe.
+const historialAntes = await p.assignmentHistory.count();
+const reunionesAntes = await p.meeting.count();
+
 const congs = await p.congregation.findMany({
   select: { id: true, name: true },
   orderBy: { name: "asc" },
@@ -242,7 +248,11 @@ const [reuniones, historial] = await Promise.all([
   p.assignmentHistory.count(),
 ]);
 console.log(`  reuniones: ${reuniones} · historial guardado: ${historial}`);
-check(historial === 0, "no quedó ninguna fila de prueba en el historial");
+check(
+  historial === historialAntes,
+  `el historial quedó como estaba: ${historialAntes} fila(s) reales, ninguna de prueba`,
+);
+check(reuniones === reunionesAntes, `y las reuniones también: ${reunionesAntes}`);
 
 await p.$disconnect();
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);

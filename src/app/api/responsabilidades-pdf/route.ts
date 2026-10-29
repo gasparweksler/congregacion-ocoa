@@ -76,7 +76,10 @@ export async function GET(request: Request) {
   autoTable(doc, {
     startY: subtitulo(56),
     margin: { left: marginX, right: marginX },
+    // El mes encabeza la tabla. Antes iba debajo de los títulos de columna y
+    // en blanco, así que parecía una fila más en vez de encabezarla.
     head: [
+      [{ content: period, colSpan: 5 }],
       [
         { content: "DIA/MES" },
         { content: "AUDIO" },
@@ -84,7 +87,6 @@ export async function GET(request: Request) {
         { content: "MICROFONO" },
         { content: "PLATAFORMA" },
       ],
-      [{ content: period, colSpan: 5 }],
     ],
     body: rows.map((r) => [
       dateCol(r),
@@ -111,11 +113,14 @@ export async function GET(request: Request) {
     },
     columnStyles: { 0: { fontStyle: "bold", fillColor: paleta.columnaDia } },
     didParseCell: (data) => {
-      // Fila del período (segunda del head) centrada y destacada.
-      if (data.section === "head" && data.row.index === 1) {
-        data.cell.styles.fillColor = [255, 255, 255];
+      if (data.section !== "head") return;
+      if (data.row.index === 0) {
+        // El mes: la fila fuerte de la paleta, algo mayor.
+        data.cell.styles.fontSize = 10.5;
+      } else {
+        // Los títulos de columna, debajo y en el tono claro.
+        data.cell.styles.fillColor = paleta.columnaDia;
         data.cell.styles.textColor = paleta.titulo;
-        data.cell.styles.fontStyle = "bold";
       }
     },
   });
@@ -189,13 +194,13 @@ export async function GET(request: Request) {
     startY: subtitulo(afterY + 16),
     margin: { left: marginX, right: marginX },
     head: [
+      [{ content: period, colSpan: 4 }],
       [
         { content: "DIA/MES" },
         { content: "ACOMODADOR ENTRADA" },
         { content: "ACOMODADOR AUDITORIO" },
         { content: "LIMPIEZA POR GRUPOS" },
       ],
-      [{ content: period, colSpan: 4 }],
     ],
     body: limpiezaBody,
     styles: {
@@ -216,10 +221,12 @@ export async function GET(request: Request) {
       3: { cellWidth: 150 }, // Limpieza más ancha (celda grande).
     },
     didParseCell: (data) => {
-      if (data.section === "head" && data.row.index === 1) {
-        data.cell.styles.fillColor = [255, 255, 255];
+      if (data.section !== "head") return;
+      if (data.row.index === 0) {
+        data.cell.styles.fontSize = 10.5;
+      } else {
+        data.cell.styles.fillColor = paleta.columnaDia;
         data.cell.styles.textColor = paleta.titulo;
-        data.cell.styles.fontStyle = "bold";
       }
     },
   });

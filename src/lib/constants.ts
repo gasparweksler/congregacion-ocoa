@@ -270,25 +270,17 @@ export const JUEVES_SLOTS: MeetingSlot[] = [
   { key: "j_vc_conductor", label: "Conductor del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_vc_lector", label: "Lector del Estudio Bíblico", section: "VC", allowTwo: false },
   { key: "j_oracion_final", label: "Oración Final", section: "ORACION_FINAL", allowTwo: false },
-  // Responsabilidades (igual que el sábado), al final de la reunión.
-  { key: "j_microfono", label: "Pasa micrófono", section: "RESPONSABILIDADES", allowTwo: true, equalPair: true },
-  { key: "j_acomodador_entrada", label: "Acomodador de entrada", section: "RESPONSABILIDADES", allowTwo: false },
-  { key: "j_acomodador_auditorio", label: "Acomodador de auditorio", section: "RESPONSABILIDADES", allowTwo: false },
-  { key: "j_sonido", label: "Sonido", section: "RESPONSABILIDADES", allowTwo: false },
-  { key: "j_video", label: "Video", section: "RESPONSABILIDADES", allowTwo: false },
-  { key: "j_plataforma", label: "Plataforma", section: "RESPONSABILIDADES", allowTwo: false },
+  // Las responsabilidades NO van aquí: se administran desde "Todas las
+  // Responsabilidades del mes" con los slotKey de MONTHLY_RESPONSIBILITIES.
+  // Antes había seis casillas j_* que se creaban vacías en cada reunión y no
+  // las usaba nadie.
 ];
 
 export const SABADO_SLOTS: MeetingSlot[] = [
   { key: "s_oracion_inicio", label: "Oración de inicio", section: "SAB_ASIGNACIONES", allowTwo: false },
   { key: "s_lector_atalaya", label: "Lector de la Atalaya", section: "SAB_ASIGNACIONES", allowTwo: false },
   { key: "s_presidente", label: "Presidente de la Reunión", section: "SAB_ASIGNACIONES", allowTwo: false },
-  { key: "s_microfono", label: "Pasa micrófono", section: "SAB_RESPONSABILIDADES", allowTwo: true, equalPair: true },
-  { key: "s_acomodador_entrada", label: "Acomodador de entrada", section: "SAB_RESPONSABILIDADES", allowTwo: false },
-  { key: "s_acomodador_auditorio", label: "Acomodador de auditorio", section: "SAB_RESPONSABILIDADES", allowTwo: false },
-  { key: "s_sonido", label: "Sonido", section: "SAB_RESPONSABILIDADES", allowTwo: false },
-  { key: "s_video", label: "Video", section: "SAB_RESPONSABILIDADES", allowTwo: false },
-  { key: "s_plataforma", label: "Plataforma", section: "SAB_RESPONSABILIDADES", allowTwo: false },
+  // Igual que el jueves: las responsabilidades se administran aparte.
 ];
 
 /**

@@ -36,7 +36,7 @@ export type ProgramMeeting = {
 };
 
 // Secciones del programa, en el orden del impreso. Las responsabilidades
-// (micrófono, acomodadores, sonido…) no forman parte de este programa.
+// (micrófono, acomodadores, audio…) no forman parte de este programa.
 const ORDEN = [
   // La canción y oración abre la reunión, y después las palabras de
   // introducción del presidente, como en el programa impreso.

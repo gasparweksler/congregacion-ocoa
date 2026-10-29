@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   deleteReportsByYearAction,
   deleteAllReportsAction,
+  deleteAuditLogsAction,
 } from "@/server/maintenance-actions";
 import { yearOptions } from "@/lib/period";
 import { cn } from "@/lib/cn";
@@ -83,8 +84,14 @@ function BorrarBoton({
   );
 }
 
-export function MaintenancePanel() {
+export function MaintenancePanel({
+  /** Cuántas líneas de auditoría hay ahora, para decirlo en el botón. */
+  lineasAuditoria,
+}: {
+  lineasAuditoria: number;
+}) {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [meses, setMeses] = useState(24);
 
   return (
     <div className="space-y-5">
@@ -132,6 +139,47 @@ export function MaintenancePanel() {
             Eliminar todos los informes históricos
           </BorrarBoton>
         </form>
+      </div>
+
+      {/* --- Registro de auditoría --- */}
+      <div className="border-t border-border pt-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div>
+            <Label>Eliminar auditoría anterior a</Label>
+            <Select
+              className="w-44"
+              value={meses}
+              onChange={(e) => setMeses(Number(e.target.value))}
+            >
+              <option value={24}>2 años</option>
+              <option value={12}>1 año</option>
+              <option value={6}>6 meses</option>
+              <option value={0}>Todo el registro</option>
+            </Select>
+          </div>
+          <form action={deleteAuditLogsAction}>
+            <input type="hidden" name="meses" value={meses} />
+            <BorrarBoton
+              pendingText="Eliminando…"
+              title={
+                meses > 0
+                  ? `¿Eliminar la auditoría anterior a ${meses} meses?`
+                  : "¿Eliminar el registro de auditoría entero?"
+              }
+              description="Se borra solo el registro de quién cambió qué. Los publicadores, informes, reuniones y asignaciones NO se tocan."
+              className="border border-red-300 text-red-700 hover:bg-red-50"
+            >
+              Eliminar Auditorías
+            </BorrarBoton>
+          </form>
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          Ahora mismo hay <strong>{lineasAuditoria}</strong> línea(s). Es lo
+          único que crece sin freno: una por cada cambio, y nunca se borra sola.
+          Sirve para que esta pantalla siga siendo manejable —{" "}
+          <strong>no para recuperar espacio</strong>: al borrar filas, la base
+          reutiliza el hueco pero su tamaño no baja.
+        </p>
       </div>
     </div>
   );

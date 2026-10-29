@@ -51,7 +51,7 @@ function Categoria({
       </div>
       {ayuda ? <p className="mt-0.5 text-xs text-muted">{ayuda}</p> : null}
 
-      {/* Video con "Repetir los de Sonido": la lista la manda Audio. */}
+      {/* Video con "Repetir los de Audio": la lista la manda Audio. */}
       {espejo ? (
         <p className="mt-2 rounded-lg border border-border bg-slate-50 px-2.5 py-2 text-xs text-muted">
           Se usan los mismos hermanos que en <strong>Audio</strong>. Quita el
@@ -117,7 +117,7 @@ function Categoria({
 }
 
 /**
- * Interruptor "Repetir los de Sonido" de la categoría Video.
+ * Interruptor "Repetir los de Audio" de la categoría Video.
  *
  * Mientras se guarda, la palanca ya se mueve al estado nuevo y aparece
  * "Guardando…": antes no había ningún aviso y parecía que no respondía.
@@ -148,7 +148,7 @@ function SwitchEspejo({ activo }: { activo: boolean }) {
         />
       </span>
       <span className="min-w-0 flex-1 font-medium text-foreground">
-        Repetir los de Sonido
+        Repetir los de Audio
       </span>
       {pending ? (
         <span className="shrink-0 text-xs text-muted">Guardando…</span>
@@ -157,7 +157,7 @@ function SwitchEspejo({ activo }: { activo: boolean }) {
   );
 }
 
-function EspejoSonido({ activo }: { activo: boolean }) {
+function EspejoAudio({ activo }: { activo: boolean }) {
   return (
     <form action={setVideoSameAsAudioAction}>
       {/* Se envía el valor contrario: el botón alterna. */}
@@ -260,7 +260,7 @@ export function RespVolunteers({
                 entries={espejo ? (byCategory.AUDIO ?? []) : (byCategory[c.key] ?? [])}
                 publishers={publishers}
                 espejo={espejo}
-                extra={esVideo ? <EspejoSonido activo={videoSameAsAudio} /> : undefined}
+                extra={esVideo ? <EspejoAudio activo={videoSameAsAudio} /> : undefined}
                 ayuda={
                   c.key === WATCHTOWER_CATEGORY.key
                     ? "No recibirá ninguna responsabilidad en la reunión de fin de semana."

@@ -1,11 +1,14 @@
 // ============================================================================
 //  Estadísticas de Asignaciones
 //  Historial completo de asignaciones de la congregación, con filtros y aviso
-//  por hermanos que llevan tiempo sin una asignación REGISTRADA como realizada.
+//  por hermanos que llevan tiempo sin que les TOQUE una asignación.
 //
-//  Nota importante que se muestra también en pantalla: "realizada" es el
-//  registro posterior a la reunión, no la confirmación previa por WhatsApp. Lo
-//  que nadie marcó cuenta como "sin registrar", nunca como realizada.
+//  Dos medidas distintas, a propósito:
+//   - El aviso de días mira la ASIGNACIÓN: para repartir importa a quién le
+//     tocó, haya contestado el WhatsApp o no.
+//   - El recuadro "Sin ninguna confirmada" mira la CONFIRMACIÓN: la respuesta
+//     del hermano al abrir su enlace. Lo que nadie respondió cuenta como "sin
+//     respuesta", nunca como un sí.
 // ============================================================================
 
 import { requireMeetingsAccess } from "@/lib/access";
@@ -188,9 +191,9 @@ export default async function EstadisticasAsignacionesPage({
       </CollapsibleCard>
 
       <p className="mt-4 text-xs text-muted">
-        El resaltado indica únicamente que el hermano lleva tiempo sin una
-        asignación confirmada. No significa que esté inactivo ni
-        supone ningún problema.
+        El resaltado indica únicamente que al hermano no le ha tocado ninguna
+        asignación en ese tiempo, haya confirmado o no las anteriores. No
+        significa que esté inactivo ni supone ningún problema.
       </p>
     </>
   );

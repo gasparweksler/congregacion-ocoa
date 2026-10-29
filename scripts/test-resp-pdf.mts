@@ -67,9 +67,10 @@ doc.text("ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO", pageW / 2, 40, { align
 autoTable(doc, {
   startY: subtitulo(56),
   margin: { left: marginX, right: marginX },
+  // Mismo orden que /api/responsabilidades-pdf: el mes encabeza la tabla.
   head: [
-    [{ content: "DIA/MES" }, { content: "AUDIO" }, { content: "VIDEO" }, { content: "MICROFONO" }, { content: "PLATAFORMA" }],
     [{ content: period, colSpan: 5 }],
+    [{ content: "DIA/MES" }, { content: "AUDIO" }, { content: "VIDEO" }, { content: "MICROFONO" }, { content: "PLATAFORMA" }],
   ],
   body: rows.map((r) => [
     dateCol(r), r.v.r_audio, r.v.r_video,
@@ -112,8 +113,8 @@ autoTable(doc, {
   startY: subtitulo(afterY + 16),
   margin: { left: marginX, right: marginX },
   head: [
-    [{ content: "DIA/MES" }, { content: "ACOMODADOR ENTRADA" }, { content: "ACOMODADOR AUDITORIO" }, { content: "LIMPIEZA POR GRUPOS" }],
     [{ content: period, colSpan: 4 }],
+    [{ content: "DIA/MES" }, { content: "ACOMODADOR ENTRADA" }, { content: "ACOMODADOR AUDITORIO" }, { content: "LIMPIEZA POR GRUPOS" }],
   ],
   body: limpiezaBody,
   styles: { fontSize: 9, halign: "center", valign: "middle", cellPadding: 4, lineColor: [148, 163, 184], lineWidth: 0.5 },

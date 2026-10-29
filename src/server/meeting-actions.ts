@@ -21,6 +21,7 @@ import {
   MEETING_DAYS,
   CONFIRM_STATUS,
   MONTHLY_RESP_KEYS,
+  MONTHLY_RESPONSIBILITIES,
   sectionAllowsSecondary,
 } from "@/lib/constants";
 import {
@@ -58,7 +59,18 @@ export async function createMeetingAction(
   });
   if (already) redirect(`/reuniones/${already.id}`);
 
+  // Las mismas casillas que crean la carga masiva y la pantalla mensual: las
+  // partes de la reunión, más las ocho responsabilidades canónicas. Así una
+  // reunión creada a mano y una importada salen idénticas.
   const slots = slotsForDay(day);
+  const respSlots = MONTHLY_RESPONSIBILITIES.map((r, i) => ({
+    slotKey: r.key,
+    section: "RESPONSABILIDADES",
+    label: r.label,
+    order: 100 + i,
+    allowTwo: false,
+    equalPair: false,
+  }));
   let meeting;
   try {
     meeting = await prisma.meeting.create({
@@ -70,14 +82,17 @@ export async function createMeetingAction(
       // Responsable de Confirmación por defecto: quien crea la reunión.
       confirmadorName: user.name ?? null,
       assignments: {
-        create: slots.map((s, i) => ({
-          slotKey: s.key,
-          section: s.section,
-          label: s.label,
-          order: i,
-          allowTwo: s.allowTwo,
-          equalPair: !!s.equalPair,
-        })),
+        create: [
+          ...slots.map((s, i) => ({
+            slotKey: s.key,
+            section: s.section,
+            label: s.label,
+            order: i,
+            allowTwo: s.allowTwo,
+            equalPair: !!s.equalPair,
+          })),
+          ...respSlots,
+        ],
       },
     },
     });

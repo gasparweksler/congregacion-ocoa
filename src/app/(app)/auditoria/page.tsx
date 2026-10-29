@@ -32,12 +32,16 @@ function actionTone(action: string) {
 export default async function AuditoriaPage() {
   const user = await requireSecretary();
 
-  const logs = await prisma.auditLog.findMany({
-    where: { congregationId: congregationId(user) },
-    orderBy: { createdAt: "desc" },
-    take: 150,
-    include: { user: { select: { name: true, username: true } } },
-  });
+  const cong = congregationId(user);
+  const [logs, totalLogs] = await Promise.all([
+    prisma.auditLog.findMany({
+      where: { congregationId: cong },
+      orderBy: { createdAt: "desc" },
+      take: 150,
+      include: { user: { select: { name: true, username: true } } },
+    }),
+    prisma.auditLog.count({ where: { congregationId: cong } }),
+  ]);
 
   return (
     <>
@@ -49,14 +53,18 @@ export default async function AuditoriaPage() {
       <Card className="mb-6">
         <CardHeader title="Mantenimiento de datos" />
         <CardBody>
-          <MaintenancePanel />
+          <MaintenancePanel lineasAuditoria={totalLogs} />
         </CardBody>
       </Card>
 
       <Card>
         <CardHeader
           title="Registro de auditoría"
-          description={`Últimos ${logs.length} eventos.`}
+          description={
+            totalLogs > logs.length
+              ? `Los ${logs.length} más recientes, de ${totalLogs} en total.`
+              : `${logs.length} evento(s).`
+          }
         />
         {logs.length === 0 ? (
           <EmptyState title="Sin eventos registrados todavía" />

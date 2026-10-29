@@ -106,7 +106,7 @@ export async function removeVolunteerAction(formData: FormData): Promise<void> {
 }
 
 /**
- * Interruptor "Repetir los de Sonido" de la categoría Video: los disponibles
+ * Interruptor "Repetir los de Audio" de la categoría Video: los disponibles
  * de Video pasan a ser exactamente los de Audio.
  */
 export async function setVideoSameAsAudioAction(
@@ -125,7 +125,7 @@ export async function setVideoSameAsAudioAction(
     userId: user.id,
     action: "EDITAR",
     entity: "Responsabilidades",
-    details: `Video: repetir los de Sonido ${activo ? "activado" : "desactivado"}.`,
+    details: `Video: repetir los de Audio ${activo ? "activado" : "desactivado"}.`,
   });
 
   revalidatePath("/reuniones/responsabilidades");

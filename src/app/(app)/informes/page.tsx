@@ -43,19 +43,65 @@ export default async function InformesPage({
 
   // ¿El período mostrado ya tiene informes? Si sí, se muestra quién los subió y
   // el formulario inicia bloqueado (hasta pulsar "Editar informe").
-  const periodReport = await prisma.monthlyReport.findFirst({
-    where: {
-      congregationId: cong,
-      year,
-      month,
-      publisher: {
+  // Seguimiento de entrega del MES ANTERIOR (siempre, independiente del filtro).
+  const prev = previousPeriod();
+
+  // Las cuatro consultas no dependen unas de otras, así que van juntas: cada
+  // ida y vuelta a la base cuesta unos 300 ms, y en fila eran más de un
+  // segundo de espera en la página que más se usa.
+  const [periodReport, groups, reported, publishers] = await Promise.all([
+    prisma.monthlyReport.findFirst({
+      where: {
+        congregationId: cong,
+        year,
+        month,
+        publisher: {
+          ...(scope ? { groupId: scope } : {}),
+          ...(groupFilter ? { groupId: groupFilter } : {}),
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { updatedAt: true, submittedBy: { select: { name: true } } },
+    }),
+    secretary
+      ? prisma.group.findMany({
+          where: { congregationId: cong },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([] as { id: string; name: string }[]),
+    secretary
+      ? prisma.monthlyReport.findMany({
+          where: { congregationId: cong, year: prev.year, month: prev.month },
+          select: { publisher: { select: { groupId: true } } },
+        })
+      : Promise.resolve([] as { publisher: { groupId: string } }[]),
+    prisma.publisher.findMany({
+      where: {
+        congregationId: cong,
+        ...(pub ? { id: pub } : {}),
         ...(scope ? { groupId: scope } : {}),
         ...(groupFilter ? { groupId: groupFilter } : {}),
       },
-    },
-    orderBy: { updatedAt: "desc" },
-    select: { updatedAt: true, submittedBy: { select: { name: true } } },
-  });
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        status: true,
+        reports: {
+          where: { year, month },
+          select: {
+            participated: true,
+            bibleStudies: true,
+            hours: true,
+            auxiliaryPioneer: true,
+            comment: true,
+          },
+        },
+      },
+    }),
+  ]);
+
   // Al subir el informe de UN pendiente puntual, no se bloquea el formulario.
   const submitted =
     pub || !periodReport
@@ -65,52 +111,10 @@ export default async function InformesPage({
           at: formatDate(periodReport.updatedAt),
         };
 
-  const groups = secretary
-    ? await prisma.group.findMany({
-        where: { congregationId: cong },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      })
-    : [];
-
-  // Seguimiento de entrega del MES ANTERIOR (siempre, independiente del filtro).
-  const prev = previousPeriod();
-  let deliveredGroups: { id: string; name: string }[] = [];
-  let pendingGroups: { id: string; name: string }[] = [];
-  if (secretary) {
-    const reported = await prisma.monthlyReport.findMany({
-      where: { congregationId: cong, year: prev.year, month: prev.month },
-      select: { publisher: { select: { groupId: true } } },
-    });
-    const reportedIds = new Set(reported.map((r) => r.publisher.groupId));
-    deliveredGroups = groups.filter((g) => reportedIds.has(g.id));
-    pendingGroups = groups.filter((g) => !reportedIds.has(g.id));
-  }
-
-  const publishers = await prisma.publisher.findMany({
-    where: {
-      congregationId: cong,
-      ...(pub ? { id: pub } : {}),
-      ...(scope ? { groupId: scope } : {}),
-      ...(groupFilter ? { groupId: groupFilter } : {}),
-    },
-    orderBy: { fullName: "asc" },
-    select: {
-      id: true,
-      fullName: true,
-      status: true,
-      reports: {
-        where: { year, month },
-        select: {
-          participated: true,
-          bibleStudies: true,
-          hours: true,
-          auxiliaryPioneer: true,
-          comment: true,
-        },
-      },
-    },
-  });
+  // Qué grupos entregaron el mes anterior y cuáles no (se cruza en memoria).
+  const reportedIds = new Set(reported.map((r) => r.publisher.groupId));
+  const deliveredGroups = secretary ? groups.filter((g) => reportedIds.has(g.id)) : [];
+  const pendingGroups = secretary ? groups.filter((g) => !reportedIds.has(g.id)) : [];
 
   const rows: ReportRow[] = publishers.map((p) => {
     const r = p.reports[0];

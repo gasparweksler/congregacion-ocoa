@@ -188,8 +188,8 @@ export async function proposeAutoAssignAction(
       .map((v) => v.publisherId),
   );
 
-  // "Repetir los de Sonido": los de Video son exactamente los de Audio.
-  const repetirSonido = await prisma.congregation
+  // "Repetir los de Audio": los de Video son exactamente los de Audio.
+  const repetirAudio = await prisma.congregation
     .findUnique({ where: { id: cong }, select: { videoSameAsAudio: true } })
     .then((c) => c?.videoSameAsAudio ?? false);
 
@@ -200,10 +200,10 @@ export async function proposeAutoAssignAction(
     if (v.category === WATCHTOWER_CATEGORY.key) continue;
     // Con el interruptor puesto, Video es EXACTAMENTE Audio: lo que hubiera
     // apuntado en Video se ignora mientras esté activo.
-    if (repetirSonido && v.category === "VIDEO") continue;
+    if (repetirAudio && v.category === "VIDEO") continue;
 
     const cats = [v.category];
-    if (repetirSonido && v.category === "AUDIO") cats.push("VIDEO");
+    if (repetirAudio && v.category === "AUDIO") cats.push("VIDEO");
 
     const prev = porPublicador.get(v.publisherId);
     if (prev) {
