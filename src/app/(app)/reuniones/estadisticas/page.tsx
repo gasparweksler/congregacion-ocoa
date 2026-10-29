@@ -11,13 +11,7 @@
 import { requireMeetingsAccess } from "@/lib/access";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CollapsibleCard,
-  Alert,
-} from "@/components/ui";
+import { Card, CollapsibleCard, Alert } from "@/components/ui";
 import { BackButton } from "@/components/BackButton";
 import { AssignmentStatsFilters } from "@/components/forms/AssignmentStatsFilters";
 import {
@@ -44,6 +38,11 @@ export default async function EstadisticasAsignacionesPage({
 
   const dias = Math.min(3650, Math.max(1, Number(sp.dias) || 90));
   const incluirResponsabilidades = sp.resp === "1";
+
+  // Si hay algún filtro puesto, la tarjeta se abre sola: si no, se perdería de
+  // vista por qué la lista de abajo está recortada.
+  const hayFiltros =
+    !!sp.q || !!sp.section || !!sp.desde || !!sp.hasta || incluirResponsabilidades || dias !== 90;
 
   const { brothers, neverAssigned, unmatched, sections, totals } =
     await getAssignmentStats({
@@ -145,22 +144,21 @@ export default async function EstadisticasAsignacionesPage({
         </Card>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader
-          title="Filtros"
-          description={
-            totals.primeraReunion && totals.ultimaReunion
-              ? `Historial disponible: ${totals.meetings} reunión(es), de ${formatDate(totals.primeraReunion)} a ${formatDate(totals.ultimaReunion)}.`
-              : "Todavía no hay reuniones registradas."
-          }
+      <CollapsibleCard
+        className="mb-6"
+        defaultOpen={hayFiltros}
+        title={hayFiltros ? "Filtros (activos)" : "Filtros"}
+        description={
+          totals.primeraReunion && totals.ultimaReunion
+            ? `Historial disponible: ${totals.meetings} reunión(es), de ${formatDate(totals.primeraReunion)} a ${formatDate(totals.ultimaReunion)}.`
+            : "Todavía no hay reuniones registradas."
+        }
+      >
+        <AssignmentStatsFilters
+          sections={sections}
+          incluirResponsabilidades={incluirResponsabilidades}
         />
-        <CardBody>
-          <AssignmentStatsFilters
-            sections={sections}
-            incluirResponsabilidades={incluirResponsabilidades}
-          />
-        </CardBody>
-      </Card>
+      </CollapsibleCard>
 
       {unmatched.length > 0 ? (
         <div className="mb-6">
