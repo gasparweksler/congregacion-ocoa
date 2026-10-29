@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSecretary, congregationId } from "@/lib/access";
 import { groupSchema } from "@/lib/validations";
 import { logAudit } from "@/lib/audit";
-import { type FormState } from "@/server/actions-shared";
+import { type FormState, sinDuplicar } from "@/server/actions-shared";
 
 export async function createGroupAction(
   _prev: FormState,
@@ -31,9 +31,17 @@ export async function createGroupAction(
   });
   if (exists) return { error: "Ya existe un grupo con ese nombre." };
 
-  const group = await prisma.group.create({
-    data: { name: parsed.data.name, congregationId: cong },
-  });
+  // sinDuplicar: si otra persona creó el mismo nombre entre la comprobación
+  // de arriba y esta línea, se avisa igual en vez de romper la pantalla.
+  const alta = await sinDuplicar(
+    () =>
+      prisma.group.create({
+        data: { name: parsed.data.name, congregationId: cong },
+      }),
+    "Ya existe un grupo con ese nombre.",
+  );
+  if (!alta.ok) return { error: alta.error };
+  const group = alta.valor;
 
   await logAudit({
     userId: user.id,
@@ -67,11 +75,16 @@ export async function updateGroupAction(
   if (duplicate) return { error: "Ya existe otro grupo con ese nombre." };
 
   // updateMany acota por congregación: no se puede renombrar un grupo ajeno.
-  const updated = await prisma.group.updateMany({
-    where: { id, congregationId: cong },
-    data: { name: parsed.data.name },
-  });
-  if (updated.count === 0) return { error: "Grupo no encontrado." };
+  const cambio = await sinDuplicar(
+    () =>
+      prisma.group.updateMany({
+        where: { id, congregationId: cong },
+        data: { name: parsed.data.name },
+      }),
+    "Ya existe otro grupo con ese nombre.",
+  );
+  if (!cambio.ok) return { error: cambio.error };
+  if (cambio.valor.count === 0) return { error: "Grupo no encontrado." };
   const group = { id, name: parsed.data.name };
 
   await logAudit({

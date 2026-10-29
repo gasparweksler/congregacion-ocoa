@@ -45,7 +45,8 @@
     "test:import-pub": "tsx scripts/test-import-publicadores-real.mts",
     "test:simultaneo": "tsx scripts/test-simultaneo.mts",
     "test:latencia": "tsx scripts/test-latencia.mts",
-    "test:carreras": "tsx scripts/test-carreras-alta.mts"
+    "test:carreras": "tsx scripts/test-carreras-alta.mts",
+    "test:resp-lote": "tsx scripts/test-resp-lote.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

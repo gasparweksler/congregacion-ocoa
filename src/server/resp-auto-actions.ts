@@ -40,7 +40,7 @@ import {
   type Proposal,
   type Uncovered,
 } from "@/lib/resp-auto-assign";
-import { setMonthlyResponsibility } from "@/server/monthly-resp-actions";
+import { setMonthlyResponsibilities } from "@/server/monthly-resp-actions";
 import { logAudit } from "@/lib/audit";
 
 export type AutoAssignPreview = {
@@ -363,36 +363,20 @@ export async function applyAutoAssignAction(
   }
 
   // --- Guardado ---
-  // Se usa la MISMA función que al escribir un nombre a mano, para no tener un
-  // segundo camino de escritura que pudiera comportarse distinto.
+  // Se usa la MISMA función que al escribir un nombre a mano (aquella es el
+  // caso de una sola casilla de esta), para no tener un segundo camino de
+  // escritura que pudiera comportarse distinto.
   //
-  // Para que no tarde minutos: las fechas van en orden (así la reunión de cada
-  // fecha se crea una sola vez, si hacía falta) y las casillas de una misma
-  // fecha se guardan a la vez. Antes iban las ~70 de una en una.
-  const porFecha = new Map<string, Proposal[]>();
-  for (const p of proposals) {
-    if (!porFecha.has(p.dateISO)) porFecha.set(p.dateISO, []);
-    porFecha.get(p.dateISO)!.push(p);
-  }
-
-  let guardadas = 0;
-  for (const [, delDia] of [...porFecha.entries()].sort()) {
-    // La primera crea la reunión si no existía; las demás ya la encuentran.
-    const [primera, ...resto] = delDia;
-    await setMonthlyResponsibility(
-      primera.dateISO,
-      primera.day,
-      primera.slotKey,
-      primera.name,
-    );
-    guardadas++;
-    await Promise.all(
-      resto.map((p) =>
-        setMonthlyResponsibility(p.dateISO, p.day, p.slotKey, p.name),
-      ),
-    );
-    guardadas += resto.length;
-  }
+  // Las ~70 casillas van en un solo lote: se lee el mes entero de una vez y se
+  // escribe todo junto. Antes iban fecha por fecha, esperando cada una.
+  const { guardadas } = await setMonthlyResponsibilities(
+    proposals.map((p) => ({
+      dateISO: p.dateISO,
+      day: p.day,
+      slotKey: p.slotKey,
+      value: p.name,
+    })),
+  );
 
   const conConflicto = resumen?.conConflicto ?? proposals.filter((p) => p.conflict).length;
   const total = resumen?.total ?? guardadas;

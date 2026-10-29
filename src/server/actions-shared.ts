@@ -18,3 +18,26 @@ export function isUniqueViolation(error: unknown): boolean {
     (error as { code?: unknown }).code === "P2002"
   );
 }
+
+/**
+ * Hace una escritura y convierte el choque de "ya existe" en un aviso normal.
+ *
+ * Varias acciones comprueban primero si un nombre está libre y crean después.
+ * Entre esas dos consultas pasan unas décimas de segundo, y si otra persona se
+ * adelanta justo ahí, las dos vieron "libre": la base impide el duplicado
+ * (bien) pero el error subía crudo a la pantalla (mal). Aquí se devuelve el
+ * mismo mensaje que si lo hubiéramos visto al comprobar.
+ *
+ * Cualquier otro error se deja pasar: solo se traduce el duplicado.
+ */
+export async function sinDuplicar<T>(
+  escribir: () => Promise<T>,
+  mensaje: string,
+): Promise<{ ok: true; valor: T } | { ok: false; error: string }> {
+  try {
+    return { ok: true, valor: await escribir() };
+  } catch (error) {
+    if (isUniqueViolation(error)) return { ok: false, error: mensaje };
+    throw error;
+  }
+}

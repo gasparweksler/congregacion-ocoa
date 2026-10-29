@@ -20,6 +20,13 @@ import {
 import { meetingDatesInMonth } from "@/lib/period";
 import { getMeetingDays } from "@/lib/meeting-days";
 import { findWeekMeeting } from "@/lib/meeting-week";
+import {
+  claveFecha,
+  fechasQueFaltan,
+  planearEscrituras,
+  type CasillaPrevia,
+  type RespEntry,
+} from "@/lib/monthly-resp-plan";
 import { logAudit } from "@/lib/audit";
 import { isUniqueViolation } from "@/server/actions-shared";
 
@@ -151,94 +158,176 @@ async function createMeetingForDate(
   return meeting.id;
 }
 
-/** Asigna (o limpia) el encargado de una responsabilidad en una fecha. */
+/**
+ * Guarda varias responsabilidades del mes de una sola vez.
+ *
+ * Por qué en lote: cada consulta a la base cuesta una ida y vuelta completa, y
+ * guardar un mes son ~70 casillas. Haciéndolo de una en una eran cientos de
+ * viajes esperando uno a otro, y el guardado tardaba minutos. Aquí se lee el
+ * mes entero en UNA consulta, se decide en memoria (las reglas viven en
+ * monthly-resp-plan.ts) y se escribe todo junto en un solo lote.
+ *
+ * Las reglas son exactamente las de antes: la reunión se crea sola la primera
+ * vez que su fecha recibe un nombre, un nombre vacío no crea nada, y cambiar
+ * de persona renueva el enlace de confirmación.
+ */
+export async function setMonthlyResponsibilities(
+  entries: RespEntry[],
+): Promise<{ guardadas: number }> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+
+  // Solo las casillas que existen de verdad, ya con su etiqueta y su tipo.
+  const tareas = entries.flatMap((e) => {
+    const resp = MONTHLY_RESPONSIBILITIES.find((r) => r.key === e.slotKey);
+    if (!resp) return [];
+    return [
+      {
+        ...e,
+        value: e.value.trim(),
+        label: resp.label,
+        esGrupo: resp.kind === "group",
+      },
+    ];
+  });
+  if (tareas.length === 0) return { guardadas: 0 };
+
+  const fechaDe = (dateISO: string) => {
+    const [y, m, d] = dateISO.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  };
+
+  // --- 1. Una sola lectura: las reuniones del rango con sus casillas ---
+  const tiempos = tareas.map((t) => fechaDe(t.dateISO).getTime());
+  const minima = new Date(Math.min(...tiempos));
+  const maxima = new Date(Math.max(...tiempos));
+  const first = new Date(minima.getFullYear(), minima.getMonth(), minima.getDate() - 8, 0, 0, 0);
+  const last = new Date(maxima.getFullYear(), maxima.getMonth(), maxima.getDate() + 8, 0, 0, 0);
+
+  const meetings = await prisma.meeting.findMany({
+    where: { congregationId: cong, date: { gte: first, lt: last } },
+    select: {
+      id: true,
+      date: true,
+      day: true,
+      weekLabel: true,
+      assignments: {
+        select: {
+          id: true,
+          meetingId: true,
+          slotKey: true,
+          primaryName: true,
+          primaryToken: true,
+          primaryStatus: true,
+        },
+      },
+    },
+  });
+
+  // Qué reunión le toca a cada fecha (una misma semana puede guardarse con la
+  // fecha del lunes, por eso lo resuelve findWeekMeeting y no una igualdad).
+  const idPorFecha = new Map<string, string>();
+  for (const t of tareas) {
+    const clave = claveFecha(t.dateISO, t.day);
+    if (idPorFecha.has(clave)) continue;
+    const encontrada = findWeekMeeting(meetings, fechaDe(t.dateISO), t.day);
+    if (encontrada) idPorFecha.set(clave, encontrada.id);
+  }
+
+  // --- 2. Crear las reuniones que faltan (fechas distintas: van a la vez) ---
+  const previas: CasillaPrevia[] = meetings.flatMap((m) => m.assignments);
+  const faltan = fechasQueFaltan(tareas, idPorFecha);
+  if (faltan.length > 0) {
+    const creadas = await Promise.all(
+      faltan.map(async (f) => ({
+        clave: claveFecha(f.dateISO, f.day),
+        id: await createMeetingForDate(
+          fechaDe(f.dateISO),
+          f.day,
+          user.id,
+          user.name ?? null,
+          cong,
+        ),
+      })),
+    );
+    for (const c of creadas) idPorFecha.set(c.clave, c.id);
+
+    // Las recién creadas ya traen sus casillas, pero no conocemos sus id:
+    // una consulta más, solo cuando de verdad se creó alguna reunión.
+    const nuevas = await prisma.meetingAssignment.findMany({
+      where: { meetingId: { in: creadas.map((c) => c.id) } },
+      select: {
+        id: true,
+        meetingId: true,
+        slotKey: true,
+        primaryName: true,
+        primaryToken: true,
+        primaryStatus: true,
+      },
+    });
+    previas.push(...nuevas);
+  }
+
+  // --- 3. Qué escribir, decidido en memoria ---
+  const plan = planearEscrituras(tareas, idPorFecha, previas, newToken);
+  const tocadas = new Set(plan.map((w) => w.meetingId));
+
+  // --- 4. Todas las escrituras en un solo viaje ---
+  if (plan.length > 0) {
+    await prisma.$transaction(
+      plan.map((w) => {
+        const data = {
+          section: "RESPONSABILIDADES",
+          label: w.label,
+          allowTwo: false,
+          equalPair: false,
+          primaryName: w.primaryName,
+          primaryToken: w.primaryToken,
+          primaryStatus: w.primaryStatus,
+        };
+        return w.assignmentId
+          ? prisma.meetingAssignment.update({ where: { id: w.assignmentId }, data })
+          : prisma.meetingAssignment.create({
+              data: { ...data, meetingId: w.meetingId, slotKey: w.slotKey, order: 100 },
+            });
+      }),
+    );
+  }
+  const escrituras = plan;
+
+  // --- 5. Una anotación en la auditoría, no una por casilla ---
+  if (escrituras.length > 0) {
+    const unaSola = tareas.length === 1 ? tareas[0] : null;
+    await logAudit({
+      userId: user.id,
+      // Se pasa la congregación: si no, logAudit la busca con otra consulta.
+      congregationId: cong,
+      action: "EDITAR",
+      entity: "Reunion",
+      entityId: unaSola ? [...tocadas][0] : undefined,
+      details: unaSola
+        ? `Responsabilidad mensual: ${unaSola.label} = ${unaSola.value || "(sin asignar)"}.`
+        : `Responsabilidades mensuales: ${escrituras.length} casillas en ${tocadas.size} reunión(es).`,
+    });
+  }
+
+  revalidatePath("/reuniones/responsabilidades");
+  revalidatePath("/reuniones");
+  for (const id of tocadas) revalidatePath(`/reuniones/${id}`);
+
+  return { guardadas: escrituras.length };
+}
+
+/**
+ * Asigna (o limpia) el encargado de UNA responsabilidad en una fecha.
+ * Es el caso de una sola casilla del guardado en lote: así no hay dos caminos
+ * de escritura que puedan portarse distinto.
+ */
 export async function setMonthlyResponsibility(
   dateISO: string,
   day: "JUEVES" | "SABADO",
   slotKey: string,
   value: string,
 ): Promise<void> {
-  const user = await requireMeetingsAccess();
-
-  const resp = MONTHLY_RESPONSIBILITIES.find((r) => r.key === slotKey);
-  if (!resp) return;
-
-  const [y, m, d] = dateISO.split("-").map(Number);
-  const date = new Date(y, m - 1, d, 12, 0, 0);
-  const clean = value.trim();
-
-  // Buscar reunión ya creada de la MISMA semana y día (aunque su fecha sea el
-  // lunes del rango). Si no existe, crearla perezosamente.
-  const first = new Date(y, m - 1, d - 8, 0, 0, 0);
-  const last = new Date(y, m - 1, d + 8, 0, 0, 0);
-  const cong = congregationId(user);
-  const existing = await prisma.meeting.findMany({
-    where: { congregationId: cong, date: { gte: first, lt: last } },
-    select: { id: true, date: true, day: true, weekLabel: true },
-  });
-  let meetingId = findWeekMeeting(existing, date, day)?.id ?? null;
-
-  if (!meetingId) {
-    // Si se está limpiando un valor vacío y no hay reunión, no crear nada.
-    if (!clean) return;
-    meetingId = await createMeetingForDate(
-      date,
-      day,
-      user.id,
-      user.name ?? null,
-      cong,
-    );
-  }
-
-  // Buscar/crear la asignación canónica de esta responsabilidad.
-  const assignment = await prisma.meetingAssignment.findFirst({
-    where: { meetingId, slotKey, meeting: { congregationId: cong } },
-  });
-
-  const isGroup = resp.kind === "group";
-  // Publicadores usan token/estado para confirmar; grupos (limpieza) no.
-  let token = assignment?.primaryToken ?? null;
-  let status = assignment?.primaryStatus ?? CONFIRM_STATUS.PENDIENTE;
-  if (isGroup || !clean) {
-    token = null;
-    status = CONFIRM_STATUS.PENDIENTE;
-  } else if (clean !== assignment?.primaryName) {
-    token = newToken();
-    status = CONFIRM_STATUS.PENDIENTE;
-  } else if (!token) {
-    token = newToken();
-  }
-
-  const data = {
-    section: "RESPONSABILIDADES",
-    label: resp.label,
-    allowTwo: false,
-    equalPair: false,
-    primaryName: clean || null,
-    primaryToken: token,
-    primaryStatus: status,
-  };
-
-  if (assignment) {
-    await prisma.meetingAssignment.update({
-      where: { id: assignment.id },
-      data,
-    });
-  } else {
-    await prisma.meetingAssignment.create({
-      data: { ...data, meetingId, slotKey, order: 100 },
-    });
-  }
-
-  await logAudit({
-    userId: user.id,
-    action: "EDITAR",
-    entity: "Reunion",
-    entityId: meetingId,
-    details: `Responsabilidad mensual: ${resp.label} = ${clean || "(sin asignar)"}.`,
-  });
-
-  revalidatePath("/reuniones/responsabilidades");
-  revalidatePath(`/reuniones/${meetingId}`);
-  revalidatePath("/reuniones");
+  await setMonthlyResponsibilities([{ dateISO, day, slotKey, value }]);
 }

@@ -5,12 +5,13 @@
 //  Entre esas dos consultas hay ~300 ms de hueco. Si dos personas crean lo
 //  mismo a la vez, las dos ven "libre" y la segunda choca contra la base.
 //
-//  Aquí se mide si ese choque se traduce en un aviso claro o en un error feo.
+//  sinDuplicar() traduce ese choque en el mismo aviso amable. Aquí se
+//  comprueba que así sea, y que la base nunca acabe con dos filas iguales.
 //
 //    npx tsx scripts/test-carreras-alta.mts
 // ============================================================================
 import { PrismaClient } from "@prisma/client";
-import { isUniqueViolation } from "../src/server/actions-shared.js";
+import { sinDuplicar } from "../src/server/actions-shared.js";
 
 const p = new PrismaClient();
 const PREFIJO = "ZZ Carrera";
@@ -43,22 +44,21 @@ async function altaUsuarioComoLaApp(
   const exists = await p.user.findUnique({ where: { username } });
   if (exists) return "avisado"; // el aviso amable de la acción
   await new Promise((r) => setTimeout(r, huecoMs));
-  try {
-    await p.user.create({
-      data: {
-        username,
-        passwordHash: "x".repeat(60),
-        name: "Prueba",
-        role: "SECRETARIO",
-        congregationId: congId,
-      },
-    });
-    return "creado";
-  } catch (e) {
-    // La acción NO atrapa esto: sube como error y el usuario ve la pantalla
-    // de error de Next, no el mensaje "ya está en uso".
-    return { roto: isUniqueViolation(e) ? "P2002 sin atrapar" : String(e) };
-  }
+  // Igual que createUserAction: el choque se traduce en el mismo aviso.
+  const alta = await sinDuplicar(
+    () =>
+      p.user.create({
+        data: {
+          username,
+          passwordHash: "x".repeat(60),
+          name: "Prueba",
+          role: "SECRETARIO",
+          congregationId: congId,
+        },
+      }),
+    "Ese nombre de usuario ya está en uso.",
+  );
+  return alta.ok ? "creado" : "avisado";
 }
 
 async function altaGrupoComoLaApp(
@@ -71,12 +71,12 @@ async function altaGrupoComoLaApp(
   });
   if (exists) return "avisado";
   await new Promise((r) => setTimeout(r, huecoMs));
-  try {
-    await p.group.create({ data: { name, congregationId: congId } });
-    return "creado";
-  } catch (e) {
-    return { roto: isUniqueViolation(e) ? "P2002 sin atrapar" : String(e) };
-  }
+  // Igual que createGroupAction.
+  const alta = await sinDuplicar(
+    () => p.group.create({ data: { name, congregationId: congId } }),
+    "Ya existe un grupo con ese nombre.",
+  );
+  return alta.ok ? "creado" : "avisado";
 }
 
 console.log("CARRERAS AL DAR DE ALTA\n");

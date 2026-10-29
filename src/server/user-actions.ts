@@ -13,7 +13,7 @@ import { hashPassword } from "@/lib/password";
 import { createUserSchema, updateUserSchema } from "@/lib/validations";
 import { ROLES, GROUP_ROLES, roleLabel, type Role } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
-import { type FormState } from "@/server/actions-shared";
+import { type FormState, sinDuplicar } from "@/server/actions-shared";
 
 // Normaliza el groupId según el rol. Super/Aux siempre tienen grupo; el
 // Administrador PUEDE tener grupo (designación opcional); Responsable no.
@@ -83,20 +83,29 @@ export async function createUserAction(
     data.groupRoleLabel,
   );
 
-  const created = await prisma.user.create({
-    data: {
-      name: data.name,
-      username: data.username,
-      passwordHash: await hashPassword(data.password),
-      plainPassword: data.password,
-      role: data.role,
-      groupId,
-      congregationId: cong,
-      mustChangePassword: data.mustChangePassword ?? false,
-      alsoConfirmador,
-      groupRoleLabel,
-    },
-  });
+  // El usuario es único en toda la plataforma: dos congregaciones pueden
+  // intentar el mismo nombre a la vez y las dos verlo libre. Se avisa igual.
+  const passwordHash = await hashPassword(data.password);
+  const alta = await sinDuplicar(
+    () =>
+      prisma.user.create({
+        data: {
+          name: data.name,
+          username: data.username,
+          passwordHash,
+          plainPassword: data.password,
+          role: data.role,
+          groupId,
+          congregationId: cong,
+          mustChangePassword: data.mustChangePassword ?? false,
+          alsoConfirmador,
+          groupRoleLabel,
+        },
+      }),
+    "Ese nombre de usuario ya está en uso.",
+  );
+  if (!alta.ok) return { error: alta.error };
+  const created = alta.valor;
 
   await logAudit({
     userId: actor.id,
@@ -165,26 +174,35 @@ export async function updateUserAction(
     data.groupRoleLabel,
   );
 
-  await prisma.user.updateMany({
-    where: { id: data.id, congregationId: cong },
-    data: {
-      name: data.name,
-      username: data.username,
-      role: data.role,
-      groupId,
-      active,
-      alsoConfirmador,
-      groupRoleLabel,
-      // Si se ingresó una nueva contraseña, se restablece y se obliga a cambiarla.
-      ...(data.newPassword
-        ? {
-            passwordHash: await hashPassword(data.newPassword),
-            plainPassword: data.newPassword,
-            mustChangePassword: true,
-          }
-        : {}),
-    },
-  });
+  // La contraseña se cifra antes: dentro del callback no cabe un await suelto.
+  const nuevaClave = data.newPassword
+    ? {
+        passwordHash: await hashPassword(data.newPassword),
+        plainPassword: data.newPassword,
+        mustChangePassword: true,
+      }
+    : {};
+
+  // Cambiar el nombre de usuario puede chocar con otro recién creado.
+  const cambio = await sinDuplicar(
+    () =>
+      prisma.user.updateMany({
+        where: { id: data.id, congregationId: cong },
+        data: {
+          name: data.name,
+          username: data.username,
+          role: data.role,
+          groupId,
+          active,
+          alsoConfirmador,
+          groupRoleLabel,
+          // Si se ingresó una nueva contraseña, se restablece y se obliga a cambiarla.
+          ...nuevaClave,
+        },
+      }),
+    "Ese nombre de usuario ya está en uso.",
+  );
+  if (!cambio.ok) return { error: cambio.error };
 
   await logAudit({
     userId: actor.id,
