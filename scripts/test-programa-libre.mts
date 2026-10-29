@@ -10,6 +10,7 @@
 // ============================================================================
 import { congregationLabel } from "../src/lib/congregation-label.js";
 import {
+  listaDeMeses,
   filasDelPrograma,
   etiquetasDeDias,
   periodoDelPrograma,
@@ -253,6 +254,46 @@ titulo("9. El nombre de la congregación bajo el título");
   check(
     congregationLabel("  Ocoa  ") === "Congregación Ocoa",
     "se limpian los espacios de sobra",
+  );
+}
+
+titulo("10. Cómo se enseña en pantalla qué meses se marcaron");
+{
+  check(listaDeMeses([11]) === "Noviembre", `uno solo: "${listaDeMeses([11])}"`);
+  check(
+    listaDeMeses([11, 12]) === "Noviembre y Diciembre",
+    `dos: "${listaDeMeses([11, 12])}"`,
+  );
+  check(
+    listaDeMeses([10, 11, 12]) === "Octubre, Noviembre y Diciembre",
+    `tres: "${listaDeMeses([10, 11, 12])}"`,
+  );
+  check(
+    listaDeMeses([12, 10, 11]) === "Octubre, Noviembre y Diciembre",
+    "se ordenan aunque se marquen al revés",
+  );
+  check(listaDeMeses([]) === "", "sin meses no dice nada");
+  check(
+    listaDeMeses([11, 11]) === "Noviembre",
+    "el mismo mes dos veces se nombra una",
+  );
+  check(
+    listaDeMeses(Array.from({ length: 12 }, (_, i) => i + 1)).startsWith(
+      "Enero, Febrero",
+    ),
+    "todo el año empieza por enero",
+  );
+
+  // Las fechas tienen que acompañar a lo que dice el texto.
+  const dosMeses = filasDelPrograma(2026, [11, 12], "ambos", JUE_SAB);
+  const mesesEnFilas = [...new Set(dosMeses.map((f) => f.mes))];
+  check(
+    JSON.stringify(mesesEnFilas) === JSON.stringify([11, 12]),
+    `noviembre y diciembre juntos dan ${dosMeses.length} fechas de los dos meses`,
+  );
+  check(
+    filasDelPrograma(2026, [11], "ambos", JUE_SAB).length < dosMeses.length,
+    "y solo noviembre da menos que los dos juntos",
   );
 }
 

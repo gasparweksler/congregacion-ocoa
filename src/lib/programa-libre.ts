@@ -100,6 +100,20 @@ export function periodoDelPrograma(anio: number, meses: number[]): string {
     : `${ms.map((m) => monthName(m)).join(", ")} ${anio}`;
 }
 
+/**
+ * Los meses marcados, escritos como se dicen: "Noviembre y Diciembre",
+ * "Octubre, Noviembre y Diciembre". Para que se vea en pantalla qué se eligió.
+ */
+export function listaDeMeses(meses: number[]): string {
+  const ms = [...new Set(meses)]
+    .filter((m) => m >= 1 && m <= 12)
+    .sort((a, b) => a - b)
+    .map((m) => monthName(m));
+  if (ms.length === 0) return "";
+  if (ms.length === 1) return ms[0];
+  return `${ms.slice(0, -1).join(", ")} y ${ms[ms.length - 1]}`;
+}
+
 /** Nombre del archivo que se descarga. */
 export function nombreArchivo(p: Programa): string {
   const base = (p.titulo.trim() || "programa")

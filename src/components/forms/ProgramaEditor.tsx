@@ -19,6 +19,7 @@ import {
   filasDelPrograma,
   etiquetasDeDias,
   periodoDelPrograma,
+  listaDeMeses,
   nombreArchivo,
   queFalta,
   type Programa,
@@ -229,31 +230,72 @@ export function ProgramaEditor({
           </div>
 
           <div>
-            <Label>Mes o meses que abarca</Label>
+            <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+              <Label>
+                Mes o meses que abarca · <span className="font-normal text-muted">marca los que quieras</span>
+              </Label>
+              <div className="flex gap-2 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => set({ meses: MONTH_NAMES.map((_, i) => i + 1) })}
+                  className="text-primary hover:underline"
+                >
+                  Todo el año
+                </button>
+                {p.meses.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => set({ meses: [] })}
+                    className="text-muted hover:underline"
+                  >
+                    Quitar todos
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Casillas de verdad (no botones): el lector de pantalla las
+                anuncia como marcables, y se ve que admiten más de una. */}
             <div className="flex flex-wrap gap-1.5">
               {MONTH_NAMES.map((nombre, i) => {
                 const mes = i + 1;
                 const puesto = p.meses.includes(mes);
                 return (
-                  <button
+                  <label
                     key={mes}
-                    type="button"
-                    onClick={() => alternarMes(mes)}
-                    aria-pressed={puesto}
                     className={
                       puesto
-                        ? "rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white"
-                        : "rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-slate-50"
+                        ? "inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white"
+                        : "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-slate-50"
                     }
                   >
+                    <input
+                      type="checkbox"
+                      checked={puesto}
+                      onChange={() => alternarMes(mes)}
+                      className="h-3.5 w-3.5 shrink-0 accent-white"
+                    />
                     {nombre}
-                  </button>
+                  </label>
                 );
               })}
             </div>
-            <p className="mt-1.5 text-xs text-muted">
-              Al elegir un mes aparecen abajo todos sus días de reunión. Puedes
-              marcar varios.
+
+            <p className="mt-2 text-xs text-muted">
+              {p.meses.length === 0 ? (
+                "Marca al menos un mes para que aparezcan sus días de reunión."
+              ) : (
+                <>
+                  El programa abarcará{" "}
+                  <strong className="text-foreground">
+                    {listaDeMeses(p.meses)} de {p.anio}
+                  </strong>
+                  {p.meses.length > 1
+                    ? ` · ${p.meses.length} meses, uno tras otro en la misma tabla`
+                    : ""}
+                  .
+                </>
+              )}
             </p>
           </div>
         </CardBody>
