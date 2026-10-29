@@ -46,7 +46,9 @@
     "test:simultaneo": "tsx scripts/test-simultaneo.mts",
     "test:latencia": "tsx scripts/test-latencia.mts",
     "test:carreras": "tsx scripts/test-carreras-alta.mts",
-    "test:resp-lote": "tsx scripts/test-resp-lote.mts"
+    "test:resp-lote": "tsx scripts/test-resp-lote.mts",
+    "test:programa-libre": "tsx scripts/test-programa-libre.mts",
+    "test:programa-libre-pdf": "tsx scripts/test-programa-libre-pdf.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

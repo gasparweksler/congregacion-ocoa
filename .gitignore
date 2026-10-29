@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Salida de las pruebas (PDFs de muestra, etc.)
+.tmp/

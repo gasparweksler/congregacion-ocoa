@@ -71,6 +71,9 @@ export default async function AppLayout({
       icon: "📈",
       group: "Reuniones",
     },
+    // Programas armados a mano (aseo, asambleas, salidas al servicio…), los
+    // que no salen del Excel de la VyMC.
+    { href: "/programas", label: "Programas", icon: "📋", group: "Reuniones" },
   ];
   const secretaryItems: NavItem[] = [
     {
