@@ -11,7 +11,13 @@
 import { requireMeetingsAccess } from "@/lib/access";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardHeader, CardBody, Alert } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  CollapsibleCard,
+  Alert,
+} from "@/components/ui";
 import { BackButton } from "@/components/BackButton";
 import { AssignmentStatsFilters } from "@/components/forms/AssignmentStatsFilters";
 import {
@@ -173,15 +179,15 @@ export default async function EstadisticasAsignacionesPage({
         </div>
       ) : null}
 
-      <Card>
-        <CardHeader
-          title="Hermanos"
-          description={`${rows.length} hermano(s) con asignaciones en reuniones ya pasadas. Resaltado en ámbar: más de ${dias} días desde su última asignación.`}
-        />
-        <CardBody className="px-0 py-0">
-          <AssignmentHistory brothers={rows} dias={dias} />
-        </CardBody>
-      </Card>
+      {/* Plegada de entrada: son muchos nombres y, abiertos siempre, tapaban
+          los recuadros de arriba, que es lo que se mira primero. */}
+      <CollapsibleCard
+        title="Detalle por hermanos"
+        description={`${rows.length} hermano(s) con asignaciones en reuniones ya pasadas. Resaltado en ámbar: más de ${dias} días desde su última asignación.`}
+        bodyClassName="px-0 py-0"
+      >
+        <AssignmentHistory brothers={rows} dias={dias} />
+      </CollapsibleCard>
 
       <p className="mt-4 text-xs text-muted">
         El resaltado indica únicamente que el hermano lleva tiempo sin una
