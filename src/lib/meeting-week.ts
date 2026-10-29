@@ -28,6 +28,41 @@ export type MeetingLike = {
 };
 
 /**
+ * El día en que la congregación se reunió de verdad.
+ *
+ * Una reunión importada de la planilla guarda el LUNES de su semana (la fila
+ * "26 de Octubre a 1 de Noviembre" se guarda como 2026-10-26), así que su
+ * fecha no es el día de la reunión: ese lunes no hubo nada. Aquí se mueve al
+ * día que la congregación tiene configurado dentro de esa misma semana —el
+ * jueves 29, en el ejemplo.
+ *
+ * Solo se corrige cuando la reunión viene de un rango (tiene weekLabel). Las
+ * creadas a mano ya guardan el día exacto, y recalcularlas las movería si la
+ * congregación cambiara sus días después.
+ */
+export function realMeetingDate(
+  stored: Date,
+  day: string,
+  opts?: { weekLabel?: string | null; weekday?: number | null },
+): Date {
+  const weekday = opts?.weekday;
+  if (!opts?.weekLabel || weekday === null || weekday === undefined) {
+    return stored;
+  }
+  // Lunes de esa semana y, desde él, el día configurado (domingo cuenta como
+  // el final de la semana, no como su principio).
+  const lunes = new Date(stored.getFullYear(), stored.getMonth(), stored.getDate());
+  lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+  const desdeLunes = (weekday + 6) % 7; // Lun=0 … Dom=6
+  const real = new Date(lunes);
+  real.setDate(real.getDate() + desdeLunes);
+  // Se conserva la hora original (las fechas se guardan a mediodía).
+  real.setHours(stored.getHours(), stored.getMinutes(), stored.getSeconds(), 0);
+  void day;
+  return real;
+}
+
+/**
  * La reunión ya creada que corresponde a una fecha y tipo de día: misma semana
  * y mismo tipo. Si hubiera varias, prefiere la que tiene rango (weekLabel),
  * luego la de fecha exacta, y por último la más antigua.

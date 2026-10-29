@@ -8,6 +8,8 @@
 import { prisma } from "@/lib/prisma";
 import { getMeetingDays } from "@/lib/meeting-days";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
+import { realMeetingDate } from "@/lib/meeting-week";
+import { weekdayOfMeetingDay } from "@/lib/constants";
 import {
   meetingDayLabel,
   MONTHLY_RESP_KEYS,
@@ -85,15 +87,32 @@ export async function getAssignmentStats(
    */
   const hoyInicio = new Date();
   hoyInicio.setHours(0, 0, 0, 0);
+  // La consulta pide una semana de más por arriba: una reunión guardada en
+  // el lunes de su semana puede tener su día real varios días después, y se
+  // descarta luego comparando ya con la fecha corregida.
+  const topeConsulta = new Date(hoyInicio);
+  topeConsulta.setDate(topeConsulta.getDate() + 8);
   const rangoFechas = {
     ...(desde && !isNaN(desde.getTime()) ? { gte: desde } : {}),
     ...(hasta && !isNaN(hasta.getTime()) ? { lte: hasta } : {}),
-    lt: hoyInicio,
+    lt: topeConsulta,
   };
 
   const diasCongregacion = await getMeetingDays(cong);
 
-  const [assignments, historial, publishers, rango] = await Promise.all([
+  /** La fecha en que se reunieron de verdad (no el lunes del rango). */
+  const fechaReal = (
+    stored: Date,
+    day: string,
+    weekLabel: string | null,
+  ): Date =>
+    realMeetingDate(stored, day, {
+      weekLabel,
+      weekday: weekdayOfMeetingDay(day, diasCongregacion),
+    });
+
+
+  const [assignments, historial, publishers, todasLasReuniones] = await Promise.all([
     prisma.meetingAssignment.findMany({
       where: {
         meeting: { congregationId: cong, date: rangoFechas },
@@ -136,12 +155,12 @@ export async function getAssignmentStats(
         group: { select: { name: true } },
       },
     }),
-    prisma.meeting.aggregate({
-      // Solo las reuniones ya pasadas: las futuras no son historial.
-      where: { congregationId: cong, date: { lt: hoyInicio } },
-      _min: { date: true },
-      _max: { date: true },
-      _count: true,
+    // Para el "historial disponible". No se usa aggregate porque la fecha
+    // guardada puede ser el lunes del rango: hay que corregirla antes de
+    // decidir si la reunión ya pasó y cuál fue la primera y la última.
+    prisma.meeting.findMany({
+      where: { congregationId: cong, date: { lt: topeConsulta } },
+      select: { date: true, day: true, weekLabel: true },
     }),
   ]);
 
@@ -152,10 +171,13 @@ export async function getAssignmentStats(
     historial.map((h) => h.meetingId ?? `${h.meetingDate.toISOString()}_${h.day}`),
   );
   const fechasBorradas = historial.reduce<{ min: Date | null; max: Date | null }>(
-    (acc, h) => ({
-      min: !acc.min || h.meetingDate < acc.min ? h.meetingDate : acc.min,
-      max: !acc.max || h.meetingDate > acc.max ? h.meetingDate : acc.max,
-    }),
+    (acc, h) => {
+      const f = fechaReal(h.meetingDate, h.day, h.weekLabel);
+      return {
+        min: !acc.min || f < acc.min ? f : acc.min,
+        max: !acc.max || f > acc.max ? f : acc.max,
+      };
+    },
     { min: null, max: null },
   );
 
@@ -242,11 +264,17 @@ export async function getAssignmentStats(
     deleted: boolean;
   };
 
+  // Las reuniones que de verdad ya ocurrieron, en orden.
+  const pasadas = todasLasReuniones
+    .map((m) => fechaReal(m.date, m.day, m.weekLabel))
+    .filter((d) => d < hoyInicio)
+    .sort((a, b) => a.getTime() - b.getTime());
+
   const filas: Fila[] = [
     ...assignments.map((a) => ({
       assignmentId: a.id,
       meetingId: a.meeting.id,
-      date: a.meeting.date,
+      date: fechaReal(a.meeting.date, a.meeting.day, a.meeting.weekLabel),
       day: a.meeting.day,
       weekLabel: a.meeting.weekLabel,
       slotKey: a.slotKey,
@@ -262,7 +290,7 @@ export async function getAssignmentStats(
       assignmentId: h.id,
       // La reunión ya no existe; se guarda su id solo como referencia.
       meetingId: h.meetingId ?? "",
-      date: h.meetingDate,
+      date: fechaReal(h.meetingDate, h.day, h.weekLabel),
       day: h.day,
       weekLabel: h.weekLabel,
       slotKey: h.slotKey,
@@ -277,6 +305,8 @@ export async function getAssignmentStats(
   ];
 
   for (const a of filas) {
+    // El tope de "solo lo ya pasado", ahora sobre el día real de la reunión.
+    if (a.date >= hoyInicio) continue;
     const esResponsabilidad =
       a.section === "RESPONSABILIDADES" ||
       a.section === "SAB_RESPONSABILIDADES" ||
@@ -377,9 +407,9 @@ export async function getAssignmentStats(
       noRealizadas,
       sinRegistrar,
       // Las reuniones eliminadas también cuentan: su historial sigue aquí.
-      meetings: rango._count + reunionesBorradas.size,
-      primeraReunion: menorFecha(rango._min.date, fechasBorradas.min),
-      ultimaReunion: mayorFecha(rango._max.date, fechasBorradas.max),
+      meetings: pasadas.length + reunionesBorradas.size,
+      primeraReunion: menorFecha(pasadas[0] ?? null, fechasBorradas.min),
+      ultimaReunion: mayorFecha(pasadas[pasadas.length - 1] ?? null, fechasBorradas.max),
     },
   };
 }

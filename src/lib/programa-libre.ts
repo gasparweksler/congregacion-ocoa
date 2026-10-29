@@ -12,6 +12,7 @@
 
 import { meetingDatesInMonth } from "@/lib/period";
 import { monthName, weekdayName, type MeetingDays } from "@/lib/constants";
+import { type PaletaId } from "@/lib/programa-paletas";
 
 /** Qué reuniones entran en el programa. */
 export type QueDias = "ambos" | "entresemana" | "finsemana";
@@ -25,6 +26,8 @@ export type Programa = {
   /** Meses que abarca, 1..12. Puede ser más de uno. */
   meses: number[];
   queDias: QueDias;
+  /** Tonos del PDF. Por defecto los azules, que son los de siempre. */
+  paleta: PaletaId;
   columnas: Columna[];
   /** valores[fechaISO][idColumna] = lo escrito en esa casilla. */
   valores: Record<string, Record<string, string>>;

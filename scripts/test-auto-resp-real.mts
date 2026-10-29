@@ -310,7 +310,9 @@ try {
     );
 
     throw new Error("ROLLBACK");
-  });
+    // Margen de sobra: cada consulta contra Supabase cuesta una ida y vuelta
+    // completa, y aquí van decenas dentro de la misma transacción.
+  }, { timeout: 60000, maxWait: 20000 });
 } catch (e) {
   if (!(e instanceof Error) || e.message !== "ROLLBACK") throw e;
 }

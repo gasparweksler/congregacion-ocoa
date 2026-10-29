@@ -37,6 +37,7 @@ const base = (cambios: Partial<Programa> = {}): Programa => ({
   anio: 2026,
   meses: [10],
   queDias: "ambos",
+  paleta: "azules",
   columnas: [
     { id: "a", titulo: "Responsable" },
     { id: "b", titulo: "Ayudante" },

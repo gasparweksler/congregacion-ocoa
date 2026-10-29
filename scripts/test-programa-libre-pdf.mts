@@ -32,6 +32,7 @@ const programa: Programa = {
   anio: 2026,
   meses: [10, 11],
   queDias: "ambos",
+  paleta: "verdes",
   columnas: [
     { id: "a", titulo: "Responsable" },
     { id: "b", titulo: "Ayudante" },
@@ -112,6 +113,7 @@ const simple: Programa = {
   anio: 2026,
   meses: [10],
   queDias: "finsemana",
+  paleta: "grises",
   columnas: [{ id: "x", titulo: "Conductor" }],
   valores: { "2026-10-03": { x: "Pedro Ruiz" } },
 };

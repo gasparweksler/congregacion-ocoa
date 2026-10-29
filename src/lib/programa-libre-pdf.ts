@@ -13,6 +13,7 @@
 import type { jsPDF } from "jspdf";
 import type autoTableFn from "jspdf-autotable";
 import { tablasDelPrograma, type Fila, type Programa } from "@/lib/programa-libre";
+import { paletaDe } from "@/lib/programa-paletas";
 
 export function dibujarPrograma(
   doc: jsPDF,
@@ -24,10 +25,11 @@ export function dibujarPrograma(
 ): void {
   const pageW = doc.internal.pageSize.getWidth();
   const marginX = 36;
+  const paleta = paletaDe(p.paleta);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.setTextColor(30, 41, 59);
+  doc.setTextColor(...paleta.titulo);
   doc.text(p.titulo.trim().toUpperCase(), pageW / 2, 42, {
     align: "center",
     maxWidth: pageW - marginX * 2,
@@ -38,7 +40,7 @@ export function dibujarPrograma(
   if (nombre) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.setTextColor(70, 85, 105);
+    doc.setTextColor(...paleta.titulo);
     doc.text(nombre, pageW / 2, 60, { align: "center" });
     y = 76;
   }
@@ -56,22 +58,22 @@ export function dibujarPrograma(
         halign: "center",
         valign: "middle",
         cellPadding: 4,
-        lineColor: [148, 163, 184],
+        lineColor: paleta.linea,
         lineWidth: 0.5,
       },
       headStyles: {
-        fillColor: [149, 180, 216],
-        textColor: [20, 30, 50],
+        fillColor: paleta.cabecera,
+        textColor: paleta.cabeceraTexto,
         fontStyle: "bold",
       },
       columnStyles: {
-        0: { fontStyle: "bold", fillColor: [235, 240, 248], cellWidth: 90 },
+        0: { fontStyle: "bold", fillColor: paleta.columnaDia, cellWidth: 90 },
       },
       didParseCell: (data) => {
         // La fila del período (la segunda de la cabecera) va destacada.
         if (data.section === "head" && data.row.index === 1) {
           data.cell.styles.fillColor = [255, 255, 255];
-          data.cell.styles.textColor = [30, 41, 59];
+          data.cell.styles.textColor = paleta.titulo;
           data.cell.styles.fontStyle = "bold";
         }
       },
