@@ -30,6 +30,7 @@ import {
   etiquetasDeDias,
   periodoDelPrograma,
   listaDeMeses,
+  repartoDelPrograma,
   columnaTieneDatos,
   conColumna,
   sinColumna,
@@ -198,11 +199,10 @@ export function ProgramaEditor({
     }
   };
 
-  const llenas = filas.reduce(
-    (n, f) => n + p.columnas.filter((c) => (p.valores[f.iso]?.[c.id] ?? "").trim()).length,
-    0,
-  );
-  const total = filas.length * p.columnas.length;
+  const reparto = useMemo(() => repartoDelPrograma(p, filas), [p, filas]);
+  const { hermanos, casillasLlenas: llenas, casillasTotales: total } = reparto;
+  // Para la barra: todo se mide contra quien más veces está.
+  const masVeces = hermanos[0]?.veces ?? 0;
 
   return (
     <div className="space-y-6">
@@ -503,7 +503,82 @@ export function ProgramaEditor({
         </CardBody>
       </Card>
 
-      {/* ---------- 4. Descargar ---------- */}
+      {/* ---------- 5. Resumen ---------- */}
+      {/* Se recalcula con cada tecla: para repartir hace falta ver AHORA quién
+          va cargado, no después de bajar el PDF. */}
+      <Card>
+        <CardHeader
+          title="Resumen del Programa"
+          description={
+            hermanos.length > 0
+              ? `${hermanos.length} hermano(s) repartidos en ${llenas} de ${total} casillas.`
+              : "Aún no hay nombres escritos."
+          }
+        />
+        <CardBody>
+          {hermanos.length === 0 ? (
+            <p className="text-sm text-muted">
+              Según vayas escribiendo nombres arriba, aquí verás cuántas veces
+              le toca a cada hermano.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {hermanos.map((h) => {
+                // En qué columnas está, cuando está en más de una.
+                const columnas = p.columnas
+                  .filter((c) => h.porColumna[c.id])
+                  .map((c) => `${c.titulo.trim() || "Sin título"} ${h.porColumna[c.id]}`);
+                return (
+                  <li key={h.nombre} className="flex items-center gap-3">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {h.nombre}
+                      </span>
+                      {columnas.length > 1 ? (
+                        <span className="block truncate text-xs text-muted">
+                          {columnas.join(" · ")}
+                        </span>
+                      ) : null}
+                      {h.variantes.length > 1 ? (
+                        <span className="block truncate text-xs text-amber-700">
+                          Escrito de {h.variantes.length} formas:{" "}
+                          {h.variantes.join(" / ")}
+                        </span>
+                      ) : null}
+                    </span>
+
+                    {/* Barra proporcional: el desnivel se ve sin leer números. */}
+                    <span
+                      aria-hidden
+                      className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:block"
+                    >
+                      <span
+                        className="block h-full rounded-full bg-primary"
+                        style={{ width: `${masVeces ? (h.veces / masVeces) * 100 : 0}%` }}
+                      />
+                    </span>
+
+                    <span className="w-16 shrink-0 text-right text-sm tabular-nums text-foreground">
+                      <strong>{h.veces}</strong>{" "}
+                      <span className="text-muted">
+                        {h.veces === 1 ? "vez" : "veces"}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {llenas < total ? (
+            <p className="mt-3 text-xs text-muted">
+              Quedan {total - llenas} casilla(s) por rellenar.
+            </p>
+          ) : null}
+        </CardBody>
+      </Card>
+
+      {/* ---------- 6. Descargar ---------- */}
       {falta ? <Alert tone="info">{falta}</Alert> : null}
       {error ? (
         <Alert tone="error">

@@ -10,6 +10,7 @@
 // ============================================================================
 import { congregationLabel } from "../src/lib/congregation-label.js";
 import {
+  repartoDelPrograma,
   columnaTieneDatos,
   conColumna,
   sinColumna,
@@ -368,6 +369,94 @@ titulo("11. Añadir y quitar columnas");
     !columnaTieneDatos(base({ valores: { "2026-10-01": { a: "   " } } }), "a"),
     "y solo espacios cuenta como vacía",
   );
+}
+
+titulo("12. Resumen del programa: quién y cuántas veces");
+{
+  const filas = filasDelPrograma(2026, [10], "ambos", JUE_SAB);
+  const prog = base({
+    valores: {
+      "2026-10-01": { a: "Juan Pérez", b: "Pedro Ruiz" },
+      "2026-10-03": { a: "Juan Pérez", b: "Andrés Soto" },
+      "2026-10-08": { a: "Pedro Ruiz" },
+    },
+  });
+  const { hermanos, casillasLlenas, casillasTotales } = repartoDelPrograma(prog, filas);
+
+  check(hermanos.length === 3, `tres hermanos distintos (hay ${hermanos.length})`);
+  check(casillasLlenas === 5, `cinco casillas escritas (hay ${casillasLlenas})`);
+  check(
+    casillasTotales === filas.length * 2,
+    `el total son las fechas por las columnas (${casillasTotales})`,
+  );
+
+  // Ordenado por quien más veces está: es lo que se mira para repartir.
+  check(
+    hermanos[0].veces === 2 && hermanos[1].veces === 2,
+    "arriba los que están dos veces",
+  );
+  check(
+    hermanos[hermanos.length - 1].veces === 1,
+    "y abajo los que están una",
+  );
+  const juan = hermanos.find((h) => h.nombre === "Juan Pérez");
+  check(juan?.veces === 2, `Juan Pérez, dos veces (${juan?.veces})`);
+  check(
+    juan?.porColumna["a"] === 2 && juan?.porColumna["b"] === undefined,
+    "las dos en la primera columna, ninguna en la segunda",
+  );
+
+  // Pedro está en las DOS columnas: eso tiene que verse.
+  const pedro = hermanos.find((h) => h.nombre === "Pedro Ruiz");
+  check(pedro?.porColumna["a"] === 1 && pedro?.porColumna["b"] === 1, "Pedro, una en cada columna");
+
+  // Las variantes del mismo nombre son la MISMA persona.
+  const conVariantes = base({
+    valores: {
+      "2026-10-01": { a: "Juan Pérez", b: "JUAN PEREZ" },
+      "2026-10-03": { a: "juan perez", b: "" },
+    },
+  });
+  const r2 = repartoDelPrograma(conVariantes, filas);
+  check(r2.hermanos.length === 1, `tres grafías, un solo hermano (${r2.hermanos.length})`);
+  check(r2.hermanos[0].veces === 3, `contado tres veces (${r2.hermanos[0].veces})`);
+  check(
+    r2.hermanos[0].variantes.length === 3,
+    "y se guardan las tres formas, para poder avisar de la errata",
+  );
+
+  // Lo escrito en un mes que ya no está marcado NO cuenta: no va al PDF.
+  const otroMes = filasDelPrograma(2026, [11], "ambos", JUE_SAB);
+  const r3 = repartoDelPrograma(prog, otroMes);
+  check(
+    r3.hermanos.length === 0 && r3.casillasLlenas === 0,
+    "al cambiar de mes, el resumen no arrastra lo del mes anterior",
+  );
+
+  // Espacios de más no crean hermanos fantasma.
+  const conEspacios = base({ valores: { "2026-10-01": { a: "   ", b: "  Juan  Pérez  " } } });
+  const r4 = repartoDelPrograma(conEspacios, filas);
+  check(r4.casillasLlenas === 1, `una sola casilla escrita (${r4.casillasLlenas})`);
+  check(
+    r4.hermanos[0]?.nombre === "Juan Pérez",
+    `el nombre sale limpio de espacios ("${r4.hermanos[0]?.nombre}")`,
+  );
+
+  // Esta es la que cazó el fallo: con /s+/ en vez de /\s+/ se reemplazaban
+  // las eses del nombre por espacios y "Andrés Soto" llegaba como "André  oto".
+  check(
+    hermanos.some((h) => h.nombre === "Andrés Soto"),
+    `un nombre con eses llega entero (${hermanos.map((h) => h.nombre).join(" / ")})`,
+  );
+  const conEses = base({
+    valores: { "2026-10-01": { a: "Jesús Sepúlveda Sosa" } },
+  });
+  check(
+    repartoDelPrograma(conEses, filas).hermanos[0]?.nombre === "Jesús Sepúlveda Sosa",
+    `ni con muchas ("${repartoDelPrograma(conEses, filas).hermanos[0]?.nombre}")`,
+  );
+
+  check(repartoDelPrograma(base({ valores: {} }), filas).hermanos.length === 0, "sin nombres, nadie");
 }
 
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);

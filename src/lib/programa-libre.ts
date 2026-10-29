@@ -13,6 +13,7 @@
 import { meetingDatesInMonth } from "@/lib/period";
 import { monthName, weekdayName, type MeetingDays } from "@/lib/constants";
 import { type PaletaId } from "@/lib/programa-paletas";
+import { normalizeName } from "@/lib/assignment-stats";
 
 /** Qué reuniones entran en el programa. */
 export type QueDias = "ambos" | "entresemana" | "finsemana";
@@ -174,6 +175,77 @@ export function queFalta(p: Programa, filas: Fila[]): string | null {
     return "Ponle un título a las columnas.";
   }
   return null;
+}
+
+/** Cuántas veces aparece un hermano, y en qué columnas. */
+export type Reparto = {
+  /** La forma del nombre que más se repite, para enseñarla. */
+  nombre: string;
+  /** Todas las formas en que se escribió (sirve para avisar de erratas). */
+  variantes: string[];
+  veces: number;
+  /** idColumna -> cuántas veces en esa columna. */
+  porColumna: Record<string, number>;
+};
+
+/**
+ * Quién está puesto y cuántas veces, para ver de un vistazo si el reparto
+ * quedó parejo.
+ *
+ * Se cuenta SOLO sobre las fechas que de verdad entran en el programa: si se
+ * desmarca un mes, lo escrito sigue en el borrador pero no va a salir en el
+ * PDF, y contarlo engañaría.
+ *
+ * Las variantes del mismo nombre se agrupan con la misma regla que las
+ * estadísticas de asignaciones (sin tildes, sin puntos, en minúsculas), así
+ * que "Juan Pérez" y "juan perez" son la misma persona.
+ */
+export function repartoDelPrograma(
+  p: Programa,
+  filas: Fila[],
+): { hermanos: Reparto[]; casillasLlenas: number; casillasTotales: number } {
+  const porClave = new Map<
+    string,
+    { formas: Map<string, number>; veces: number; porColumna: Record<string, number> }
+  >();
+  let casillasLlenas = 0;
+
+  for (const f of filas) {
+    for (const c of p.columnas) {
+      const escrito = (p.valores[f.iso]?.[c.id] ?? "").replace(/\s+/g, " ").trim();
+      if (!escrito) continue;
+      casillasLlenas++;
+      const clave = normalizeName(escrito);
+      if (!clave) continue;
+      let r = porClave.get(clave);
+      if (!r) {
+        r = { formas: new Map(), veces: 0, porColumna: {} };
+        porClave.set(clave, r);
+      }
+      r.formas.set(escrito, (r.formas.get(escrito) ?? 0) + 1);
+      r.veces++;
+      r.porColumna[c.id] = (r.porColumna[c.id] ?? 0) + 1;
+    }
+  }
+
+  const hermanos = [...porClave.values()]
+    .map((r) => {
+      const formas = [...r.formas.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"));
+      return {
+        nombre: formas[0][0],
+        variantes: formas.map(([f]) => f),
+        veces: r.veces,
+        porColumna: r.porColumna,
+      };
+    })
+    // Primero quien más veces está: así salta a la vista quien se repite.
+    .sort((a, b) => b.veces - a.veces || a.nombre.localeCompare(b.nombre, "es"));
+
+  return {
+    hermanos,
+    casillasLlenas,
+    casillasTotales: filas.length * p.columnas.length,
+  };
 }
 
 /**
