@@ -54,8 +54,9 @@ const filas = filasDelPrograma(
 );
 console.log(`  ${filas.length} fechas en ${programa.meses.length} meses\n`);
 
+const CONGREGACION = "Congregación Ocoa";
 const doc = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
-dibujarPrograma(doc, autoTable, programa, filas);
+dibujarPrograma(doc, autoTable, programa, filas, CONGREGACION);
 const bytes = new Uint8Array(doc.output("arraybuffer") as ArrayBuffer);
 
 check(bytes.length > 1000, `el PDF tiene contenido (${bytes.length} bytes)`);
@@ -73,6 +74,10 @@ const texto = items.map((i) => i.text).join(" ").replace(/\s+/g, " ");
 check(
   texto.includes("PROGRAMA DE ASEO DEL SALÓN DEL REINO"),
   "el título sale como encabezado, en mayúsculas",
+);
+check(
+  texto.includes(CONGREGACION),
+  `el nombre de la congregación bajo el título ("${CONGREGACION}")`,
 );
 check(texto.includes("OCTUBRE 2026"), "la cabecera de octubre");
 check(texto.includes("NOVIEMBRE 2026"), "la cabecera de noviembre");
@@ -112,7 +117,7 @@ const simple: Programa = {
 };
 const filas2 = filasDelPrograma(simple.anio, simple.meses, simple.queDias, JUE_SAB);
 const doc2 = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
-dibujarPrograma(doc2, autoTable, simple, filas2);
+dibujarPrograma(doc2, autoTable, simple, filas2, "Congregación Tornagaleones");
 const texto2 = (
   await extractPdfItems(new Uint8Array(doc2.output("arraybuffer") as ArrayBuffer))
 )
@@ -122,6 +127,11 @@ const texto2 = (
 console.log("");
 check(texto2.includes("SALIDAS AL SERVICIO"), "un programa de una sola columna: el título");
 check(texto2.includes("CONDUCTOR"), "y su única columna");
+check(
+  texto2.includes("Congregación Tornagaleones"),
+  "otra congregación sale con SU nombre, no con el de la anterior",
+);
+check(!texto2.includes("Ocoa"), "y sin rastro de la otra");
 check(!texto2.includes("NOVIEMBRE"), "sin meses que no se pidieron");
 check(
   filas2.every((f) => texto2.includes(f.etiqueta)),

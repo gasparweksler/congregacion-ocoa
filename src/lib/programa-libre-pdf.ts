@@ -19,6 +19,8 @@ export function dibujarPrograma(
   autoTable: typeof autoTableFn,
   p: Programa,
   filas: Fila[],
+  /** "Congregación Ocoa": va bajo el título. */
+  congregacion = "",
 ): void {
   const pageW = doc.internal.pageSize.getWidth();
   const marginX = 36;
@@ -32,6 +34,14 @@ export function dibujarPrograma(
   });
 
   let y = 60;
+  const nombre = congregacion.trim();
+  if (nombre) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(70, 85, 105);
+    doc.text(nombre, pageW / 2, 60, { align: "center" });
+    y = 76;
+  }
   for (const tabla of tablasDelPrograma(p, filas)) {
     autoTable(doc, {
       startY: y,

@@ -8,6 +8,7 @@
 //
 //    npx tsx scripts/test-programa-libre.mts
 // ============================================================================
+import { congregationLabel } from "../src/lib/congregation-label.js";
 import {
   filasDelPrograma,
   etiquetasDeDias,
@@ -222,6 +223,37 @@ titulo("8. El nombre del archivo");
     "sin título usa un nombre por defecto",
   );
   check(nombreArchivo(base()).endsWith(".pdf"), "y termina en .pdf");
+}
+
+titulo("9. El nombre de la congregación bajo el título");
+{
+  check(
+    congregationLabel("Ocoa") === "Congregación Ocoa",
+    `"Ocoa" se imprime como "${congregationLabel("Ocoa")}"`,
+  );
+  check(
+    congregationLabel("Tornagaleones") === "Congregación Tornagaleones",
+    `"Tornagaleones" se imprime como "${congregationLabel("Tornagaleones")}"`,
+  );
+  check(
+    congregationLabel("Criollo Haitiano Talca") ===
+      "Congregación Criollo Haitiano Talca",
+    "un nombre de varias palabras",
+  );
+  check(
+    congregationLabel("Congregación Ocoa") === "Congregación Ocoa",
+    "si el nombre ya trae la palabra, no se repite",
+  );
+  check(
+    congregationLabel("CONGREGACION OCOA") === "CONGREGACION OCOA",
+    "tampoco en mayúsculas y sin tilde",
+  );
+  check(congregationLabel("") === "", "sin nombre no se inventa nada");
+  check(congregationLabel(null) === "", "y con null tampoco");
+  check(
+    congregationLabel("  Ocoa  ") === "Congregación Ocoa",
+    "se limpian los espacios de sobra",
+  );
 }
 
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);

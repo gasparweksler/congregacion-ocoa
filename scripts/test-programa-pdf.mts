@@ -14,6 +14,7 @@
 import { writeFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { buildProgramaPdf } from "../src/lib/programa-pdf.js";
+import { congregationLabel } from "../src/lib/congregation-label.js";
 import { extractPdfItems } from "../src/lib/pdf-text.js";
 import { MEETING_DAYS, monthName } from "../src/lib/constants.js";
 
@@ -58,6 +59,7 @@ const [year, month] = mejor[0].split("-").map(Number);
 console.log(`Período de prueba: ${monthName(month)} ${year}\n`);
 
 async function pdfDe(congregationId: string) {
+  const nombre = congs.find((c) => c.id === congregationId)?.name ?? "";
   const meetings = await p.meeting.findMany({
     where: {
       congregationId,
@@ -88,13 +90,20 @@ async function pdfDe(congregationId: string) {
       })),
     })),
     `${monthName(month).toUpperCase()} ${year}`,
+    congregationLabel(nombre),
   );
   // pdfjs se queda con el ArrayBuffer (lo transfiere y lo deja vacío), así que
   // se le entrega una copia y se conserva el original para guardarlo.
   const bytes = new Uint8Array(buf.byteLength);
   bytes.set(new Uint8Array(buf));
   const items = await extractPdfItems(new Uint8Array(bytes));
-  return { meetings, bytes, items, texto: norm(items.map((i) => i.text).join(" ")) };
+  return {
+    meetings,
+    bytes,
+    items,
+    etiqueta: congregationLabel(nombre),
+    texto: norm(items.map((i) => i.text).join(" ")),
+  };
 }
 
 // --- La congregación con datos en ese mes ---
@@ -108,10 +117,20 @@ const principal =
     ),
   ) ?? congs[0];
 
-const { meetings, bytes, items: itemsPrincipal, texto } = await pdfDe(principal.id);
+const {
+  meetings,
+  bytes,
+  items: itemsPrincipal,
+  texto,
+  etiqueta: etiquetaCong,
+} = await pdfDe(principal.id);
 console.log(`1. Programa de "${principal.name}": ${meetings.length} semana(s)`);
 check(meetings.length > 0, "el mes tiene reuniones de Jueves");
 check(bytes.byteLength > 1000, `el PDF se genera (${Math.round(bytes.byteLength / 1024)} KB)`);
+check(
+  texto.includes(norm(etiquetaCong)),
+  `lleva el nombre de la congregación bajo el título ("${etiquetaCong}")`,
+);
 
 console.log("\n2. Las semanas y las secciones");
 for (const m of meetings) {
@@ -249,6 +268,14 @@ for (const c of congs) {
   check(
     ajenos.length === 0,
     `"${c.name}" no recibe nombres de "${principal.name}" (${otra.meetings.length} semana(s) propias)`,
+  );
+  check(
+    otra.texto.includes(norm(otra.etiqueta)),
+    `y su PDF lleva su propio nombre ("${otra.etiqueta}")`,
+  );
+  check(
+    !otra.texto.includes(norm(etiquetaCong)),
+    `sin el nombre de "${principal.name}"`,
   );
 }
 

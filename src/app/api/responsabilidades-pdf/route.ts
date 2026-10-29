@@ -8,6 +8,8 @@ import { NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
+import { requireMeetingsAccess, congregationId } from "@/lib/access";
+import { congregationLabelOf } from "@/lib/congregation-label";
 import { parsePeriod } from "@/lib/period";
 import { monthName } from "@/lib/constants";
 import { weekdayNameOfISO } from "@/lib/dates";
@@ -28,6 +30,9 @@ const GROUP_FILLS: [number, number, number][] = [
 ];
 
 export async function GET(request: Request) {
+  // getMonthlyResponsibilities ya exige la sesión; aquí hace falta además el
+  // nombre de la congregación para la cabecera.
+  const user = await requireMeetingsAccess();
   const { searchParams } = new URL(request.url);
   const { year, month } = parsePeriod(
     searchParams.get("anio") ?? undefined,
@@ -36,10 +41,21 @@ export async function GET(request: Request) {
 
   const rows = await getMonthlyResponsibilities(year, month);
   const period = `${monthName(month).toUpperCase()} ${year}`;
+  const congregacion = await congregationLabelOf(congregationId(user));
 
   const doc = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
   const pageW = doc.internal.pageSize.getWidth();
   const marginX = 36;
+
+  /** El nombre de la congregación bajo un título. Devuelve la y siguiente. */
+  const subtitulo = (y: number): number => {
+    if (!congregacion) return y;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(70, 85, 105);
+    doc.text(congregacion, pageW / 2, y, { align: "center" });
+    return y + 14;
+  };
 
   const dateCol = (r: (typeof rows)[number]) =>
     `${weekdayNameOfISO(r.dateISO)} ${Number(r.dateISO.split("-")[2])}`;
@@ -53,7 +69,7 @@ export async function GET(request: Request) {
   });
 
   autoTable(doc, {
-    startY: 54,
+    startY: subtitulo(56),
     margin: { left: marginX, right: marginX },
     head: [
       [
@@ -160,7 +176,7 @@ export async function GET(request: Request) {
   );
 
   autoTable(doc, {
-    startY: afterY + 14,
+    startY: subtitulo(afterY + 16),
     margin: { left: marginX, right: marginX },
     head: [
       [

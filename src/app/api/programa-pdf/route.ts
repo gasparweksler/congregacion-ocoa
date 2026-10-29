@@ -11,6 +11,7 @@ import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import { parsePeriod } from "@/lib/period";
 import { monthName, MEETING_DAYS } from "@/lib/constants";
 import { buildProgramaPdf } from "@/lib/programa-pdf";
+import { congregationLabelOf } from "@/lib/congregation-label";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,10 @@ export async function GET(request: Request) {
   const desde = new Date(year, month - 1, 1, 0, 0, 0);
   const hasta = new Date(year, month, 1, 0, 0, 0);
 
+  const cong = congregationId(user);
   const meetings = await prisma.meeting.findMany({
     where: {
-      congregationId: congregationId(user),
+      congregationId: cong,
       day: MEETING_DAYS.JUEVES,
       date: { gte: desde, lt: hasta },
     },
@@ -54,6 +56,7 @@ export async function GET(request: Request) {
       })),
     })),
     `${monthName(month).toUpperCase()} ${year}`,
+    await congregationLabelOf(cong),
   );
 
   return new NextResponse(buffer, {

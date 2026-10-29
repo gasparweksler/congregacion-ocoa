@@ -48,10 +48,13 @@ function programaInicial(): Programa {
 export function ProgramaEditor({
   days,
   publishers,
+  congregacion,
 }: {
   days: MeetingDays;
   /** Para autocompletar los nombres, igual que en Responsabilidades. */
   publishers: string[];
+  /** "Congregación Ocoa": sale bajo el título del PDF. */
+  congregacion: string;
 }) {
   const [p, setP] = useState<Programa>(programaInicial);
   const [generando, setGenerando] = useState(false);
@@ -153,7 +156,7 @@ export function ProgramaEditor({
         format: "letter",
         orientation: "portrait",
       });
-      dibujarPrograma(doc, autoTable, p, filas);
+      dibujarPrograma(doc, autoTable, p, filas, congregacion);
       doc.save(nombreArchivo(p));
       setListo(true);
     } catch (e) {
@@ -180,7 +183,7 @@ export function ProgramaEditor({
       <Card>
         <CardHeader
           title="1 · Título y período"
-          description="El título sale como encabezado del PDF."
+          description={`El título sale como encabezado del PDF, y debajo "${congregacion}".`}
         />
         <CardBody className="space-y-4">
           <div>

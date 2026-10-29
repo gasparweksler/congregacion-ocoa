@@ -87,6 +87,8 @@ function fechaLarga(d: Date): string {
 export function buildProgramaPdf(
   meetings: ProgramMeeting[],
   periodo: string,
+  /** "Congregación Ocoa": va bajo el título, para saber de quién es el papel. */
+  congregacion = "",
 ): ArrayBuffer {
   const doc = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -101,15 +103,25 @@ export function buildProgramaPdf(
   doc.setFontSize(20);
   doc.setTextColor(20, 40, 75);
   doc.text("VIDA Y MINISTERIO CRISTIANOS", pageW / 2, 76, { align: "center" });
+
+  // Sin congregación (no debería pasar dentro de la app) la cabecera se queda
+  // como estaba, sin un hueco vacío.
+  const conNombre = congregacion.trim().length > 0;
+  if (conNombre) {
+    doc.setFontSize(12);
+    doc.setTextColor(40, 60, 90);
+    doc.text(congregacion.trim(), pageW / 2, 95, { align: "center" });
+  }
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(80, 90, 100);
-  doc.text(periodo, pageW / 2, 97, { align: "center" });
+  doc.text(periodo, pageW / 2, conNombre ? 114 : 97, { align: "center" });
   doc.setDrawColor(40, 60, 90);
   doc.setLineWidth(1.2);
-  doc.rect(marginX, 30, pageW - marginX * 2, 82);
+  doc.rect(marginX, 30, pageW - marginX * 2, conNombre ? 99 : 82);
 
-  let y = 128;
+  let y = conNombre ? 145 : 128;
 
   for (const m of meetings) {
     const body: Fila[] = [];

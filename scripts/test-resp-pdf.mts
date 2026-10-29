@@ -49,9 +49,23 @@ const dateCol = (r: Row) => `${DAY_LABEL[r.day]} ${Number(r.dateISO.split("-")[2
 
 doc.setFont("helvetica", "bold");
 doc.setFontSize(13);
+// El mismo formato que /api/responsabilidades-pdf, incluida la línea con el
+// nombre de la congregación: si el lector no la ignorara, leería mal la tabla.
+const CONGREGACION = "Congregación Ocoa";
+const subtitulo = (y: number): number => {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(70, 85, 105);
+  doc.text(CONGREGACION, pageW / 2, y, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(30, 41, 59);
+  return y + 14;
+};
+
 doc.text("ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO", pageW / 2, 40, { align: "center" });
 autoTable(doc, {
-  startY: 54,
+  startY: subtitulo(56),
   margin: { left: marginX, right: marginX },
   head: [
     [{ content: "DIA/MES" }, { content: "AUDIO" }, { content: "VIDEO" }, { content: "MICROFONO" }, { content: "PLATAFORMA" }],
@@ -95,7 +109,7 @@ doc.setFont("helvetica", "bold");
 doc.setFontSize(13);
 doc.text("ASIGNACIONES PARA LAS REUNIONES ACOMODACIÓN Y LIMPIEZA", pageW / 2, afterY, { align: "center" });
 autoTable(doc, {
-  startY: afterY + 14,
+  startY: subtitulo(afterY + 16),
   margin: { left: marginX, right: marginX },
   head: [
     [{ content: "DIA/MES" }, { content: "ACOMODADOR ENTRADA" }, { content: "ACOMODADOR AUDITORIO" }, { content: "LIMPIEZA POR GRUPOS" }],
