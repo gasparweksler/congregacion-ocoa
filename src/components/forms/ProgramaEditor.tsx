@@ -36,7 +36,8 @@ import {
   type QueDias,
 } from "@/lib/programa-libre";
 import { dibujarPrograma } from "@/lib/programa-libre-pdf";
-import { PALETAS, paletaDe, css, type PaletaId } from "@/lib/programa-paletas";
+import { paletaDe } from "@/lib/programa-paletas";
+import { PaletaOpciones } from "@/components/forms/PaletaOpciones";
 
 const BORRADOR = "programa-libre-borrador";
 
@@ -320,68 +321,10 @@ export function ProgramaEditor({
         title="2 · Elegir Paleta de Colores"
         description={`Ahora mismo: ${paletaDe(p.paleta).nombre}. Así se verá la tabla del PDF.`}
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PALETAS.map((pal) => {
-            const puesta = pal.id === p.paleta;
-            return (
-              <label
-                key={pal.id}
-                className={
-                  puesta
-                    ? "cursor-pointer rounded-2xl border-2 border-primary bg-surface p-3"
-                    : "cursor-pointer rounded-2xl border border-border bg-surface p-3 hover:border-primary/40"
-                }
-              >
-                <span className="mb-2 flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="paleta"
-                    value={pal.id}
-                    checked={puesta}
-                    onChange={() => set({ paleta: pal.id as PaletaId })}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-sm font-semibold text-foreground">
-                    {pal.nombre}
-                  </span>
-                </span>
-
-                {/* Ejemplo: los mismos colores que va a usar el PDF. */}
-                <span
-                  aria-hidden
-                  className="block overflow-hidden rounded-lg border"
-                  style={{ borderColor: css(pal.linea) }}
-                >
-                  <span
-                    className="flex text-[0.6rem] font-bold uppercase"
-                    style={{
-                      background: css(pal.cabecera),
-                      color: css(pal.cabeceraTexto),
-                    }}
-                  >
-                    <span className="w-14 shrink-0 px-1.5 py-1">Día</span>
-                    <span className="flex-1 px-1.5 py-1">Columna</span>
-                  </span>
-                  {["Jueves 1", "Sábado 3"].map((d) => (
-                    <span
-                      key={d}
-                      className="flex border-t text-[0.6rem] text-slate-700"
-                      style={{ borderColor: css(pal.linea) }}
-                    >
-                      <span
-                        className="w-14 shrink-0 px-1.5 py-1 font-semibold"
-                        style={{ background: css(pal.columnaDia) }}
-                      >
-                        {d}
-                      </span>
-                      <span className="flex-1 bg-white px-1.5 py-1">Hermano</span>
-                    </span>
-                  ))}
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        <PaletaOpciones
+          value={p.paleta}
+          onChange={(paleta) => set({ paleta })}
+        />
         <p className="mt-3 text-xs text-muted">
           Los tonos son suaves a propósito: estos programas se imprimen, muchas
           veces en blanco y negro, y un fondo oscuro se come el texto.

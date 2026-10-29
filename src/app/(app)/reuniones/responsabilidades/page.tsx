@@ -17,7 +17,7 @@ import { BackButton } from "@/components/BackButton";
 import { MonthlyResponsibilities } from "@/components/forms/MonthlyResponsibilities";
 import { RespVolunteers } from "@/components/forms/RespVolunteers";
 import { AutoAssignButton } from "@/components/forms/AutoAssignButton";
-import { DownloadButton } from "@/components/DownloadButton";
+import { RespPdfDownload } from "@/components/forms/RespPdfDownload";
 
 export default async function ResponsabilidadesMensualPage({
   searchParams,
@@ -68,15 +68,9 @@ export default async function ResponsabilidadesMensualPage({
         action={<BackButton href="/reuniones" />}
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <PeriodSelector year={year} month={month} />
-        <DownloadButton
-          href={`/api/responsabilidades-pdf?anio=${year}&mes=${month}`}
-          variant="primary"
-          pendingText="Generando PDF…"
-        >
-          📄 Descargar PDF
-        </DownloadButton>
+        <RespPdfDownload year={year} month={month} />
       </div>
 
       {/* Quién puede hacer cada responsabilidad, y el reparto automático que

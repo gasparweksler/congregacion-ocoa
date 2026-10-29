@@ -10,6 +10,7 @@ import autoTable from "jspdf-autotable";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import { congregationLabelOf } from "@/lib/congregation-label";
+import { paletaDe } from "@/lib/programa-paletas";
 import { parsePeriod } from "@/lib/period";
 import { monthName } from "@/lib/constants";
 import { weekdayNameOfISO } from "@/lib/dates";
@@ -20,6 +21,9 @@ export const dynamic = "force-dynamic";
 // reunión ya no es fijo, lo elige cada congregación.
 
 // Colores suaves rotativos para los grupos de limpieza (como la referencia).
+// No siguen la paleta elegida a propósito: aquí el color no decora, dice de
+// qué grupo es la semana. Con cinco tonos del mismo color dejarían de
+// distinguirse, sobre todo impresos en blanco y negro.
 const GROUP_FILLS: [number, number, number][] = [
   [252, 224, 168], // ámbar
   [246, 178, 178], // rojo suave
@@ -42,6 +46,7 @@ export async function GET(request: Request) {
   const rows = await getMonthlyResponsibilities(year, month);
   const period = `${monthName(month).toUpperCase()} ${year}`;
   const congregacion = await congregationLabelOf(congregationId(user));
+  const paleta = paletaDe(searchParams.get("paleta"));
 
   const doc = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -52,7 +57,7 @@ export async function GET(request: Request) {
     if (!congregacion) return y;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.setTextColor(70, 85, 105);
+    doc.setTextColor(...paleta.titulo);
     doc.text(congregacion, pageW / 2, y, { align: "center" });
     return y + 14;
   };
@@ -63,7 +68,7 @@ export async function GET(request: Request) {
   // ---- Tabla 1: Audio y Video ----
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.setTextColor(30, 41, 59);
+  doc.setTextColor(...paleta.titulo);
   doc.text("ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO", pageW / 2, 40, {
     align: "center",
   });
@@ -96,16 +101,20 @@ export async function GET(request: Request) {
       halign: "center",
       valign: "middle",
       cellPadding: 4,
-      lineColor: [148, 163, 184],
+      lineColor: paleta.linea,
       lineWidth: 0.5,
     },
-    headStyles: { fillColor: [149, 180, 216], textColor: [20, 30, 50], fontStyle: "bold" },
-    columnStyles: { 0: { fontStyle: "bold", fillColor: [235, 240, 248] } },
+    headStyles: {
+      fillColor: paleta.cabecera,
+      textColor: paleta.cabeceraTexto,
+      fontStyle: "bold",
+    },
+    columnStyles: { 0: { fontStyle: "bold", fillColor: paleta.columnaDia } },
     didParseCell: (data) => {
       // Fila del período (segunda del head) centrada y destacada.
       if (data.section === "head" && data.row.index === 1) {
         data.cell.styles.fillColor = [255, 255, 255];
-        data.cell.styles.textColor = [30, 41, 59];
+        data.cell.styles.textColor = paleta.titulo;
         data.cell.styles.fontStyle = "bold";
       }
     },
@@ -168,6 +177,7 @@ export async function GET(request: Request) {
       .finalY + 28;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
+  doc.setTextColor(...paleta.titulo);
   doc.text(
     "ASIGNACIONES PARA LAS REUNIONES ACOMODACIÓN Y LIMPIEZA",
     pageW / 2,
@@ -193,18 +203,22 @@ export async function GET(request: Request) {
       halign: "center",
       valign: "middle",
       cellPadding: 4,
-      lineColor: [148, 163, 184],
+      lineColor: paleta.linea,
       lineWidth: 0.5,
     },
-    headStyles: { fillColor: [168, 208, 168], textColor: [20, 40, 20], fontStyle: "bold" },
+    headStyles: {
+      fillColor: paleta.cabecera,
+      textColor: paleta.cabeceraTexto,
+      fontStyle: "bold",
+    },
     columnStyles: {
-      0: { fontStyle: "bold", fillColor: [235, 244, 235], cellWidth: 90 },
+      0: { fontStyle: "bold", fillColor: paleta.columnaDia, cellWidth: 90 },
       3: { cellWidth: 150 }, // Limpieza más ancha (celda grande).
     },
     didParseCell: (data) => {
       if (data.section === "head" && data.row.index === 1) {
         data.cell.styles.fillColor = [255, 255, 255];
-        data.cell.styles.textColor = [30, 41, 59];
+        data.cell.styles.textColor = paleta.titulo;
         data.cell.styles.fontStyle = "bold";
       }
     },

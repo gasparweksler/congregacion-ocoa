@@ -140,5 +140,21 @@ titulo("5. El PDF sale con la paleta elegida");
   );
 }
 
+titulo("6. Lo que puede llegar por la URL de /api/responsabilidades-pdf");
+{
+  // searchParams.get() devuelve null si el parámetro no viene, y texto
+  // suelto si alguien lo escribe a mano. Nada de eso debe romper el PDF.
+  check(paletaDe(null).id === "azules", "sin parámetro: azules");
+  check(paletaDe("").id === "azules", "vacío: azules");
+  check(paletaDe("AZULES").id === "azules", "en mayúsculas no coincide, así que azules");
+  check(paletaDe("<script>").id === "azules", "basura: azules");
+  for (const pal of PALETAS) {
+    check(
+      paletaDe(pal.id).id === pal.id,
+      `"${pal.id}" devuelve ${pal.nombre}`,
+    );
+  }
+}
+
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);
 process.exit(fallos === 0 ? 0 : 1);
