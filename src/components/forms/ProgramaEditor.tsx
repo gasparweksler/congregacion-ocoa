@@ -30,6 +30,10 @@ import {
   etiquetasDeDias,
   periodoDelPrograma,
   listaDeMeses,
+  columnaTieneDatos,
+  conColumna,
+  sinColumna,
+  MAX_COLUMNAS,
   nombreArchivo,
   queFalta,
   type Programa,
@@ -127,16 +131,25 @@ export function ProgramaEditor({
     }));
   };
 
-  const cambiarNumeroColumnas = (cuantas: number) => {
-    const n = Math.min(8, Math.max(1, cuantas));
-    if (n === p.columnas.length) return;
-    if (n < p.columnas.length) {
-      set({ columnas: p.columnas.slice(0, n) });
+  const añadirColumna = () => {
+    setListo(false);
+    setP((prev) => conColumna(prev, nuevaColumna(prev.columnas.length + 1)));
+  };
+
+  const quitarColumna = (id: string) => {
+    if (p.columnas.length <= 1) return;
+    const col = p.columnas.find((c) => c.id === id);
+    // Avisar solo si se va a perder algo: preguntar siempre cansa.
+    if (
+      columnaTieneDatos(p, id) &&
+      !window.confirm(
+        `La columna "${col?.titulo.trim() || "sin título"}" tiene nombres escritos. ¿Quitarla igual?`,
+      )
+    ) {
       return;
     }
-    const añadidas = [...p.columnas];
-    for (let i = p.columnas.length; i < n; i++) añadidas.push(nuevaColumna(i + 1));
-    set({ columnas: añadidas });
+    setListo(false);
+    setP((prev) => sinColumna(prev, id));
   };
 
   const renombrarColumna = (id: string, titulo: string) => {
@@ -335,24 +348,66 @@ export function ProgramaEditor({
       <Card>
         <CardHeader
           title="3 · Columnas de la tabla"
-          description="Tú decides cuántas son y cómo se llaman."
+          description="Tú decides cuántas son y cómo se llama cada una."
         />
         <CardBody className="space-y-4">
-          <div className="sm:w-48">
-            <Label htmlFor="ncols">¿Cuántas columnas?</Label>
-            <Input
-              id="ncols"
-              type="number"
-              min={1}
-              max={8}
-              value={p.columnas.length}
-              onChange={(e) => cambiarNumeroColumnas(Number(e.target.value))}
-            />
+          {/* Botones y no un campo de número: atado al número de columnas, el
+              campo recortaba en cada tecla, así que escribir "2" sobre un "1"
+              se leía como "12" y saltaba a 8. Así no hay número inválido que
+              valga. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-foreground">
+              Columnas:
+            </span>
+            <div className="inline-flex items-center gap-1 rounded-[10px] border border-border bg-surface p-1">
+              <button
+                type="button"
+                onClick={() => quitarColumna(p.columnas[p.columnas.length - 1].id)}
+                disabled={p.columnas.length <= 1}
+                aria-label="Quitar una columna"
+                className="h-8 w-8 rounded-md text-lg font-semibold text-foreground transition-colors hover:bg-slate-100 disabled:opacity-30"
+              >
+                −
+              </button>
+              <span
+                aria-live="polite"
+                className="w-8 text-center text-sm font-semibold tabular-nums text-foreground"
+              >
+                {p.columnas.length}
+              </span>
+              <button
+                type="button"
+                onClick={añadirColumna}
+                disabled={p.columnas.length >= MAX_COLUMNAS}
+                aria-label="Añadir una columna"
+                className="h-8 w-8 rounded-md text-lg font-semibold text-foreground transition-colors hover:bg-slate-100 disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
+            <span className="text-xs text-muted">
+              {p.columnas.length >= MAX_COLUMNAS
+                ? "Es el máximo que cabe en la hoja."
+                : `Hasta ${MAX_COLUMNAS}.`}
+            </span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {p.columnas.map((c, i) => (
               <div key={c.id}>
-                <Label htmlFor={`col-${c.id}`}>Título de la columna {i + 1}</Label>
+                <div className="mb-1 flex items-baseline justify-between gap-2">
+                  <Label htmlFor={`col-${c.id}`}>Columna {i + 1}</Label>
+                  {/* Quitar ESTA, no la última: si sobra la del medio, antes
+                      había que borrar las de atrás y volver a escribirlas. */}
+                  {p.columnas.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => quitarColumna(c.id)}
+                      className="text-xs font-semibold text-red-600 hover:underline"
+                    >
+                      Quitar
+                    </button>
+                  ) : null}
+                </div>
                 <Input
                   id={`col-${c.id}`}
                   value={c.titulo}

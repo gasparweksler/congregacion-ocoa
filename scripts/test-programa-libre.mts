@@ -10,6 +10,10 @@
 // ============================================================================
 import { congregationLabel } from "../src/lib/congregation-label.js";
 import {
+  columnaTieneDatos,
+  conColumna,
+  sinColumna,
+  MAX_COLUMNAS,
   listaDeMeses,
   filasDelPrograma,
   etiquetasDeDias,
@@ -295,6 +299,74 @@ titulo("10. Cómo se enseña en pantalla qué meses se marcaron");
   check(
     filasDelPrograma(2026, [11], "ambos", JUE_SAB).length < dosMeses.length,
     "y solo noviembre da menos que los dos juntos",
+  );
+}
+
+titulo("11. Añadir y quitar columnas");
+{
+  const conTres = base({
+    columnas: [
+      { id: "a", titulo: "Responsable" },
+      { id: "b", titulo: "Ayudante" },
+      { id: "c", titulo: "Zona" },
+    ],
+    valores: {
+      "2026-10-01": { a: "Juan", b: "Pedro", c: "Auditorio" },
+      "2026-10-08": { b: "Andrés" },
+    },
+  });
+
+  // El fallo de verdad: quitar la del MEDIO y que las otras sigan enteras.
+  const sinB = sinColumna(conTres, "b");
+  check(sinB.columnas.length === 2, `quedan dos columnas (quedan ${sinB.columnas.length})`);
+  check(
+    sinB.columnas.map((c) => c.id).join(",") === "a,c",
+    "se fue la del medio y quedaron la primera y la tercera, en su orden",
+  );
+  check(
+    sinB.valores["2026-10-01"].a === "Juan" && sinB.valores["2026-10-01"].c === "Auditorio",
+    "lo escrito en las otras dos no se toca",
+  );
+  check(
+    sinB.valores["2026-10-01"].b === undefined,
+    "y lo de la quitada no se queda colgado en el borrador",
+  );
+  check(
+    sinB.valores["2026-10-08"] === undefined,
+    "una fecha que solo tenía esa columna desaparece entera",
+  );
+
+  // Nunca sin columnas.
+  const unaSola = base({ columnas: [{ id: "a", titulo: "Responsable" }], valores: {} });
+  check(
+    sinColumna(unaSola, "a").columnas.length === 1,
+    "con una sola columna, quitarla no la quita: la tabla quedaría vacía",
+  );
+
+  // Ni más de las que caben.
+  let muchas = base({ columnas: [{ id: "a", titulo: "A" }], valores: {} });
+  for (let i = 0; i < 20; i++) {
+    muchas = conColumna(muchas, { id: `x${i}`, titulo: `X${i}` });
+  }
+  check(
+    muchas.columnas.length === MAX_COLUMNAS,
+    `por mucho que se pulse, se para en ${MAX_COLUMNAS} (quedaron ${muchas.columnas.length})`,
+  );
+
+  // Añadir no toca lo ya escrito.
+  const masUna = conColumna(conTres, { id: "d", titulo: "Nueva" });
+  check(masUna.columnas.length === 4, "añadir deja cuatro");
+  check(
+    masUna.valores["2026-10-01"].a === "Juan",
+    "y no borra nada de lo escrito",
+  );
+
+  // El aviso solo salta cuando hay algo que perder.
+  check(columnaTieneDatos(conTres, "c"), "una columna con nombres escritos se detecta");
+  check(!columnaTieneDatos(conTres, "d"), "una columna vacía no");
+  check(
+    !columnaTieneDatos(base({ valores: { "2026-10-01": { a: "   " } } }), "a"),
+    "y solo espacios cuenta como vacía",
   );
 }
 

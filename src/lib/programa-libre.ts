@@ -103,6 +103,37 @@ export function periodoDelPrograma(anio: number, meses: number[]): string {
     : `${ms.map((m) => monthName(m)).join(", ")} ${anio}`;
 }
 
+/** Cuántas columnas caben en la hoja. */
+export const MAX_COLUMNAS = 8;
+
+/** ¿Esa columna tiene algo escrito en alguna fecha? */
+export function columnaTieneDatos(p: Programa, id: string): boolean {
+  return Object.values(p.valores).some((fila) => (fila?.[id] ?? "").trim());
+}
+
+/** El programa con una columna más al final. Si ya están todas, igual. */
+export function conColumna(p: Programa, nueva: Columna): Programa {
+  if (p.columnas.length >= MAX_COLUMNAS) return p;
+  return { ...p, columnas: [...p.columnas, nueva] };
+}
+
+/**
+ * El programa sin esa columna, y sin las casillas que tenía escritas (si no,
+ * se quedarían colgadas en el borrador para siempre).
+ *
+ * Nunca deja la tabla sin columnas: con una sola, devuelve el programa igual.
+ */
+export function sinColumna(p: Programa, id: string): Programa {
+  if (p.columnas.length <= 1) return p;
+  const valores: Programa["valores"] = {};
+  for (const [fecha, fila] of Object.entries(p.valores)) {
+    const resto = { ...fila };
+    delete resto[id];
+    if (Object.keys(resto).length > 0) valores[fecha] = resto;
+  }
+  return { ...p, columnas: p.columnas.filter((c) => c.id !== id), valores };
+}
+
 /**
  * Los meses marcados, escritos como se dicen: "Noviembre y Diciembre",
  * "Octubre, Noviembre y Diciembre". Para que se vea en pantalla qué se eligió.
