@@ -18,7 +18,7 @@
 // ============================================================================
 
 import { revalidatePath } from "next/cache";
-import ExcelJS from "exceljs";
+import { loadWorkbook } from "@/lib/xlsx-load";
 import { prisma } from "@/lib/prisma";
 import { requireSecretary, congregationId } from "@/lib/access";
 import { publisherSchema } from "@/lib/validations";
@@ -95,12 +95,16 @@ export async function readPublishersSheetAction(
   const idPorNombre = new Map(grupos.map((g) => [g.name, g.id]));
 
   // --- Lectura del archivo ---
-  const wb = new ExcelJS.Workbook();
+  let wb;
   try {
-    const buf = Buffer.from(await file.arrayBuffer());
-    await wb.xlsx.load(buf as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    wb = await loadWorkbook(Buffer.from(await file.arrayBuffer()));
   } catch {
-    return { ...VACIO, gruposDisponibles, error: "No se pudo leer el archivo. Debe ser un .xlsx válido." };
+    return {
+      ...VACIO,
+      gruposDisponibles,
+      error:
+        "No se pudo leer el archivo. Debe ser un .xlsx válido (si lo exportaste desde otro programa, prueba a abrirlo en Excel y guardarlo de nuevo).",
+    };
   }
 
   const { rows, errors } = parsePublishersSheet(wb);

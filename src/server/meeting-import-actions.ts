@@ -9,7 +9,7 @@
 //  Acceso: Administrador o Responsable de Confirmaciones.
 // ============================================================================
 
-import ExcelJS from "exceljs";
+import { loadWorkbook } from "@/lib/xlsx-load";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
@@ -42,12 +42,14 @@ export async function importMeetingsAction(
     return { error: "Selecciona un archivo Excel (.xlsx)." };
   }
 
-  const wb = new ExcelJS.Workbook();
+  let wb;
   try {
-    const buf = Buffer.from(await file.arrayBuffer());
-    await wb.xlsx.load(buf as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    wb = await loadWorkbook(Buffer.from(await file.arrayBuffer()));
   } catch {
-    return { error: "No se pudo leer el archivo. Debe ser un .xlsx válido." };
+    return {
+      error:
+        "No se pudo leer el archivo. Debe ser un .xlsx válido (si lo exportaste desde otro programa, prueba a abrirlo en Excel y guardarlo de nuevo).",
+    };
   }
 
   // Año indicado en el formulario: solo se usa si el archivo no lo trae

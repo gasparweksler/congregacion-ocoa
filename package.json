@@ -50,7 +50,8 @@
     "test:programa-libre": "tsx scripts/test-programa-libre.mts",
     "test:programa-libre-pdf": "tsx scripts/test-programa-libre-pdf.mts",
     "test:fecha-real": "tsx scripts/test-fecha-real.mts",
-    "test:paletas": "tsx scripts/test-paletas.mts"
+    "test:paletas": "tsx scripts/test-paletas.mts",
+    "test:xlsx-imagen": "tsx scripts/test-xlsx-con-imagen.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
