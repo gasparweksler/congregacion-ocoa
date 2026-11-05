@@ -53,7 +53,9 @@
     "test:paletas": "tsx scripts/test-paletas.mts",
     "test:xlsx-imagen": "tsx scripts/test-xlsx-con-imagen.mts",
     "test:simultaneo-prog": "tsx scripts/test-simultaneo-programas.mts",
-    "test:auditoria": "tsx scripts/test-auditoria-borrado.mts"
+    "test:auditoria": "tsx scripts/test-auditoria-borrado.mts",
+    "test:guia": "tsx scripts/test-guia-pdf.mts",
+    "test:guia-real": "tsx scripts/test-guia-pdf-real.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

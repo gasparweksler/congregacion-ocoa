@@ -27,6 +27,11 @@ export type PdfItem = {
   y: number; // línea base (mayor = más arriba en la página)
   width: number;
   page: number;
+  // Opcionales: los usa el lector de la Guía de actividades, que necesita
+  // distinguir un título (negrita, cuerpo mayor) del texto corrido. Quien no
+  // los necesite puede ignorarlos.
+  height?: number; // cuerpo aproximado de la letra, en puntos
+  font?: string; // nombre interno de la fuente ("g_d0_f3")
 };
 
 export type ParsedRespRow = {

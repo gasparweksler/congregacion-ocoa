@@ -20,6 +20,16 @@ const variants: Record<Variant, string> = {
     "border border-border bg-surface text-foreground hover:bg-slate-50",
 };
 
+/** Sin cuerpo es una descarga normal (GET); con cuerpo va en POST como JSON. */
+function peticion(cuerpo?: unknown): RequestInit | undefined {
+  if (cuerpo === undefined) return undefined;
+  return {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cuerpo),
+  };
+}
+
 /**
  * La descarga en sí, para los sitios que no quieren el botón de abajo sino su
  * propio diseño (p. ej. las tarjetas de Exportar).
@@ -29,13 +39,19 @@ export function useFileDownload() {
   const [error, setError] = useState<string | null>(null);
   const enCurso = useRef(false);
 
-  const descargar = async (href: string) => {
+  /**
+   * `cuerpo` convierte la descarga en POST: hay archivos que el servidor no
+   * puede generar solo con la dirección porque los datos están en la pantalla
+   * (la planilla de Vida y Ministerio se arma con el programa leído del PDF,
+   * que se revisa y se corrige antes de descargar).
+   */
+  const descargar = async (href: string, cuerpo?: unknown) => {
     if (enCurso.current) return;
     enCurso.current = true;
     setPending(href);
     setError(null);
     try {
-      const res = await fetch(href);
+      const res = await fetch(href, peticion(cuerpo));
       if (!res.ok) {
         let detalle = "";
         try {
@@ -83,6 +99,12 @@ export function DownloadButton({
   /** Aviso bajo el botón cuando la espera puede ser larga. */
   hint,
   disabled,
+  /**
+   * Si se indica, el archivo se pide por POST con estos datos en JSON: para
+   * los que el servidor no puede generar solo con la dirección porque los
+   * datos están en la pantalla.
+   */
+  body,
 }: {
   href: string;
   children: React.ReactNode;
@@ -91,6 +113,7 @@ export function DownloadButton({
   pendingText?: string;
   hint?: string;
   disabled?: boolean;
+  body?: unknown;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +126,7 @@ export function DownloadButton({
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(href);
+      const res = await fetch(href, peticion(body));
       if (!res.ok) {
         // El servidor responde JSON cuando rechaza la petición.
         let detalle = "";

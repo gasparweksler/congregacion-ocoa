@@ -11,6 +11,8 @@ import { installPdfNodePolyfills } from "@/lib/pdf-node-polyfills";
 type TextItemLike = {
   str?: string;
   width?: number;
+  height?: number;
+  fontName?: string;
   transform?: number[];
 };
 
@@ -59,6 +61,10 @@ export async function extractPdfItems(data: Uint8Array): Promise<PdfItem[]> {
         y: t[5],
         width: raw.width ?? 0,
         page: p,
+        // Cuerpo de la letra y fuente: con ellos se distingue un título de un
+        // párrafo sin depender de lo que diga el texto.
+        height: raw.height ?? Math.abs(t[3] ?? 0),
+        font: raw.fontName ?? "",
       });
     }
     page.cleanup();

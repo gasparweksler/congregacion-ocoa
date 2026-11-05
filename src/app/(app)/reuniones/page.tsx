@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DownloadButton } from "@/components/DownloadButton";
 import { cn } from "@/lib/cn";
 import {
   requireMeetingsAccess,
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui";
 import { MeetingCreateForm } from "@/components/forms/MeetingCreateForm";
 import { MeetingImport } from "@/components/forms/MeetingImport";
+import { GuiaPdfPlanilla } from "@/components/forms/GuiaPdfPlanilla";
 import { ProgramaPdfDownload } from "@/components/forms/ProgramaPdfDownload";
 import { MeetingDaysForm } from "@/components/forms/MeetingDaysForm";
 import { getMeetingDays } from "@/lib/meeting-days";
@@ -156,19 +156,9 @@ export default async function ReunionesPage({
             description="Crea varias reuniones de una vez desde una plantilla."
             bodyClassName="space-y-4"
           >
-            {/* La planilla en blanco se descarga tal cual, para completarla y
-                subirla después aquí mismo. */}
-            <div>
-              <DownloadButton
-                href="/api/plantilla-vymc"
-                pendingText="Preparando…"
-              >
-                📄 Descargar Planilla Excel
-              </DownloadButton>
-              <p className="mt-1.5 text-xs text-muted">
-                Complétala con el programa del mes y súbela aquí abajo.
-              </p>
-            </div>
+            {/* La planilla: en blanco, o ya escrita con el programa del PDF de
+                la Guía de actividades si se sube uno. */}
+            <GuiaPdfPlanilla />
 
             {/* El programa ya cargado, en PDF para imprimir y repartir. */}
             <div className="border-t border-border pt-4">
