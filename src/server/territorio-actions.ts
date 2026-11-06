@@ -17,6 +17,7 @@ import {
   territorySchema,
   territoryVisitSchema,
   serviceOutingSchema,
+  tarjetaImportadaSchema,
 } from "@/lib/validations";
 import {
   fechaDeISO,
@@ -25,6 +26,8 @@ import {
   siguienteNumero,
   TURNOS,
   PRESET_KINDS,
+  type ResultadoImportacion,
+  type PaginaImportada,
 } from "@/lib/territorios";
 import { monthName } from "@/lib/constants";
 
@@ -539,4 +542,186 @@ export async function deleteMapaAction(formData: FormData): Promise<void> {
   });
 
   refrescar(territorio.id);
+}
+
+// ---------------------------------------------------------------------------
+//  IMPORTAR TARJETAS EN PDF
+// ---------------------------------------------------------------------------
+
+/** Respuesta de la importación cuando no se pudo crear nada. */
+function importacionFallida(error: string): ResultadoImportacion {
+  return { ok: false, error, creados: 0, yaExistian: 0, paginas: [] };
+}
+
+/**
+ * Crea los territorios que la pantalla leyó del PDF de tarjetas.
+ *
+ * Reglas, pensadas para que volver a subir el mismo PDF no rompa nada:
+ *  - un número que ya existe NO se toca ni se duplica; se devuelve su id
+ *    para que, si se pidió, su página del PDF se guarde como mapa;
+ *  - una tarjeta sin número recibe el siguiente libre;
+ *  - si el PDF trae dos veces el mismo número, se crea una sola vez.
+ *
+ * Devuelve a qué territorio quedó cada página: eso es lo que necesita el
+ * navegador para subir después los mapas, sin volver a preguntar nada.
+ */
+export async function importarTarjetasAction(
+  json: string,
+): Promise<ResultadoImportacion> {
+  const user = await requireSecretary();
+  const cong = congregationId(user);
+
+  let crudas: unknown;
+  try {
+    crudas = JSON.parse(json);
+  } catch {
+    return importacionFallida("No se pudo leer la lista de tarjetas.");
+  }
+  if (!Array.isArray(crudas)) {
+    return importacionFallida("La lista de tarjetas no es válida.");
+  }
+  if (crudas.length === 0) {
+    return importacionFallida("No hay ninguna tarjeta marcada para crear.");
+  }
+  if (crudas.length > 300) {
+    return importacionFallida(
+      `Son ${crudas.length} tarjetas de una vez y el máximo es 300.`,
+    );
+  }
+
+  const parsed = tarjetaImportadaSchema.array().safeParse(crudas);
+  if (!parsed.success) {
+    return importacionFallida(
+      parsed.error.issues[0]?.message ?? "Hay datos inválidos en la lista.",
+    );
+  }
+
+  const existentes = await prisma.territory.findMany({
+    where: { congregationId: cong },
+    select: { id: true, number: true, name: true, order: true },
+  });
+  const porNumero = new Map(existentes.map((t) => [t.number, t]));
+  const usados = new Set(existentes.map((t) => t.number));
+  let orden = existentes.reduce((m, t) => Math.max(m, t.order), 0);
+
+  const paginas: PaginaImportada[] = [];
+  const nuevos: {
+    pagina: number;
+    number: number;
+    name: string;
+    order: number;
+  }[] = [];
+  let repetidasEnElPdf = 0;
+
+  for (const fila of parsed.data) {
+    const nombre = fila.nombre.slice(0, 120).trim();
+    if (!nombre) continue;
+    const numero = fila.numero ?? siguienteNumero([...usados, 0]);
+
+    const yaEsta = porNumero.get(numero);
+    if (yaEsta) {
+      paginas.push({
+        pagina: fila.pagina,
+        territoryId: yaEsta.id,
+        numero,
+        nombre: yaEsta.name,
+        nuevo: false,
+      });
+      continue;
+    }
+    if (usados.has(numero)) {
+      repetidasEnElPdf += 1;
+      continue;
+    }
+
+    usados.add(numero);
+    orden += 1;
+    nuevos.push({
+      pagina: fila.pagina,
+      number: numero,
+      name: nombre,
+      order: orden,
+    });
+  }
+
+  // createManyAndReturn: hace falta el id de cada uno para poder guardar su
+  // mapa justo después. skipDuplicates: si alguien creó ese mismo número a la
+  // vez, no se cae la importación entera.
+  const creados =
+    nuevos.length > 0
+      ? await prisma.territory.createManyAndReturn({
+          data: nuevos.map((n) => ({
+            congregationId: cong,
+            number: n.number,
+            name: n.name,
+            order: n.order,
+          })),
+          skipDuplicates: true,
+          select: { id: true, number: true, name: true },
+        })
+      : [];
+
+  const creadoPorNumero = new Map(creados.map((c) => [c.number, c]));
+  for (const n of nuevos) {
+    const c = creadoPorNumero.get(n.number);
+    if (!c) continue;
+    paginas.push({
+      pagina: n.pagina,
+      territoryId: c.id,
+      numero: c.number,
+      nombre: c.name,
+      nuevo: true,
+    });
+  }
+  paginas.sort((a, b) => a.pagina - b.pagina || a.numero - b.numero);
+
+  const yaExistian = paginas.filter((p) => !p.nuevo).length;
+
+  if (creados.length === 0 && yaExistian === 0) {
+    return importacionFallida(
+      "No se pudo crear ninguno. Revisa los números y los nombres.",
+    );
+  }
+
+  await logAudit({
+    userId: user.id,
+    action: "CREAR",
+    entity: "Territorio",
+    details:
+      `Importación desde PDF de tarjetas: ${creados.length} territorio(s) creados` +
+      (yaExistian > 0 ? `, ${yaExistian} ya existían` : "") +
+      (repetidasEnElPdf > 0 ? `, ${repetidasEnElPdf} repetidas en el PDF` : "") +
+      ".",
+  });
+
+  refrescar();
+
+  const partes: string[] = [];
+  partes.push(
+    creados.length === 1
+      ? "Se creó 1 territorio"
+      : `Se crearon ${creados.length} territorios`,
+  );
+  if (yaExistian > 0) {
+    partes.push(
+      yaExistian === 1
+        ? "1 ya existía y se dejó como estaba"
+        : `${yaExistian} ya existían y se dejaron como estaban`,
+    );
+  }
+  if (repetidasEnElPdf > 0) {
+    partes.push(
+      `${repetidasEnElPdf} ${
+        repetidasEnElPdf === 1 ? "tarjeta repetía" : "tarjetas repetían"
+      } un número y no se duplicaron`,
+    );
+  }
+
+  return {
+    ok: true,
+    mensaje: partes.join(" · ") + ".",
+    creados: creados.length,
+    yaExistian,
+    paginas,
+  };
 }

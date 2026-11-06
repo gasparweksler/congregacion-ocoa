@@ -43,6 +43,11 @@ export type Linea = {
   y: number;
   /** Borde izquierdo del primer trozo. */
   x: number;
+  /**
+   * Borde derecho del último trozo. Opcional porque las pruebas construyen
+   * líneas a mano, donde la posición exacta no importa.
+   */
+  fin?: number;
   texto: string;
   /** Cuerpo aproximado de la fuente dominante, en puntos. */
   alto: number;
@@ -300,6 +305,7 @@ export function lineasDePdf(frags: Fragmento[]): Linea[] {
         col,
         y: s.y,
         x: s.x,
+        fin: s.fin,
         texto: textoDe(s.frags),
         alto,
         fuentes: [...cuenta.entries()]

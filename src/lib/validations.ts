@@ -177,5 +177,25 @@ export const serviceOutingSchema = z.object({
   captainName: z.string().trim().max(120, "Nombre de capitán demasiado largo"),
 });
 
+/**
+ * Una tarjeta leída del PDF, tal como llega de la pantalla de importación.
+ * El número puede venir vacío: la tarjeta no lo traía y se le pondrá el
+ * siguiente libre.
+ */
+export const tarjetaImportadaSchema = z.object({
+  pagina: z.coerce.number().int().min(1).max(5000),
+  numero: z.coerce
+    .number()
+    .int("El número debe ser entero")
+    .min(1, "El número debe ser 1 o mayor")
+    .max(9999, "El número es demasiado grande")
+    .nullable(),
+  nombre: z
+    .string()
+    .trim()
+    .min(1, "Hay una tarjeta sin nombre")
+    .max(120, "Un nombre es demasiado largo"),
+});
+
 export type TerritoryInput = z.infer<typeof territorySchema>;
 export type ServiceOutingInput = z.infer<typeof serviceOutingSchema>;

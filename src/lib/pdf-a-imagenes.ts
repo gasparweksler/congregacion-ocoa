@@ -45,7 +45,7 @@ const cederTurno = () =>
  * publicar el archivo del worker en una dirección aparte, que es justo lo
  * que se rompe al desplegar.
  */
-async function prepararWorker(): Promise<void> {
+export async function prepararWorker(): Promise<void> {
   const g = globalThis as unknown as Record<string, unknown>;
   if (g.pdfjsWorker) return;
   g.pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");

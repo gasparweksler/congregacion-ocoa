@@ -57,7 +57,8 @@
     "test:auditoria": "tsx scripts/test-auditoria-borrado.mts",
     "test:guia": "tsx scripts/test-guia-pdf.mts",
     "test:guia-real": "tsx scripts/test-guia-pdf-real.mts",
-    "test:territorios": "tsx scripts/test-territorios.mts"
+    "test:territorios": "tsx scripts/test-territorios.mts",
+    "test:tarjetas": "tsx scripts/test-importar-tarjetas.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

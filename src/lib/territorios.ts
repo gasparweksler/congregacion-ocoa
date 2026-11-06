@@ -447,5 +447,37 @@ export function repartoPorOrden(
 //  exportar funciones: una constante importada desde una pantalla rompería
 //  la compilación.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//  IMPORTAR TARJETAS EN PDF
+// ---------------------------------------------------------------------------
+
+/** Una tarjeta que la pantalla manda a crear. */
+export type TarjetaParaCrear = {
+  pagina: number;
+  numero: number | null;
+  nombre: string;
+};
+
+/** Dónde acabó cada página del PDF: en qué territorio, nuevo o ya existente. */
+export type PaginaImportada = {
+  pagina: number;
+  territoryId: string;
+  numero: number;
+  nombre: string;
+  nuevo: boolean;
+};
+
+/** Lo que devuelve la importación, para poder seguir con los mapas. */
+export type ResultadoImportacion = {
+  ok: boolean;
+  /** Qué salió mal, si salió mal. */
+  error?: string;
+  /** Qué se hizo, en palabras. */
+  mensaje?: string;
+  creados: number;
+  yaExistian: number;
+  paginas: PaginaImportada[];
+};
+
 export const PRESET_KINDS = { CAPITAN: "CAPITAN", LUGAR: "LUGAR" } as const;
 export type PresetKind = (typeof PRESET_KINDS)[keyof typeof PRESET_KINDS];

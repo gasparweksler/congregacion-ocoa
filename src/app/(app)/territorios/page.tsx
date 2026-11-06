@@ -137,6 +137,9 @@ export default async function TerritoriosPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
+        <LinkButton href="/territorios/importar" variant="secondary">
+          📄 Subir territorios en PDF
+        </LinkButton>
         <LinkButton href="/territorios/mapas" variant="secondary">
           🗺️ Mapas de los territorios
         </LinkButton>
@@ -210,7 +213,7 @@ export default async function TerritoriosPage() {
             {territorios.length === 0 ? (
               <EmptyState
                 title="Todavía no hay territorios"
-                description="Agrega el primero arriba, o pega la lista completa de una vez."
+                description="Sube el PDF de las tarjetas y se cargan solos, o agrégalos a mano aquí arriba."
               />
             ) : (
               <Table>
