@@ -142,3 +142,40 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type GroupInput = z.infer<typeof groupSchema>;
 export type PublisherInput = z.infer<typeof publisherSchema>;
 export type MonthlyReportInput = z.infer<typeof monthlyReportSchema>;
+
+// --- Territorios (Superintendente de Servicio) -----------------------------
+export const territorySchema = z.object({
+  number: z.coerce
+    .number()
+    .int("El número debe ser entero")
+    .min(1, "El número debe ser 1 o mayor")
+    .max(9999, "El número es demasiado grande"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Escribe el nombre del territorio")
+    .max(120, "El nombre es demasiado largo"),
+});
+
+export const territoryVisitSchema = z.object({
+  territoryId: z.string().min(1, "Falta el territorio"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Elige una fecha válida"),
+  note: z.string().trim().max(200, "La nota es demasiado larga").optional(),
+});
+
+/** Una salida del programa, tal como llega del editor. */
+export const serviceOutingSchema = z.object({
+  iso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida en una salida"),
+  turno: z.enum(["MANANA", "TARDE"]),
+  time: z
+    .string()
+    .trim()
+    .min(1, "Falta el horario de una salida")
+    .max(20, "Horario demasiado largo"),
+  place: z.string().trim().max(120, "Lugar demasiado largo"),
+  territoryId: z.string().max(40),
+  captainName: z.string().trim().max(120, "Nombre de capitán demasiado largo"),
+});
+
+export type TerritoryInput = z.infer<typeof territorySchema>;
+export type ServiceOutingInput = z.infer<typeof serviceOutingSchema>;

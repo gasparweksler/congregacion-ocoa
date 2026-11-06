@@ -55,6 +55,10 @@ model Congregation {
   auditLogs               AuditLog[]
   assignmentHistory       AssignmentHistory[]
   respVolunteers          ResponsibilityVolunteer[]
+  territories             Territory[]
+  territoryVisits         TerritoryVisit[]
+  serviceOutings          ServiceOuting[]
+  servicePresets          ServicePreset[]
 }
 
 // ----------------------------------------------------------------------------
@@ -455,4 +459,111 @@ model AuxPioneerSetting {
   // Antes el interruptor de 15 horas era global: cambiarlo en una congregación
   // lo cambiaba en todas.
   @@unique([congregationId, year, month])
+}
+
+// ----------------------------------------------------------------------------
+//  TERRITORIOS  (Superintendente de Servicio)
+//
+//  Cada congregación lleva sus territorios: número, nombre, su mapa y el
+//  registro de cuándo se predicó cada uno. El orden lo decide quien los
+//  administra (campo `order`), para poder subirlos y bajarlos en la lista.
+// ----------------------------------------------------------------------------
+model Territory {
+  id     String @id @default(cuid())
+  number Int // número del territorio (1, 2, 3…)
+  name   String // "Camino al Túnel"
+  order  Int // posición en la lista; se puede reordenar
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  map     TerritoryMap?
+  visits  TerritoryVisit[]
+  outings ServiceOuting[]
+
+  // Dos territorios no pueden llevar el mismo número en la misma congregación.
+  @@unique([congregationId, number])
+  @@index([congregationId, order])
+}
+
+// El mapa va en su propia tabla a propósito: así los bytes de la imagen NUNCA
+// viajan al listar los territorios, solo cuando se pide el mapa.
+model TerritoryMap {
+  territoryId String    @id
+  territory   Territory @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+
+  congregationId String
+  data           Bytes // la imagen del mapa (JPEG o PNG)
+  mime           String
+  bytes          Int // tamaño, para poder enseñar cuánto ocupa
+  /// Página del PDF de mapas de la que salió, si vino de ahí.
+  sourcePage     Int?
+
+  updatedAt DateTime @updatedAt
+
+  @@index([congregationId])
+}
+
+// Una vez que se predicó un territorio, anotada a mano.
+// Las salidas del programa (ServiceOuting) cuentan igual para las
+// estadísticas: no se copian aquí, se suman al calcular.
+model TerritoryVisit {
+  id String @id @default(cuid())
+
+  territoryId String
+  territory   Territory @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  date DateTime // a mediodía local, como el resto de las fechas
+  note String?
+
+  createdAt DateTime @default(now())
+
+  @@index([congregationId, date])
+  @@index([territoryId, date])
+}
+
+// Una salida de predicación del programa mensual.
+model ServiceOuting {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  date  DateTime // a mediodía local
+  turno String // MANANA | TARDE
+  time  String // "9:30"
+  place String // lugar de encuentro ("Salón del Reino")
+
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id], onDelete: SetNull)
+
+  captainName String // capitán de la salida
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([congregationId, date])
+  @@index([territoryId])
+}
+
+// Capitanes y lugares de encuentro guardados, para elegirlos rápido.
+model ServicePreset {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  kind  String // CAPITAN | LUGAR
+  value String
+
+  createdAt DateTime @default(now())
+
+  @@unique([congregationId, kind, value])
+  @@index([congregationId, kind])
 }

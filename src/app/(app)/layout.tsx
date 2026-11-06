@@ -75,6 +75,22 @@ export default async function AppLayout({
     // que no salen del Excel de la VyMC.
     { href: "/programas", label: "Programas", icon: "📋", group: "Reuniones" },
   ];
+  // Superintendente de Servicio: territorios, sus mapas y el programa de
+  // predicación. Va en su propio grupo porque no es ni Informes ni Reuniones.
+  const serviceItems: NavItem[] = [
+    {
+      href: "/territorios",
+      label: "Territorios",
+      icon: "📍",
+      group: "Superintendente de Servicio",
+    },
+    {
+      href: "/territorios/programa",
+      label: "Programa de Predicación",
+      icon: "🗓️",
+      group: "Superintendente de Servicio",
+    },
+  ];
   const secretaryItems: NavItem[] = [
     {
       href: "/precursores-auxiliares",
@@ -121,11 +137,12 @@ export default async function AppLayout({
     // Solo la sección Reuniones.
     navItems = [...meetingsItems, ...accountItems];
   } else if (isSecretary) {
-    // Acceso completo: Informes + Reuniones + administración.
+    // Acceso completo: Informes + Reuniones + Servicio + administración.
     navItems = [
       ...platformItems,
       ...reportsItems,
       ...meetingsItems,
+      ...serviceItems,
       ...secretaryItems,
       ...accountItems,
     ];
