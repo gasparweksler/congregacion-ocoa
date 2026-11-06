@@ -21,7 +21,12 @@ import {
   type SalidaBorrador,
   type Turno,
   type VezPredicado,
+  type PlanSemanal,
   PRESET_KINDS,
+  PRESET_LISTAS,
+  TURNOS_ORDEN,
+  planDeFilas,
+  planPorDefecto,
 } from "@/lib/territorios";
 import { deletePresetAction } from "@/server/territorio-actions";
 import { PageHeader } from "@/components/PageHeader";
@@ -51,8 +56,15 @@ export default async function ProgramaPredicacionPage({
   const desde = new Date(anio, mes - 1, 1, 0, 0, 0);
   const hasta = new Date(anio, mes, 1, 0, 0, 0);
 
-  const [territorios, salidasDelMes, presets, visitas, todasLasSalidas, congregacion] =
-    await Promise.all([
+  const [
+    territorios,
+    salidasDelMes,
+    presets,
+    visitas,
+    todasLasSalidas,
+    congregacion,
+    planFilas,
+  ] = await Promise.all([
       prisma.territory.findMany({
         where: { congregationId: cong },
         orderBy: [{ order: "asc" }, { number: "asc" }],
@@ -71,8 +83,10 @@ export default async function ProgramaPredicacionPage({
           territoryId: true,
         },
       }),
+      // Solo las listas de sugerencias: el plan de la semana vive en una
+      // fila aparte y no se enseña como un "guardado" más.
       prisma.servicePreset.findMany({
-        where: { congregationId: cong },
+        where: { congregationId: cong, kind: { in: PRESET_LISTAS } },
         orderBy: { value: "asc" },
         select: { id: true, kind: true, value: true },
       }),
@@ -85,6 +99,11 @@ export default async function ProgramaPredicacionPage({
         select: { territoryId: true, date: true },
       }),
       congregationLabelOf(cong),
+      // El plan de la semana: una fila por día.
+      prisma.servicePreset.findMany({
+        where: { congregationId: cong, kind: PRESET_KINDS.PLAN },
+        select: { value: true },
+      }),
     ]);
 
   // Qué territorios conviene proponer primero: los más olvidados.
@@ -123,6 +142,26 @@ export default async function ProgramaPredicacionPage({
   const lugares = presets
     .filter((p) => p.kind === PRESET_KINDS.LUGAR)
     .map((p) => p.value);
+
+  // El plan de la semana que se usó la última vez. Si no hay ninguno (o el
+  // guardado ya no se entiende), se propone el de siempre: sábado y domingo
+  // por la mañana. Un territorio fijo que ya no existe se deja en blanco.
+  const guardado = planDeFilas(planFilas.map((f) => f.value));
+  const idsValidos = new Set(territorios.map((t) => t.id));
+  const planInicial: PlanSemanal = (
+    guardado ?? planPorDefecto(lugares[0] ?? "Salón del Reino")
+  ).map((dia) => {
+    const copia = { ...dia };
+    for (const turno of TURNOS_ORDEN) {
+      copia[turno] = {
+        ...dia[turno],
+        territoryId: idsValidos.has(dia[turno].territoryId)
+          ? dia[turno].territoryId
+          : "",
+      };
+    }
+    return copia;
+  });
 
   return (
     <>
@@ -171,6 +210,7 @@ export default async function ProgramaPredicacionPage({
               capitanes={capitanes}
               lugares={lugares}
               salidasGuardadas={guardadas}
+              planInicial={planInicial}
               congregacion={congregacion}
             />
           </CardBody>

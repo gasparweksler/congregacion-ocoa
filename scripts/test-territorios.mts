@@ -31,8 +31,16 @@ import {
   siguienteNumero,
   tamanoLegible,
   territoriosDelPrograma,
-  turnosDeModalidad,
+  turnosDelPlan,
   ultimosMeses,
+  cuantasSalidas,
+  normalizarPlan,
+  planAFilas,
+  planDeFilas,
+  planPorDefecto,
+  planVacio,
+  resumenDelPlan,
+  type PlanSemanal,
   type Salida,
   type Territorio,
   type VezPredicado,
@@ -237,34 +245,51 @@ titulo("3. Estadísticas: las dos fuentes cuentan igual");
 }
 
 // ---------------------------------------------------------------------------
-titulo("4. Armar el programa del mes");
+titulo("4. Armar el programa del mes con el plan de la semana");
 {
   const territorios: Territorio[] = [
     { id: "t1", number: 1, name: "Camino al Túnel", order: 1 },
     { id: "t2", number: 2, name: "La Febre 1", order: 2 },
     { id: "t3", number: 3, name: "Vista Hermosa", order: 3 },
   ];
+  const ids = territorios.map((t) => t.id);
+  const DIAS_PRUEBA = [0, 1, 2, 3, 4, 5, 6];
+
+  // Atajo para marcar un turno de un día con sus datos.
+  const poner = (
+    plan: PlanSemanal,
+    dia: number,
+    turno: "MANANA" | "TARDE",
+    datos: Partial<(typeof plan)[number]["MANANA"]> = {},
+  ) => {
+    plan[dia][turno] = { ...plan[dia][turno], activo: true, ...datos };
+    return plan;
+  };
 
   check(
-    turnosDeModalidad("manana").join(",") === "MANANA" &&
-      turnosDeModalidad("tarde").join(",") === "TARDE" &&
-      turnosDeModalidad("ambos").join(",") === "MANANA,TARDE",
-    "las tres modalidades dan 1, 1 y 2 turnos",
+    planVacio().length === 7 && turnosDelPlan(planVacio()) === 0,
+    "un plan vacío tiene los siete días y ninguna salida",
+  );
+  const porDefecto = planPorDefecto("Salón del Reino");
+  check(
+    turnosDelPlan(porDefecto) === 2 &&
+      porDefecto[6].MANANA.activo &&
+      porDefecto[0].MANANA.activo,
+    "el plan de siempre es sábado y domingo por la mañana",
   );
 
-  // Enero de 2027: 5 domingos (3, 10, 17, 24 y 31).
+  // --- Solo domingos por la mañana (enero de 2027 tiene 5) ---
   const soloManana = generarSalidas({
     anio: 2027,
     mes: 1,
-    diasSemana: [0],
-    modalidad: "manana",
-    lugar: "Salón del Reino",
-    capitan: "Gastón Mondaca",
-    territoriosSugeridos: territorios.map((t) => t.id),
+    plan: poner(planVacio("Salón del Reino"), 0, "MANANA", {
+      captainName: "Gastón Mondaca",
+    }),
+    territoriosSugeridos: ids,
   });
   check(
     soloManana.length === 5,
-    `solo mañana, 5 domingos de enero = 5 salidas (${soloManana.length})`,
+    `solo domingos de mañana, 5 domingos de enero = 5 salidas (${soloManana.length})`,
   );
   check(
     soloManana.every((s) => s.turno === "MANANA" && s.time === "9:30"),
@@ -274,7 +299,7 @@ titulo("4. Armar el programa del mes");
     soloManana.every(
       (s) => s.place === "Salón del Reino" && s.captainName === "Gastón Mondaca",
     ),
-    "con el lugar y el capitán que se eligieron",
+    "con el lugar y el capitán de ese día",
   );
   check(
     soloManana.map((s) => s.territoryId).join(",") === "t1,t2,t3,t1,t2",
@@ -288,43 +313,181 @@ titulo("4. Armar el programa del mes");
     "y caen en los cinco domingos",
   );
 
-  const ambos = generarSalidas({
-    anio: 2027,
-    mes: 2,
-    diasSemana: [6, 0],
-    modalidad: "ambos",
-    lugar: "Plaza",
-    horas: { MANANA: "10:00", TARDE: "16:00" },
-  });
-  // Febrero de 2027: 4 sábados y 4 domingos = 8 días, 2 turnos cada uno.
-  check(ambos.length === 16, `mañana y tarde, 8 días = 16 salidas (${ambos.length})`);
+  // --- Cada día a su manera, que es lo que pidió la congregación ---
+  // Lunes, martes, miércoles y viernes: mañana y tarde.
+  // Jueves, sábado y domingo: solo mañana.
+  const semana = planVacio("Salón del Reino");
+  for (const d of [1, 2, 3, 5]) {
+    poner(semana, d, "MANANA", { time: "9:00", place: "Salón del Reino" });
+    poner(semana, d, "TARDE", { time: "16:00", place: "Plaza de Armas" });
+  }
+  for (const d of [4, 6, 0]) {
+    poner(semana, d, "MANANA", { time: "10:00", place: "Casa de Ana" });
+  }
+
   check(
-    ambos.filter((s) => s.turno === "MANANA").length === 8 &&
-      ambos.filter((s) => s.turno === "TARDE").length === 8,
-    "ocho de mañana y ocho de tarde",
+    turnosDelPlan(semana) === 11,
+    `cuatro días con dos turnos y tres con uno = 11 salidas por semana (${turnosDelPlan(semana)})`,
   );
   check(
-    ambos.find((s) => s.turno === "MANANA")!.time === "10:00" &&
-      ambos.find((s) => s.turno === "TARDE")!.time === "16:00",
-    "con las horas que se pusieron a mano",
+    resumenDelPlan(semana).startsWith("lunes (mañana y tarde), martes"),
+    `el resumen se lee bien: ${resumenDelPlan(semana)}`,
+  );
+
+  // Febrero de 2027: 28 días justos, 4 semanas enteras -> 11 x 4.
+  const mes = generarSalidas({ anio: 2027, mes: 2, plan: semana });
+  check(
+    cuantasSalidas(2027, 2, semana) === 44 && mes.length === 44,
+    `febrero de 2027 da 44 salidas (${mes.length}) y la cuenta previa coincide`,
+  );
+  const lunes = mes.filter((s) => fechaDeISO(s.iso)!.getDay() === 1);
+  check(
+    lunes.length === 8 &&
+      lunes.filter((s) => s.turno === "MANANA").length === 4 &&
+      lunes.filter((s) => s.turno === "TARDE").length === 4,
+    `los lunes salen dos veces cada uno (${lunes.length} salidas)`,
+  );
+  const jueves = mes.filter((s) => fechaDeISO(s.iso)!.getDay() === 4);
+  check(
+    jueves.length === 4 && jueves.every((s) => s.turno === "MANANA"),
+    `los jueves, solo de mañana (${jueves.length} salidas)`,
   );
   check(
-    ambos.every((s) => s.territoryId === ""),
-    "sin territorios sugeridos, las salidas quedan sin territorio",
+    lunes.every(
+      (s) =>
+        (s.turno === "MANANA" &&
+          s.time === "9:00" &&
+          s.place === "Salón del Reino") ||
+        (s.turno === "TARDE" &&
+          s.time === "16:00" &&
+          s.place === "Plaza de Armas"),
+    ),
+    "la mañana y la tarde del lunes llevan cada una su hora y su lugar",
   );
   check(
-    new Set(ambos.map((s) => s.key)).size === 16,
+    jueves.every((s) => s.time === "10:00" && s.place === "Casa de Ana"),
+    "y el jueves los suyos, distintos de los del lunes",
+  );
+  check(
+    mes.every((s) => s.turno === "MANANA" || s.turno === "TARDE"),
+    "no se cuela ningún turno raro",
+  );
+  check(
+    new Set(mes.map((s) => s.key)).size === 44,
     "cada fila lleva su propia llave",
   );
 
-  const soloTarde = generarSalidas({
+  // --- Territorio fijo en un día ---
+  const conFijo = planVacio("Salón del Reino");
+  poner(conFijo, 0, "MANANA", { territoryId: "t3" });
+  poner(conFijo, 6, "MANANA", {});
+  const repartidas = generarSalidas({
     anio: 2027,
-    mes: 2,
-    diasSemana: [],
-    modalidad: "tarde",
-    lugar: "Plaza",
+    mes: 1,
+    plan: conFijo,
+    territoriosSugeridos: ids,
   });
-  check(soloTarde.length === 0, "sin días elegidos no se genera nada");
+  const domingos = repartidas.filter((s) => fechaDeISO(s.iso)!.getDay() === 0);
+  const sabados = repartidas.filter((s) => fechaDeISO(s.iso)!.getDay() === 6);
+  check(
+    domingos.every((s) => s.territoryId === "t3"),
+    "el día con territorio fijo se queda siempre con el suyo",
+  );
+  check(
+    sabados.map((s) => s.territoryId).join(",") === "t1,t2,t3,t1,t2",
+    `y el fijo no gasta turno del reparto de los demás (${sabados
+      .map((s) => s.territoryId)
+      .join(",")})`,
+  );
+
+  // --- Sin turnos marcados no se genera nada ---
+  check(
+    generarSalidas({ anio: 2027, mes: 2, plan: planVacio() }).length === 0,
+    "sin ningún turno marcado no se genera ninguna salida",
+  );
+  check(
+    generarSalidas({ anio: 2027, mes: 2, plan: semana, territoriosSugeridos: [] })
+      .every((s) => s.territoryId === ""),
+    "sin territorios sugeridos, las salidas quedan sin territorio",
+  );
+
+  // --- Lo guardado se vuelve a leer, y la basura no pasa ---
+  const ida = JSON.stringify(semana);
+  const vuelta = normalizarPlan(JSON.parse(ida));
+  check(
+    vuelta !== null && JSON.stringify(vuelta) === ida,
+    "el plan se guarda y se vuelve a leer igual",
+  );
+  check(
+    normalizarPlan(null) === null &&
+      normalizarPlan([]) === null &&
+      normalizarPlan("{}") === null &&
+      normalizarPlan([1, 2, 3, 4, 5, 6, 7]) === null,
+    "lo que no es un plan se rechaza en vez de romper la pantalla",
+  );
+  const medias = normalizarPlan(
+    JSON.parse(JSON.stringify(semana)).map(() => ({ MANANA: { activo: true } })),
+  );
+  check(
+    medias !== null &&
+      medias[0].MANANA.time === "9:30" &&
+      medias[0].TARDE.activo === false &&
+      medias[0].MANANA.place === "",
+    "un plan a medias se completa con lo razonable en vez de fallar",
+  );
+  // --- Cómo se guarda: una fila por día ---
+  const filas = planAFilas(semana);
+  check(filas.length === 7, "el plan se guarda en siete filas, una por día");
+  check(
+    new Set(filas).size === 7,
+    "dos días iguales no se confunden: cada fila lleva su número de día",
+  );
+  const rehecho = planDeFilas(filas);
+  check(
+    rehecho !== null && JSON.stringify(rehecho) === JSON.stringify(semana),
+    "y el plan se rehace igual a partir de las filas",
+  );
+  check(
+    planDeFilas([]) === null && planDeFilas(["esto no es un plan"]) === null,
+    "sin filas legibles no hay plan, y no se inventa uno",
+  );
+  const aMedias = planDeFilas([filas[1], "{roto"]);
+  check(
+    aMedias !== null && aMedias[1].MANANA.activo && !aMedias[2].MANANA.activo,
+    "una fila rota no se lleva por delante a las demás",
+  );
+  // El índice de la base no admite textos largos: el peor caso debe caber.
+  const peor = planVacio("L".repeat(120));
+  for (const d of DIAS_PRUEBA) {
+    for (const turno of ["MANANA", "TARDE"] as const) {
+      peor[d][turno] = {
+        activo: true,
+        time: "H".repeat(20),
+        place: "L".repeat(120),
+        captainName: "C".repeat(120),
+        territoryId: "t".repeat(40),
+      };
+    }
+  }
+  const mayor = Math.max(
+    ...planAFilas(peor).map((f) => Buffer.byteLength(f, "utf8")),
+  );
+  check(
+    mayor < 2000,
+    `incluso con todo lleno, la fila más larga ocupa ${mayor} bytes (tope ~2.700)`,
+  );
+  const largo = normalizarPlan(
+    JSON.parse(JSON.stringify(semana)).map(() => ({
+      MANANA: { activo: true, place: "x".repeat(500), captainName: "y".repeat(500) },
+      TARDE: { activo: false },
+    })),
+  );
+  check(
+    largo !== null &&
+      largo[0].MANANA.place.length === 120 &&
+      largo[0].MANANA.captainName.length === 120,
+    "y los textos demasiado largos se recortan",
+  );
 }
 
 // ---------------------------------------------------------------------------

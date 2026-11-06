@@ -26,6 +26,8 @@ import {
   siguienteNumero,
   TURNOS,
   PRESET_KINDS,
+  normalizarPlan,
+  planAFilas,
   type ResultadoImportacion,
   type PaginaImportada,
 } from "@/lib/territorios";
@@ -482,6 +484,12 @@ export async function guardarProgramaAction(
     });
   }
 
+  // El plan de la semana (qué días y turnos se predica, con su hora, lugar y
+  // capitán) se guarda junto al programa: así el mes siguiente ya viene
+  // puesto y no hay que rellenarlo otra vez. Solo se guarda uno por
+  // congregación, así que se reemplaza el anterior.
+  await guardarPlanSemanal(cong, String(formData.get("plan") ?? ""));
+
   await logAudit({
     userId: user.id,
     action: "EDITAR",
@@ -497,6 +505,35 @@ export async function guardarProgramaAction(
         : `Programa de ${monthName(mes)} ${anio} guardado con ${filas.length} salida(s). ` +
           "Ya cuentan para las estadísticas.",
   };
+}
+
+/**
+ * Deja guardado el plan de la semana que se usó, si vino y tiene sentido.
+ *
+ * No hace fallar el guardado del programa: el plan es una comodidad, y
+ * perderlo no debe costar el mes entero de salidas.
+ */
+async function guardarPlanSemanal(cong: string, crudo: string): Promise<void> {
+  if (!crudo || crudo.length > 20000) return;
+  try {
+    const plan = normalizarPlan(JSON.parse(crudo));
+    if (!plan) return;
+    // Una fila por día (ver planAFilas): el plan entero no cabría en el
+    // índice único de la tabla.
+    const filas = planAFilas(plan).map((value) => ({
+      congregationId: cong,
+      kind: PRESET_KINDS.PLAN,
+      value,
+    }));
+    await prisma.$transaction([
+      prisma.servicePreset.deleteMany({
+        where: { congregationId: cong, kind: PRESET_KINDS.PLAN },
+      }),
+      prisma.servicePreset.createMany({ data: filas, skipDuplicates: true }),
+    ]);
+  } catch {
+    // Un plan que no se puede leer se ignora, sin molestar a nadie.
+  }
 }
 
 /** Borra un capitán o un lugar de los guardados. */

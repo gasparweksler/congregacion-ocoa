@@ -29,27 +29,183 @@ export function turnoLabel(t: string): string {
   return TURNO_LABELS[t as Turno] ?? t;
 }
 
-/** Qué salidas tiene el programa del mes. */
-export type Modalidad = "manana" | "tarde" | "ambos";
-
-export const MODALIDAD_LABELS: Record<Modalidad, string> = {
-  manana: "Solo mañana",
-  tarde: "Solo tarde",
-  ambos: "Mañana y tarde",
-};
-
-/** Los turnos que le tocan a cada día según la modalidad. */
-export function turnosDeModalidad(m: Modalidad): Turno[] {
-  if (m === "manana") return [TURNOS.MANANA];
-  if (m === "tarde") return [TURNOS.TARDE];
-  return [TURNOS.MANANA, TURNOS.TARDE];
-}
-
 /** Horas que se proponen al generar (se pueden cambiar una por una). */
 export const HORA_POR_DEFECTO: Record<Turno, string> = {
   MANANA: "9:30",
   TARDE: "15:30",
 };
+
+// ---------------------------------------------------------------------------
+//  EL PLAN DE LA SEMANA
+//
+//  Cada día de la semana se predica a su manera: hay días con salida de
+//  mañana y de tarde, días con una sola y días sin ninguna. Y cada salida
+//  tiene su hora, su lugar de encuentro, su capitán y, si se quiere, un
+//  territorio fijo. Eso es lo que guarda el plan, y de ahí salen las salidas
+//  del mes.
+// ---------------------------------------------------------------------------
+
+/** Los dos turnos, en el orden del día. */
+export const TURNOS_ORDEN: Turno[] = [TURNOS.MANANA, TURNOS.TARDE];
+
+/** Los días como los numera el navegador: 0 = domingo. */
+export const DIAS_SEMANA = [0, 1, 2, 3, 4, 5, 6];
+
+/** Los mismos días, en el orden en que se leen: de lunes a domingo. */
+export const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0];
+
+/** Lo que se hace en un turno de un día de la semana. */
+export type TurnoSemanal = {
+  /** ¿Ese día tiene salida en este turno? */
+  activo: boolean;
+  time: string;
+  place: string;
+  captainName: string;
+  /** Territorio fijo. Vacío = se reparten solos, por antigüedad. */
+  territoryId: string;
+};
+
+/** Un día de la semana, con sus dos turnos. */
+export type DiaSemanal = Record<Turno, TurnoSemanal>;
+
+/** Los siete días, del domingo (0) al sábado (6). */
+export type PlanSemanal = DiaSemanal[];
+
+function turnoEnBlanco(turno: Turno, lugar: string): TurnoSemanal {
+  return {
+    activo: false,
+    time: HORA_POR_DEFECTO[turno],
+    place: lugar,
+    captainName: "",
+    territoryId: "",
+  };
+}
+
+/** Un plan sin ninguna salida. */
+export function planVacio(lugar = ""): PlanSemanal {
+  return DIAS_SEMANA.map(() => ({
+    MANANA: turnoEnBlanco(TURNOS.MANANA, lugar),
+    TARDE: turnoEnBlanco(TURNOS.TARDE, lugar),
+  }));
+}
+
+/** El plan que se propone la primera vez: sábado y domingo por la mañana. */
+export function planPorDefecto(lugar = ""): PlanSemanal {
+  const plan = planVacio(lugar);
+  for (const dia of [6, 0]) plan[dia].MANANA.activo = true;
+  return plan;
+}
+
+/** Cuántas salidas por semana tiene el plan. */
+export function turnosDelPlan(plan: PlanSemanal): number {
+  let n = 0;
+  for (const dia of plan) {
+    for (const turno of TURNOS_ORDEN) if (dia[turno]?.activo) n += 1;
+  }
+  return n;
+}
+
+/** Cuántas salidas saldrían de este mes, sin llegar a armarlas. */
+export function cuantasSalidas(
+  anio: number,
+  mes: number,
+  plan: PlanSemanal,
+): number {
+  let n = 0;
+  const ultimo = new Date(anio, mes, 0).getDate();
+  for (let d = 1; d <= ultimo; d++) {
+    const dia = plan[new Date(anio, mes - 1, d, 12, 0, 0).getDay()];
+    if (!dia) continue;
+    for (const turno of TURNOS_ORDEN) if (dia[turno]?.activo) n += 1;
+  }
+  return n;
+}
+
+/** Un resumen en palabras: "lunes y miércoles (mañana y tarde)…". */
+export function resumenDelPlan(plan: PlanSemanal): string {
+  const partes: string[] = [];
+  for (const d of ORDEN_SEMANA) {
+    const dia = plan[d];
+    if (!dia) continue;
+    const turnos = TURNOS_ORDEN.filter((t) => dia[t]?.activo).map((t) =>
+      TURNO_LABELS[t].toLowerCase(),
+    );
+    if (turnos.length === 0) continue;
+    partes.push(`${weekdayName(d).toLowerCase()} (${turnos.join(" y ")})`);
+  }
+  return partes.length === 0 ? "ningún día" : partes.join(", ");
+}
+
+/**
+ * Comprueba que lo guardado sigue siendo un plan antes de usarlo.
+ *
+ * Lo que viene de la base es texto: pudo guardarlo una versión anterior de
+ * la pantalla, o quedar a medias. Si no encaja, se devuelve null y la
+ * pantalla empieza con el plan de siempre, en vez de romperse.
+ */
+function textoHasta(v: unknown, tope: number): string {
+  return typeof v === "string" ? v.slice(0, tope) : "";
+}
+
+/** Un día cualquiera, dejado en forma: lo que falte se rellena. */
+function normalizarDia(crudo: Record<string, unknown>): DiaSemanal {
+  const dia = {} as DiaSemanal;
+  for (const turno of TURNOS_ORDEN) {
+    const t = (crudo[turno] ?? {}) as Record<string, unknown>;
+    dia[turno] = {
+      activo: t.activo === true,
+      time: textoHasta(t.time, 20) || HORA_POR_DEFECTO[turno],
+      place: textoHasta(t.place, 120),
+      captainName: textoHasta(t.captainName, 120),
+      territoryId: textoHasta(t.territoryId, 40),
+    };
+  }
+  return dia;
+}
+
+export function normalizarPlan(crudo: unknown): PlanSemanal | null {
+  if (!Array.isArray(crudo) || crudo.length !== 7) return null;
+  const plan: PlanSemanal = [];
+  for (const dia of crudo) {
+    if (!dia || typeof dia !== "object") return null;
+    plan.push(normalizarDia(dia as Record<string, unknown>));
+  }
+  return plan;
+}
+
+/**
+ * El plan partido en una fila por día, que es como se guarda.
+ *
+ * Va por días y no de una pieza por un motivo muy concreto: la tabla de
+ * "guardados" tiene un índice único sobre el texto, y Postgres no admite
+ * entradas de índice de más de unos 2.700 bytes. Un plan entero con nombres
+ * largos los pasaría y el guardado fallaría; un día suelto no llega ni a la
+ * mitad. Cada fila lleva dentro su número de día, así que dos días iguales
+ * no se pisan entre ellos.
+ */
+export function planAFilas(plan: PlanSemanal): string[] {
+  return plan.map((dia, d) =>
+    JSON.stringify({ d, MANANA: dia.MANANA, TARDE: dia.TARDE }),
+  );
+}
+
+/** Rehace el plan a partir de sus filas. Null si no se entendió ninguna. */
+export function planDeFilas(valores: string[]): PlanSemanal | null {
+  const plan = planVacio();
+  let leidos = 0;
+  for (const valor of valores) {
+    try {
+      const crudo = JSON.parse(valor) as Record<string, unknown>;
+      const d = Number(crudo?.d);
+      if (!Number.isInteger(d) || d < 0 || d > 6) continue;
+      plan[d] = normalizarDia(crudo);
+      leidos += 1;
+    } catch {
+      // Una fila ilegible no tira abajo el resto del plan.
+    }
+  }
+  return leidos > 0 ? plan : null;
+}
 
 // ---------------------------------------------------------------------------
 //  FECHAS
@@ -299,39 +455,48 @@ export function nuevaKey(): string {
 }
 
 /**
- * Arma las salidas de un mes: por cada día elegido, una salida por turno.
+ * Arma las salidas de un mes siguiendo el plan de la semana.
+ *
+ * Cada día del mes mira cómo está ese día de la semana en el plan: si tiene
+ * salida de mañana, de tarde o las dos, y con qué hora, lugar y capitán.
  *
  * Los territorios se van repartiendo en orden, empezando por el que lleva
- * más tiempo sin predicarse, para no proponer siempre los mismos. Si no hay
- * territorios, las salidas quedan sin territorio y se eligen a mano.
+ * más tiempo sin predicarse, para no proponer siempre los mismos. Un día con
+ * territorio fijo se queda con el suyo y no entra en ese reparto.
  */
 export function generarSalidas(opciones: {
   anio: number;
   mes: number;
-  diasSemana: number[];
-  modalidad: Modalidad;
-  lugar: string;
-  capitan?: string;
-  horas?: Partial<Record<Turno, string>>;
+  plan: PlanSemanal;
   /** En el orden en el que conviene usarlos (el primero, el más olvidado). */
   territoriosSugeridos?: string[];
 }): SalidaBorrador[] {
-  const turnos = turnosDeModalidad(opciones.modalidad);
   const sugeridos = opciones.territoriosSugeridos ?? [];
   const out: SalidaBorrador[] = [];
-  let i = 0;
-  for (const dia of diasDelMes(opciones.anio, opciones.mes, opciones.diasSemana)) {
-    for (const turno of turnos) {
+  let siguiente = 0;
+  const ultimo = new Date(opciones.anio, opciones.mes, 0).getDate();
+
+  for (let d = 1; d <= ultimo; d++) {
+    const fecha = new Date(opciones.anio, opciones.mes - 1, d, 12, 0, 0);
+    const dia = opciones.plan?.[fecha.getDay()];
+    if (!dia) continue;
+    for (const turno of TURNOS_ORDEN) {
+      const cfg = dia[turno];
+      if (!cfg?.activo) continue;
+      let territoryId = cfg.territoryId ?? "";
+      if (!territoryId && sugeridos.length > 0) {
+        territoryId = sugeridos[siguiente % sugeridos.length];
+        siguiente += 1;
+      }
       out.push({
         key: nuevaKey(),
-        iso: isoDeFecha(dia),
+        iso: isoDeFecha(fecha),
         turno,
-        time: opciones.horas?.[turno] ?? HORA_POR_DEFECTO[turno],
-        place: opciones.lugar,
-        territoryId: sugeridos.length > 0 ? sugeridos[i % sugeridos.length] : "",
-        captainName: opciones.capitan ?? "",
+        time: cfg.time || HORA_POR_DEFECTO[turno],
+        place: cfg.place ?? "",
+        territoryId,
+        captainName: cfg.captainName ?? "",
       });
-      i += 1;
     }
   }
   return out;
@@ -479,5 +644,15 @@ export type ResultadoImportacion = {
   paginas: PaginaImportada[];
 };
 
-export const PRESET_KINDS = { CAPITAN: "CAPITAN", LUGAR: "LUGAR" } as const;
+// CAPITAN y LUGAR son listas de nombres para elegir rápido. PLAN es otra
+// cosa: ahí se guarda, en una sola fila, el plan de la semana de la
+// congregación, para no tener que rellenarlo cada mes.
+export const PRESET_KINDS = {
+  CAPITAN: "CAPITAN",
+  LUGAR: "LUGAR",
+  PLAN: "PLAN_SEMANAL",
+} as const;
+
+/** Las listas de sugerencias (lo que se enseña en "guardados"). */
+export const PRESET_LISTAS = [PRESET_KINDS.CAPITAN, PRESET_KINDS.LUGAR];
 export type PresetKind = (typeof PRESET_KINDS)[keyof typeof PRESET_KINDS];
