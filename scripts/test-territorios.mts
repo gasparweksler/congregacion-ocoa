@@ -552,8 +552,10 @@ titulo("5. El orden del programa y sus filas");
   const filas = filasDelPrograma(salidas);
   check(filas.length === 3, "una fila por salida");
   check(
-    filas[0].fecha === "Domingo 3" && filas[0].horario === "09:30 HRS",
-    `la primera fila (${filas[0].fecha} / ${filas[0].horario})`,
+    filas[0].dia === "Domingo" &&
+      filas[0].fecha === "3" &&
+      filas[0].horario === "09:30 HRS",
+    `la primera fila (${filas[0].dia} ${filas[0].fecha} / ${filas[0].horario})`,
   );
   check(
     filas[0].territorio === "—" && filas[0].capitan === "—",
@@ -800,12 +802,15 @@ function pngDePrueba(ancho: number, alto: number): Buffer {
     "el título, en mayúsculas y con tilde",
   );
   check(texto.includes("Congregación Ocoa"), "el nombre de la congregación");
-  check(texto.includes("Enero 2027"), "el mes encabezando la tabla");
   check(
-    ["Fecha", "Horario", "Lugar de encuentro", "Territorio", "Capitán"].every(
+    texto.includes("PROGRAMA DE PREDICACIÓN MES DE ENERO 2027"),
+    "el título con el mes, en la franja de arriba",
+  );
+  check(
+    ["Día", "Fecha", "Hora", "Lugar de encuentro", "Territorio", "Encargado"].every(
       (c) => texto.includes(c),
     ),
-    "las cinco columnas que se piden",
+    "las seis columnas que se piden",
   );
   check(
     texto.includes("Domingo 3") && texto.includes("Domingo 10"),
@@ -838,7 +843,7 @@ function pngDePrueba(ancho: number, alto: number): Buffer {
   const paginaDe = (t: string) =>
     items.find((i) => i.text.trim() === t)?.page ?? null;
   check(
-    paginaDe("PROGRAMA DE PREDICACIÓN") === 1,
+    paginaDe("PROGRAMA DE PREDICACIÓN MES DE ENERO 2027") === 1,
     "el programa, en la primera hoja",
   );
   // El nombre sale dos veces: en la tabla (hoja 1) y encabezando su mapa.
@@ -1266,16 +1271,24 @@ titulo("10. Fecha y hora del impreso, y predicación por grupos");
 // ---------------------------------------------------------------------------
 titulo("11. El PDF cabe en una hoja");
 {
-  const unaFila = (i: number, grupos = ""): FilaPrograma => ({
-    fecha: `Lunes ${(i % 28) + 1}`,
-    horario: "09:30 HRS",
-    lugar: "Salón del Reino",
-    territorio: `${i + 1} - Territorio de prueba ${i + 1}`,
-    capitan: "Gastón Mondaca",
-    grupos: grupos || "Toda la congregación",
-    esDeGrupo: Boolean(grupos),
-    compartida: grupos.includes(" y "),
-  });
+  const unaFila = (i: number, grupos = ""): FilaPrograma => {
+    const dia = (i % 28) + 1;
+    return {
+      dia: "Lunes",
+      fecha: String(dia),
+      // Cada salida en su propio día: es el caso que más filas deja, porque
+      // ninguna se junta con otra en un bloque.
+      iso: `2026-11-${String(dia).padStart(2, "0")}`,
+      horario: "09:30 HRS",
+      lugar: "Salón del Reino",
+      territorio: `${i + 1} - Territorio de prueba ${i + 1}`,
+      capitan: "Gastón Mondaca",
+      grupos: grupos || "Toda la congregación",
+      gruposCorto: grupos.replace(" y Grupo ", ",") || "Toda la congregación",
+      esDeGrupo: Boolean(grupos),
+      compartida: grupos.includes(" y "),
+    };
+  };
 
   // 72 es el mes más cargado posible: todos los días, mañana y tarde, más
   // las salidas de los grupos.
@@ -1312,9 +1325,9 @@ titulo("11. El PDF cabe en una hoja");
   )
     .then((items) => items.map((i) => i.text).join(" "));
   check(
-    textoG.includes("Grupos") &&
-      textoG.includes("Grupo 1 y Grupo 2") &&
-      textoG.includes("Toda la congregación"),
+    textoG.includes("PREDICACIÓN POR GRUPO") &&
+      textoG.includes("Grupo 1,2") &&
+      textoG.includes("Grupo 3"),
     "y el PDF dice de quién es cada salida",
   );
 
@@ -1351,6 +1364,167 @@ titulo("11. El PDF cabe en una hoja");
   check(
     docMapas.getNumberOfPages() === 2,
     `el programa en una hoja y el mapa en la suya (${docMapas.getNumberOfPages()})`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+titulo("12. El impreso, con la forma del programa de siempre");
+{
+  const salida = (
+    dia: number,
+    diaSemana: string,
+    hora: string,
+    grupos = "",
+    corto = "",
+  ): FilaPrograma => ({
+    dia: diaSemana,
+    fecha: String(dia),
+    iso: `2026-11-${String(dia).padStart(2, "0")}`,
+    horario: hora,
+    lugar: "Salón del Reino",
+    territorio: "1 - Camino al Túnel",
+    capitan: "Benjamín Saavedra",
+    grupos: grupos || "Toda la congregación",
+    gruposCorto: corto || "Toda la congregación",
+    esDeGrupo: Boolean(grupos),
+    compartida: grupos.includes(" y "),
+  });
+
+  // Un trozo de noviembre como el que hace la congregación: el lunes con dos
+  // salidas, y el sábado la predicación por grupos, dos parejas a la vez.
+  const filas: FilaPrograma[] = [
+    salida(2, "Lunes", "10:00 HRS"),
+    salida(2, "Lunes", "18:00 HRS"),
+    salida(7, "Sábado", "10:30 HRS", "Grupo 1 y Grupo 2", "Grupo 1,2"),
+    salida(7, "Sábado", "10:30 HRS", "Grupo 3 y Grupo 4", "Grupo 3,4"),
+    salida(8, "Domingo", "10:30 HRS"),
+  ];
+
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(doc, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    congregacion: "Congregación Ocoa",
+    filas,
+  });
+  const trozos = await extractPdfItems(
+    new Uint8Array(doc.output("arraybuffer") as ArrayBuffer),
+  );
+  const veces = (t: string) => trozos.filter((i) => i.text.trim() === t).length;
+  const texto = trozos
+    .map((i) => i.text)
+    .join(" ")
+    .replace(/\s+/g, " ");
+
+  check(
+    veces("Lunes") === 1,
+    `las dos salidas del lunes van en un bloque: el día, una sola vez (${veces("Lunes")})`,
+  );
+  check(
+    texto.includes("10:00 HRS") && texto.includes("18:00 HRS"),
+    "y cada una con su hora",
+  );
+  check(
+    veces("PREDICACIÓN POR GRUPO") === 1,
+    `los dos grupos del sábado comparten un solo aviso (${veces("PREDICACIÓN POR GRUPO")})`,
+  );
+  check(
+    texto.includes("Grupo 1,2") && texto.includes("Grupo 3,4"),
+    "con una línea para cada pareja",
+  );
+  check(veces("Sábado") === 1, "y el sábado tampoco se repite");
+  check(
+    !texto.includes("Toda la congregación"),
+    "las salidas de todos no llevan etiqueta: son las normales",
+  );
+
+  // A dos horas distintas, cada una con su aviso.
+  const docDos = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(docDos, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    filas: [
+      salida(7, "Sábado", "10:30 HRS", "Grupo 1", "Grupo 1"),
+      salida(7, "Sábado", "16:00 HRS", "Grupo 2", "Grupo 2"),
+    ],
+  });
+  const trozosDos = await extractPdfItems(
+    new Uint8Array(docDos.output("arraybuffer") as ArrayBuffer),
+  );
+  check(
+    trozosDos.filter((i) => i.text.trim() === "PREDICACIÓN POR GRUPO").length === 2,
+    "dos horas distintas, dos avisos",
+  );
+
+  // Las fotos del encabezado.
+  const foto = {
+    dataUrl: `data:image/png;base64,${pngDePrueba(120, 80).toString("base64")}`,
+    ancho: 120,
+    alto: 80,
+  };
+  const sinFotos = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(sinFotos, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    filas,
+  });
+  const conFotos = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(conFotos, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    filas,
+    fotos: [foto, foto, foto, foto],
+  });
+  const pesaSin = (sinFotos.output("arraybuffer") as ArrayBuffer).byteLength;
+  const pesaCon = (conFotos.output("arraybuffer") as ArrayBuffer).byteLength;
+  check(
+    pesaCon > pesaSin,
+    `las fotos van dentro del PDF (${pesaSin} → ${pesaCon} bytes)`,
+  );
+  check(
+    conFotos.getNumberOfPages() === 1,
+    "y el programa sigue cabiendo en una hoja",
+  );
+  const textoConFotos = await extractPdfItems(
+    new Uint8Array(conFotos.output("arraybuffer") as ArrayBuffer),
+  ).then((is) => is.map((i) => i.text).join(" "));
+  check(
+    textoConFotos.includes("PREDICACIÓN") && textoConFotos.includes("Grupo 1,2"),
+    "con fotos no se pierde nada de la tabla",
+  );
+
+  // El mes más cargado, y encima con fotos: sigue en una hoja.
+  const docLleno = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(docLleno, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    congregacion: "Congregación Ocoa",
+    filas: Array.from({ length: 72 }, (_, i) =>
+      salida((i % 30) + 1, "Lunes", i % 2 === 0 ? "10:00 HRS" : "18:00 HRS"),
+    ),
+    fotos: [foto, foto, foto, foto],
+  });
+  check(
+    docLleno.getNumberOfPages() === 1,
+    `72 salidas con las fotos puestas, en una hoja (${docLleno.getNumberOfPages()})`,
+  );
+
+  // Una foto sin medidas no puede tumbar la descarga.
+  const docRota = new jsPDF({ unit: "pt", format: "letter" });
+  let reventado = false;
+  try {
+    dibujarProgramaPredicacion(docRota, autoTable, {
+      titulo: "Programa de Predicación",
+      periodo: "Noviembre 2026",
+      filas,
+      fotos: [{ dataUrl: foto.dataUrl, ancho: 0, alto: 0 }],
+    });
+  } catch {
+    reventado = true;
+  }
+  check(
+    !reventado && docRota.getNumberOfPages() === 1,
+    "una foto sin medidas se salta en vez de romper el PDF",
   );
 }
 

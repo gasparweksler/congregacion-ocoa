@@ -341,6 +341,22 @@ export function etiquetaDeGrupos(grupos: string[]): string {
   return `${limpios.slice(0, -1).join(", ")} y ${limpios[limpios.length - 1]}`;
 }
 
+/**
+ * Los mismos grupos, como se escriben en el bloque del impreso: "Grupo 1,2".
+ * Solo se abrevia cuando todos se llaman "Grupo " y algo; si alguno tiene
+ * otro nombre, se escriben enteros para que no quede un galimatías.
+ */
+export function etiquetaCortaDeGrupos(grupos: string[]): string {
+  const limpios = limpiarGrupos(grupos);
+  if (limpios.length === 0) return TODA_LA_CONGREGACION;
+  if (limpios.length === 1) return limpios[0];
+  const sufijos = limpios.map((g) => /^Grupo\s+(.+)$/i.exec(g)?.[1]);
+  if (sufijos.every((s) => s && s.length <= 3)) {
+    return `Grupo ${sufijos.join(",")}`;
+  }
+  return limpios.join(", ");
+}
+
 /** Una salida de uno o varios grupos, dentro del plan de la semana. */
 export type SalidaDeGrupo = {
   /** Llave solo del editor. */
@@ -908,8 +924,12 @@ export function resumenDelReparto(salidas: { territoryId: string }[]): string {
 
 /** Las filas del PDF del programa, ya con todo escrito. */
 export type FilaPrograma = {
-  /** "Domingo 1" */
+  /** "Lunes" */
+  dia: string;
+  /** "2" */
   fecha: string;
+  /** "2026-11-02": para juntar en el impreso las salidas del mismo día. */
+  iso: string;
   /** "09:30 HRS" */
   horario: string;
   lugar: string;
@@ -917,6 +937,8 @@ export type FilaPrograma = {
   capitan: string;
   /** "Toda la congregación", "Grupo 1" o "Grupo 1 y Grupo 2". */
   grupos: string;
+  /** "Grupo 1,2", como se escribe en el bloque del impreso. */
+  gruposCorto: string;
   /** Si es de uno o varios grupos (para destacarlo en el PDF). */
   esDeGrupo: boolean;
   /** Si la comparten dos o más grupos. */
@@ -927,7 +949,9 @@ export function filasDelPrograma(salidas: Salida[]): FilaPrograma[] {
   return ordenarSalidas(salidas).map((s) => {
     const grupos = limpiarGrupos(s.grupos ?? []);
     return {
-      fecha: etiquetaCortaDeFecha(s.date),
+      dia: weekdayName(s.date.getDay()),
+      fecha: String(s.date.getDate()),
+      iso: isoDeFecha(s.date),
       horario: horaEn24(
         s.time,
         s.turno === TURNOS.TARDE ? TURNOS.TARDE : TURNOS.MANANA,
@@ -936,6 +960,7 @@ export function filasDelPrograma(salidas: Salida[]): FilaPrograma[] {
       territorio: s.territorio ? nombreCompleto(s.territorio) : "—",
       capitan: s.captainName || "—",
       grupos: etiquetaDeGrupos(grupos),
+      gruposCorto: etiquetaCortaDeGrupos(grupos),
       esDeGrupo: grupos.length > 0,
       compartida: grupos.length > 1,
     };
@@ -1057,3 +1082,17 @@ export const PRESET_KINDS = {
 /** Las listas de sugerencias (lo que se enseña en "guardados"). */
 export const PRESET_LISTAS = [PRESET_KINDS.CAPITAN, PRESET_KINDS.LUGAR];
 export type PresetKind = (typeof PRESET_KINDS)[keyof typeof PRESET_KINDS];
+
+// ---------------------------------------------------------------------------
+//  LAS FOTOS DEL ENCABEZADO DEL PROGRAMA
+//
+//  La franja de fotos de arriba del programa impreso. Las sube la propia
+//  congregación y se quedan puestas mes a mes: no van dentro del programa,
+//  van en la base, como los mapas.
+// ---------------------------------------------------------------------------
+
+/** Cuántas fotos caben en la franja sin que queden como sellos. */
+export const MAX_FOTOS_ENCABEZADO = 6;
+
+/** Tamaño máximo de una foto del encabezado (el navegador la reduce antes). */
+export const MAX_BYTES_FOTO = 2 * 1024 * 1024;

@@ -60,6 +60,7 @@ export default async function ProgramaPredicacionPage({
     planFilas,
     gruposDeLaCongregacion,
     gruposFilas,
+    fotosDelEncabezado,
   ] = await Promise.all([
       prisma.territory.findMany({
         where: { congregationId: cong },
@@ -112,6 +113,13 @@ export default async function ProgramaPredicacionPage({
       prisma.servicePreset.findMany({
         where: { congregationId: cong, kind: PRESET_KINDS.GRUPOS },
         select: { value: true },
+      }),
+      // Las fotos de la franja de arriba del impreso. Sin los bytes: aquí
+      // solo hace falta saber cuáles hay y en qué orden.
+      prisma.programPhoto.findMany({
+        where: { congregationId: cong },
+        orderBy: { order: "asc" },
+        select: { id: true, bytes: true, updatedAt: true },
       }),
     ]);
 
@@ -187,6 +195,14 @@ export default async function ProgramaPredicacionPage({
     }))
     .filter((s) => s.grupos.length > 0);
 
+  // Las fotos, con la hora del último cambio como versión: así, al cambiar
+  // una, el navegador no sigue enseñando la de antes.
+  const fotos = fotosDelEncabezado.map((f) => ({
+    id: f.id,
+    bytes: f.bytes,
+    version: f.updatedAt.getTime(),
+  }));
+
   return (
     <>
       <PageHeader
@@ -233,6 +249,7 @@ export default async function ProgramaPredicacionPage({
           planInicial={planInicial}
           gruposDisponibles={nombresDeGrupo}
           salidasDeGrupoIniciales={salidasDeGrupo}
+          fotos={fotos}
           congregacion={congregacion}
         />
 

@@ -36,6 +36,10 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PaletaOpciones } from "@/components/forms/PaletaOpciones";
+import {
+  FotosDelPrograma,
+  type FotoDelPrograma,
+} from "@/components/forms/FotosDelPrograma";
 import { usePaletaRecordada } from "@/components/forms/usePaletaRecordada";
 import { paletaDe } from "@/lib/programa-paletas";
 import { monthName, weekdayName } from "@/lib/constants";
@@ -121,6 +125,7 @@ export function ProgramaPredicacion({
   planInicial,
   gruposDisponibles,
   salidasDeGrupoIniciales,
+  fotos,
   congregacion,
 }: {
   anio: number;
@@ -137,6 +142,8 @@ export function ProgramaPredicacion({
   gruposDisponibles: string[];
   /** Las salidas de cada grupo: lo último que se guardó. */
   salidasDeGrupoIniciales: SalidaDeGrupo[];
+  /** Las fotos de la franja de arriba del impreso, si subieron alguna. */
+  fotos: FotoDelPrograma[];
   congregacion: string;
 }) {
   const [salidas, setSalidas] = useState<SalidaBorrador[]>(salidasGuardadas);
@@ -448,6 +455,29 @@ export function ProgramaPredicacion({
         }
       }
 
+      // Las fotos del encabezado. Si alguna no se puede traer, el programa
+      // baja igual: antes sin franja que sin programa.
+      const fotosDelPdf: {
+        dataUrl: string;
+        ancho: number;
+        alto: number;
+      }[] = [];
+      for (const f of fotos) {
+        try {
+          const r = await fetch(`/api/territorios/fotos/${f.id}`);
+          if (!r.ok) continue;
+          const dataUrl = await imagenes.comoDataUrl(await r.blob());
+          const medida = await imagenes.medidaDeImagen(dataUrl);
+          fotosDelPdf.push({
+            dataUrl,
+            ancho: medida.ancho,
+            alto: medida.alto,
+          });
+        } catch {
+          /* una foto que no llega no impide bajar el programa */
+        }
+      }
+
       const doc = new jsPDF({ unit: "pt", format: "letter" });
       pdfLib.dibujarProgramaPredicacion(doc, autoTable, {
         titulo: "Programa de Predicación",
@@ -461,6 +491,7 @@ export function ProgramaPredicacion({
         congregacion,
         filas: filasDelPrograma(listas),
         mapas,
+        fotos: fotosDelPdf,
         paleta,
       });
       doc.save(`programa-predicacion-${anio}-${String(mes).padStart(2, "0")}.pdf`);
@@ -1271,6 +1302,19 @@ export function ProgramaPredicacion({
           name="paleta-predicacion"
           ejemplo={["Sábado 7", "Domingo 8"]}
         />
+      </CollapsibleCard>
+
+      {/* La franja de fotos de arriba del impreso. Se quedan puestas mes a
+          mes: se suben una vez y ya salen en todos los programas. */}
+      <CollapsibleCard
+        title="Fotos del encabezado del PDF"
+        description={
+          fotos.length === 0
+            ? "Ninguna todavía: el programa se imprime sin la franja de arriba."
+            : `${fotos.length} ${plural(fotos.length, "foto", "fotos")} en la franja de arriba del programa.`
+        }
+      >
+        <FotosDelPrograma fotos={fotos} />
       </CollapsibleCard>
         </CardBody>
       </Card>

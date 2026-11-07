@@ -507,6 +507,27 @@ model TerritoryMap {
   @@index([congregationId])
 }
 
+// Las fotos de la franja de arriba del programa de predicación.
+//
+// Las sube la congregación desde la pantalla del programa y se quedan
+// puestas mes a mes hasta que las cambie. Igual que los mapas: los bytes
+// viven en su propia tabla y solo viajan cuando se piden.
+model ProgramPhoto {
+  id String @id @default(cuid())
+
+  congregationId String
+  /// Posición en la franja, de izquierda a derecha.
+  order          Int
+  data           Bytes // la foto (JPEG o PNG), ya reducida por el navegador
+  mime           String
+  bytes          Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([congregationId, order])
+}
+
 // Una vez que se predicó un territorio, anotada a mano.
 // Las salidas del programa (ServiceOuting) cuentan igual para las
 // estadísticas: no se copian aquí, se suman al calcular.
