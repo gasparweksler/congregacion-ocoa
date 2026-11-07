@@ -23,8 +23,17 @@
 import { useActionState, useState } from "react";
 import { guardarProgramaAction } from "@/server/territorio-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
-import { Alert, Button, Badge } from "@/components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+} from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
+import { PeriodSelector } from "@/components/PeriodSelector";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { monthName, weekdayName } from "@/lib/constants";
 import {
   HORA_POR_DEFECTO,
@@ -129,6 +138,9 @@ export function ProgramaPredicacion({
   const [avisoPdf, setAvisoPdf] = useState("");
   // El resultado del último reparto automático, para verlo antes de guardar.
   const [avisoReparto, setAvisoReparto] = useState("");
+  // Qué pasó al limpiar el programa, para que nadie crea que se borró más.
+  const [avisoLimpieza, setAvisoLimpieza] = useState("");
+  const [confirmarLimpieza, setConfirmarLimpieza] = useState(false);
 
   const [state, action] = useActionState(
     guardarProgramaAction,
@@ -209,6 +221,7 @@ export function ProgramaPredicacion({
     });
     setAvisoPdf("");
     setAvisoReparto("");
+    setAvisoLimpieza("");
   }
 
   // --- El rango de días ----------------------------------------------------
@@ -233,6 +246,7 @@ export function ProgramaPredicacion({
     setSalidas(propuesta);
     setAvisoReparto(resumenDelReparto(propuesta));
     setAvisoPdf("");
+    setAvisoLimpieza("");
   }
 
   // --- Las salidas ---------------------------------------------------------
@@ -245,6 +259,27 @@ export function ProgramaPredicacion({
 
   function quitar(key: string) {
     setSalidas((previas) => previas.filter((s) => s.key !== key));
+  }
+
+  /**
+   * Vacía la tabla para empezar el programa de cero.
+   *
+   * Solo borra lo que hay en pantalla: el programa guardado sigue en su sitio
+   * hasta que se pulse "Guardar el programa", y los demás meses no se tocan.
+   * Si alguien limpia sin querer, basta con recargar la página.
+   */
+  function limpiar() {
+    setConfirmarLimpieza(false);
+    if (salidas.length === 0) return;
+    setSalidas([]);
+    setRango(rangoDelMes(anio, mes));
+    setAvisoReparto("");
+    setAvisoPdf("");
+    setAvisoLimpieza(
+      salidasGuardadas.length > 0
+        ? `Tabla vacía. El programa guardado de ${monthName(mes)} sigue en la base: se borrará cuando pulses “Guardar el programa”. Si fue sin querer, recarga la página y vuelve como estaba.`
+        : "Tabla vacía. Elige las fechas y pulsa “Generar salidas” para empezar de nuevo.",
+    );
   }
 
   function anadir() {
@@ -371,7 +406,19 @@ export function ProgramaPredicacion({
 
   return (
     <div className="space-y-6">
-      {/* ---------------- Cómo es la semana ---------------- */}
+      {/* ================== Crear programa ==================
+          Todo lo que arma el programa vive aquí, aparte de la tabla de
+          salidas: elegir el mes, cómo es la semana y qué días se arman. */}
+      <Card>
+        <CardHeader
+          title="Crear programa"
+          description="Elige el mes y los días que quieres armar. Las salidas aparecen abajo y no se guardan hasta que lo pidas."
+        />
+        <CardBody className="space-y-5">
+
+      {/* ---------------- Cómo es la semana ----------------
+          "Ocultar" pliega solo este recuadro: ni las fechas de abajo ni la
+          tabla de salidas se mueven. */}
       <div className="space-y-4 rounded-2xl border border-border bg-slate-50 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -540,15 +587,15 @@ export function ProgramaPredicacion({
           </div>
         ) : null}
 
-        {verPlan ? (
-          <div className="space-y-3 border-t border-border pt-3">
-          {/* Desde qué día hasta qué día: el mes entero, o solo un trozo. */}
+      </div>
+
+      {/* ---------------- Qué días se arman ----------------
+          Siempre a la vista: no depende de "Ocultar". */}
+      <div className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <span className={etiqueta}>Mes correspondiente</span>
-              <p className="py-1.5 text-sm font-medium text-foreground">
-                {monthName(mes)} de {anio}
-              </p>
+              <PeriodSelector year={anio} month={mes} />
             </div>
             <div>
               <label className={etiqueta} htmlFor="rango-desde">
@@ -582,24 +629,44 @@ export function ProgramaPredicacion({
                 className={`${campo} w-40`}
               />
             </div>
-            {!mesCompleto ? (
-              <button
-                type="button"
-                onClick={() => setRango(rangoDelMes(anio, mes))}
-                className="rounded-md px-2.5 py-1.5 text-sm font-medium text-primary hover:bg-indigo-50"
-              >
-                Todo el mes
-              </button>
-            ) : null}
+            <Button
+              variant="secondary"
+              onClick={() => setRango(rangoDelMes(anio, mes))}
+              disabled={mesCompleto}
+            >
+              📅 Todo el mes
+            </Button>
+            {/* A la derecha del todo: vacía la tabla para empezar de cero. */}
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmarLimpieza(true)}
+              disabled={salidas.length === 0}
+              className="border-red-200 text-red-600 hover:bg-red-50 sm:ml-auto"
+            >
+              🧹 Limpiar programa
+            </Button>
           </div>
+
+          <ConfirmDialog
+            open={confirmarLimpieza}
+            title={`¿Vaciar el programa de ${monthName(mes)} de ${anio}?`}
+            description={
+              salidasGuardadas.length > 0
+                ? `Se quitan las ${salidas.length} ${plural(salidas.length, "salida", "salidas")} de la tabla para empezar de cero. El programa guardado (${salidasGuardadas.length} ${plural(salidasGuardadas.length, "salida", "salidas")}) se borra de verdad cuando pulses “Guardar el programa”; los demás meses no se tocan, y si te arrepientes basta con recargar la página.`
+                : `Se quitan las ${salidas.length} ${plural(salidas.length, "salida", "salidas")} de la tabla. Este mes todavía no tiene nada guardado, así que no se borra nada de la base.`
+            }
+            confirmLabel="Sí, vaciar la tabla"
+            onConfirm={limpiar}
+            onCancel={() => setConfirmarLimpieza(false)}
+          />
 
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={generar} disabled={turnosPorSemana === 0}>
-              🗓️ Generar las salidas
+              🗓️ Generar salidas
             </Button>
             <span className="text-xs text-muted">
               {turnosPorSemana === 0
-                ? "Marca al menos un turno para poder generar."
+                ? "Marca al menos un turno en “Cómo es una semana normal” para poder generar."
                 : `Se armarán ${seCrearan} ${plural(seCrearan, "salida", "salidas")} · ${periodoDelPrograma(anio, mes, rango)} · ${resumenDelPlan(plan)}. ${
                     mesCompleto
                       ? "Reemplaza lo que haya en la tabla de abajo"
@@ -607,9 +674,13 @@ export function ProgramaPredicacion({
                   } (todavía sin guardar).`}
             </span>
           </div>
-          </div>
-        ) : null}
+
+          {avisoLimpieza ? (
+            <Alert tone="warning">{avisoLimpieza}</Alert>
+          ) : null}
       </div>
+        </CardBody>
+      </Card>
 
       {/* Listas guardadas, para escribir rápido. */}
       <datalist id="capitanes-guardados">
@@ -623,11 +694,28 @@ export function ProgramaPredicacion({
         ))}
       </datalist>
 
-      {/* ---------------- Las salidas ---------------- */}
+      {/* ================== Las salidas ==================
+          Lo ya generado o guardado del mes, con su propia tarjeta: aquí se
+          corrige salida por salida, se guarda y se descarga. */}
+      <Card>
+        <CardHeader
+          title={`Salidas de ${monthName(mes)} de ${anio}`}
+          description="Cada salida se edita por separado. Se guarda el mes completo: lo que quites también se quita al guardar."
+          action={
+            salidas.length > 0 ? (
+              <Badge tone="slate">
+                {salidas.length} {plural(salidas.length, "salida", "salidas")}
+              </Badge>
+            ) : null
+          }
+        />
+        <CardBody className="space-y-6">
+
       {salidas.length === 0 ? (
         <Alert tone="info">
-          Todavía no hay salidas en {monthName(mes)} de {anio}. Marca arriba
-          los turnos de cada día y pulsa “Generar las salidas”.
+          Todavía no hay salidas en {monthName(mes)} de {anio}. Arriba, en
+          “Crear programa”, marca los turnos de cada día, elige las fechas y
+          pulsa “Generar salidas”.
         </Alert>
       ) : (
         <div className="overflow-x-auto">
@@ -768,12 +856,9 @@ export function ProgramaPredicacion({
           >
             🎯 Asignar territorio automáticamente
           </Button>
-          {salidas.length > 0 ? (
+          {sinTerritorio > 0 ? (
             <span className="text-xs text-muted">
-              {salidas.length} {plural(salidas.length, "salida", "salidas")}
-              {sinTerritorio > 0
-                ? ` · ${sinTerritorio} sin territorio (no cuentan para las estadísticas)`
-                : ""}
+              {sinTerritorio} sin territorio (no cuentan para las estadísticas)
             </span>
           ) : null}
         </div>
@@ -849,6 +934,8 @@ export function ProgramaPredicacion({
           </Badge>
         ) : null}
       </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }

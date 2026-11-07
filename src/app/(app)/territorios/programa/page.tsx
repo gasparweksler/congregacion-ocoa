@@ -11,7 +11,6 @@
 import { requireSecretary, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { parsePeriod } from "@/lib/period";
-import { monthName } from "@/lib/constants";
 import { congregationLabelOf } from "@/lib/congregation-label";
 import {
   estadisticas,
@@ -31,16 +30,8 @@ import {
 import { deletePresetAction } from "@/server/territorio-actions";
 import { PageHeader } from "@/components/PageHeader";
 import { BackButton } from "@/components/BackButton";
-import { PeriodSelector } from "@/components/PeriodSelector";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CollapsibleCard,
-  Alert,
-  Badge,
-} from "@/components/ui";
+import { CollapsibleCard, Alert, Badge } from "@/components/ui";
 import { ProgramaPredicacion } from "@/components/forms/ProgramaPredicacion";
 
 export default async function ProgramaPredicacionPage({
@@ -171,8 +162,9 @@ export default async function ProgramaPredicacionPage({
         action={<BackButton href="/territorios">Volver a Territorios</BackButton>}
       />
 
+      {/* El selector del mes vive dentro de "Crear programa": aquí solo se
+          dice cómo está el mes que se está mirando. */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <PeriodSelector year={anio} month={mes} />
         {guardadas.length > 0 ? (
           <Badge tone="green">
             {guardadas.length === 1
@@ -193,28 +185,21 @@ export default async function ProgramaPredicacionPage({
           </Alert>
         ) : null}
 
-        <Card>
-          <CardHeader
-            title={`Salidas de ${monthName(mes)} de ${anio}`}
-            description="Se guarda el mes completo: lo que quites también se quita al guardar."
-          />
-          <CardBody>
-            {/* La llave fuerza empezar de nuevo al cambiar de mes: si no, se
-                quedaría en pantalla el programa del mes anterior. */}
-            <ProgramaPredicacion
-              key={`${anio}-${mes}`}
-              anio={anio}
-              mes={mes}
-              territorios={territorios}
-              sugeridos={sugeridos}
-              capitanes={capitanes}
-              lugares={lugares}
-              salidasGuardadas={guardadas}
-              planInicial={planInicial}
-              congregacion={congregacion}
-            />
-          </CardBody>
-        </Card>
+        {/* Dos tarjetas: "Crear programa" y "Salidas del mes". La llave
+            fuerza empezar de nuevo al cambiar de mes: si no, se quedaría en
+            pantalla el programa del mes anterior. */}
+        <ProgramaPredicacion
+          key={`${anio}-${mes}`}
+          anio={anio}
+          mes={mes}
+          territorios={territorios}
+          sugeridos={sugeridos}
+          capitanes={capitanes}
+          lugares={lugares}
+          salidasGuardadas={guardadas}
+          planInicial={planInicial}
+          congregacion={congregacion}
+        />
 
         <CollapsibleCard
           title={`Capitanes y lugares guardados (${presets.length})`}
