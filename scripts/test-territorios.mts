@@ -40,8 +40,17 @@ import {
   planPorDefecto,
   planVacio,
   resumenDelPlan,
+  asignarTerritorios,
+  esMesCompleto,
+  normalizarRango,
+  periodoDelPrograma,
+  rangoDelMes,
+  resumenDelReparto,
+  ultimoDiaDelMes,
+  vecesPorTerritorio,
   type PlanSemanal,
   type Salida,
+  type SalidaBorrador,
   type Territorio,
   type VezPredicado,
 } from "../src/lib/territorios.js";
@@ -869,6 +878,199 @@ function pngDePrueba(ancho: number, alto: number): Buffer {
   check(
     vacio.some((i) => i.text.includes("No hay salidas")),
     "un mes sin salidas lo dice en el PDF, en vez de salir en blanco",
+  );
+}
+
+// ---------------------------------------------------------------------------
+titulo("9. Del día X al día Y, y el reparto automático de territorios");
+{
+  // --- El rango de días ---
+  check(
+    ultimoDiaDelMes(2026, 11) === 30 &&
+      ultimoDiaDelMes(2027, 2) === 28 &&
+      ultimoDiaDelMes(2028, 2) === 29,
+    "el último día del mes sale bien, también en febrero bisiesto",
+  );
+  const noviembre = rangoDelMes(2026, 11);
+  check(
+    noviembre.desde === 1 &&
+      noviembre.hasta === 30 &&
+      esMesCompleto(2026, 11, noviembre),
+    "el mes entero es del 1 al 30, y se reconoce como completo",
+  );
+  check(
+    normalizarRango(2027, 2, { desde: 1, hasta: 31 }).hasta === 28,
+    "un día que no existe se recorta al último del mes (31 de febrero → 28)",
+  );
+  const alReves = normalizarRango(2026, 11, { desde: 20, hasta: 5 });
+  check(
+    alReves.desde === 5 && alReves.hasta === 20,
+    `un rango al revés se da la vuelta (${alReves.desde}–${alReves.hasta})`,
+  );
+  const basura = normalizarRango(2026, 11, {
+    desde: Number.NaN,
+    hasta: -3 as number,
+  });
+  check(
+    basura.desde === 1 && basura.hasta === 30,
+    "lo que no es un día se cambia por el extremo que le toca",
+  );
+  check(
+    periodoDelPrograma(2026, 11, { desde: 1, hasta: 30 }) === "Noviembre 2026",
+    `el mes entero se titula con el mes (${periodoDelPrograma(2026, 11, { desde: 1, hasta: 30 })})`,
+  );
+  check(
+    periodoDelPrograma(2026, 11, { desde: 1, hasta: 15 }) ===
+      "Del 1 al 15 de noviembre de 2026",
+    `medio mes lo dice en el título (${periodoDelPrograma(2026, 11, { desde: 1, hasta: 15 })})`,
+  );
+  check(
+    periodoDelPrograma(2026, 11, { desde: 7, hasta: 7 }) ===
+      "7 de noviembre de 2026",
+    `un solo día también (${periodoDelPrograma(2026, 11, { desde: 7, hasta: 7 })})`,
+  );
+
+  // El ejemplo de la congregación: noviembre de 2026, sábados y domingos de
+  // mañana. Del 1 al 15 hay domingos 1, 8, 15 y sábados 7, 14 = 5 salidas.
+  const finDeSemana = planVacio("Salón del Reino");
+  finDeSemana[6].MANANA.activo = true;
+  finDeSemana[0].MANANA.activo = true;
+
+  const primeraQuincena = generarSalidas({
+    anio: 2026,
+    mes: 11,
+    plan: finDeSemana,
+    rango: { desde: 1, hasta: 15 },
+  });
+  check(
+    primeraQuincena.length === 5 &&
+      cuantasSalidas(2026, 11, finDeSemana, { desde: 1, hasta: 15 }) === 5,
+    `del 1 al 15 de noviembre salen 5 salidas (${primeraQuincena.length})`,
+  );
+  check(
+    primeraQuincena.map((s) => s.iso).join(" ") ===
+      "2026-11-01 2026-11-07 2026-11-08 2026-11-14 2026-11-15",
+    `y son los días que tocan (${primeraQuincena.map((s) => s.iso.slice(8)).join(",")})`,
+  );
+  const mesEntero = generarSalidas({ anio: 2026, mes: 11, plan: finDeSemana });
+  check(
+    mesEntero.length === 9 && cuantasSalidas(2026, 11, finDeSemana) === 9,
+    `sin rango sigue saliendo el mes completo: 9 salidas (${mesEntero.length})`,
+  );
+  const segunda = generarSalidas({
+    anio: 2026,
+    mes: 11,
+    plan: finDeSemana,
+    rango: { desde: 16, hasta: 30 },
+  });
+  check(
+    primeraQuincena.length + segunda.length === mesEntero.length,
+    "las dos mitades suman el mes entero: ninguna salida se pierde ni se repite",
+  );
+  check(
+    generarSalidas({
+      anio: 2026,
+      mes: 11,
+      plan: finDeSemana,
+      rango: { desde: 2, hasta: 6 },
+    }).length === 0,
+    "una semana sin ningún día marcado no genera nada",
+  );
+
+  // --- El reparto automático ---
+  const territorios23 = Array.from({ length: 23 }, (_, i) => `t${i + 1}`);
+  const salida = (iso: string, i: number): SalidaBorrador => ({
+    key: `k${i}`,
+    iso,
+    turno: "MANANA",
+    time: "9:30",
+    place: "Salón del Reino",
+    territoryId: "",
+    captainName: "",
+  });
+  const veinticuatro = Array.from({ length: 24 }, (_, i) =>
+    salida(`2026-11-${String(i + 1).padStart(2, "0")}`, i),
+  );
+
+  const repartidas = asignarTerritorios(veinticuatro, territorios23);
+  const cuenta = vecesPorTerritorio(repartidas);
+  check(
+    repartidas.every((s) => s.territoryId !== ""),
+    "después del reparto no queda ninguna salida sin territorio",
+  );
+  check(
+    cuenta.size === 23 &&
+      Math.max(...cuenta.values()) - Math.min(...cuenta.values()) === 1,
+    `24 salidas entre 23 territorios: entre el que más y el que menos, una vez de diferencia (${Math.min(...cuenta.values())}–${Math.max(...cuenta.values())})`,
+  );
+  check(
+    repartidas[0].territoryId === "t1" && repartidas[1].territoryId === "t2",
+    "empieza por el primero de la lista: el que lleva más tiempo sin predicarse",
+  );
+  check(
+    veinticuatro.every((s) => s.territoryId === ""),
+    "las salidas que se le pasan no se tocan: devuelve una propuesta aparte",
+  );
+
+  // Pocos territorios y muchas salidas: aun así, parejo.
+  const pocos = asignarTerritorios(veinticuatro, ["a", "b", "c", "d"]);
+  const cuentaPocos = vecesPorTerritorio(pocos);
+  check(
+    cuentaPocos.size === 4 &&
+      [...cuentaPocos.values()].every((n) => n === 6),
+    `24 salidas entre 4 territorios: 6 veces cada uno (${[...cuentaPocos.values()].join(",")})`,
+  );
+  check(
+    pocos.slice(0, 5).map((s) => s.territoryId).join("") === "abcda",
+    "los territorios se dan en círculo: no cae el mismo dos días seguidos",
+  );
+
+  // El reparto respeta el orden del programa, no el orden en que están.
+  const desordenadas = [
+    { ...salida("2026-11-22", 1), key: "z" },
+    { ...salida("2026-11-01", 2), key: "y" },
+    { ...salida("2026-11-08", 3), key: "x" },
+  ];
+  const ordenado = asignarTerritorios(desordenadas, ["p", "q", "r"]);
+  check(
+    ordenado.find((s) => s.key === "y")!.territoryId === "p" &&
+      ordenado.find((s) => s.key === "x")!.territoryId === "q" &&
+      ordenado.find((s) => s.key === "z")!.territoryId === "r",
+    "reparte por fecha aunque las filas lleguen desordenadas",
+  );
+
+  check(
+    asignarTerritorios(veinticuatro, []).every((s) => s.territoryId === ""),
+    "sin territorios cargados el reparto no inventa nada",
+  );
+  check(
+    asignarTerritorios([], territorios23).length === 0,
+    "y sin salidas tampoco falla",
+  );
+
+  // --- El resumen que se enseña antes de guardar ---
+  check(
+    resumenDelReparto(repartidas) ===
+      "24 salidas repartidas entre 23 territorios: cada uno sale 1 o 2 veces.",
+    `el resumen se lee bien: ${resumenDelReparto(repartidas)}`,
+  );
+  check(
+    resumenDelReparto(pocos) ===
+      "24 salidas repartidas entre 4 territorios: cada uno sale 6 veces.",
+    `y con pocos territorios también: ${resumenDelReparto(pocos)}`,
+  );
+  check(
+    resumenDelReparto([
+      { territoryId: "a" },
+      { territoryId: "" },
+      { territoryId: "" },
+    ]) ===
+      "1 salida repartida entre 1 territorio: cada uno sale 1 vez. 2 salidas quedan sin territorio.",
+    `avisa de las que quedan sin territorio: ${resumenDelReparto([{ territoryId: "a" }, { territoryId: "" }, { territoryId: "" }])}`,
+  );
+  check(
+    resumenDelReparto([]) === "Ninguna salida tiene territorio.",
+    "sin nada repartido lo dice en vez de quedarse en blanco",
   );
 }
 

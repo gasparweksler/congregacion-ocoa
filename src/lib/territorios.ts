@@ -105,15 +105,88 @@ export function turnosDelPlan(plan: PlanSemanal): number {
   return n;
 }
 
-/** Cuántas salidas saldrían de este mes, sin llegar a armarlas. */
+// ---------------------------------------------------------------------------
+//  EL RANGO DE DÍAS
+//
+//  Un programa no tiene que abarcar el mes entero: se puede armar del 1 al 15
+//  de noviembre y después, aparte, del 16 al 30. El rango son dos días del
+//  mes, y siempre se guarda recortado y en orden para que ninguna cuenta se
+//  salga del calendario.
+// ---------------------------------------------------------------------------
+
+/** El último día del mes: 28, 29, 30 o 31. */
+export function ultimoDiaDelMes(anio: number, mes: number): number {
+  return new Date(anio, mes, 0).getDate();
+}
+
+/** Desde qué día del mes hasta qué día se arma el programa. */
+export type RangoDias = { desde: number; hasta: number };
+
+/** El mes entero: del día 1 al último. */
+export function rangoDelMes(anio: number, mes: number): RangoDias {
+  return { desde: 1, hasta: ultimoDiaDelMes(anio, mes) };
+}
+
+/**
+ * Deja el rango dentro del mes y en orden.
+ *
+ * Un día fuera del mes se recorta (el 31 de febrero pasa a ser el 28), lo que
+ * no es un número se cambia por el extremo que le toca, y si vienen al revés
+ * se dan la vuelta en vez de devolver un rango vacío.
+ */
+export function normalizarRango(
+  anio: number,
+  mes: number,
+  rango?: Partial<RangoDias> | null,
+): RangoDias {
+  const ultimo = ultimoDiaDelMes(anio, mes);
+  const dentro = (valor: unknown, porDefecto: number) => {
+    const n = Math.trunc(Number(valor));
+    if (!Number.isFinite(n) || n <= 0) return porDefecto;
+    return Math.min(n, ultimo);
+  };
+  let desde = dentro(rango?.desde, 1);
+  let hasta = dentro(rango?.hasta, ultimo);
+  if (desde > hasta) [desde, hasta] = [hasta, desde];
+  return { desde, hasta };
+}
+
+/** ¿El rango abarca el mes completo? */
+export function esMesCompleto(
+  anio: number,
+  mes: number,
+  rango: RangoDias,
+): boolean {
+  return rango.desde === 1 && rango.hasta === ultimoDiaDelMes(anio, mes);
+}
+
+/**
+ * Cómo se titula el período en el PDF: "Noviembre 2026" si es el mes entero,
+ * y "Del 1 al 15 de noviembre de 2026" si es solo un trozo.
+ */
+export function periodoDelPrograma(
+  anio: number,
+  mes: number,
+  rango: RangoDias,
+): string {
+  if (esMesCompleto(anio, mes, rango)) return `${monthName(mes)} ${anio}`;
+  const nombre = monthName(mes).toLowerCase();
+  if (rango.desde === rango.hasta) {
+    return `${rango.desde} de ${nombre} de ${anio}`;
+  }
+  return `Del ${rango.desde} al ${rango.hasta} de ${nombre} de ${anio}`;
+}
+
+/** Cuántas salidas saldrían de este mes (o de este trozo), sin armarlas. */
 export function cuantasSalidas(
   anio: number,
   mes: number,
   plan: PlanSemanal,
+  rango?: Partial<RangoDias> | null,
 ): number {
   let n = 0;
-  const ultimo = new Date(anio, mes, 0).getDate();
-  for (let d = 1; d <= ultimo; d++) {
+  const { desde, hasta } = normalizarRango(anio, mes, rango);
+  for (let d = desde; d <= hasta; d++) {
     const dia = plan[new Date(anio, mes - 1, d, 12, 0, 0).getDay()];
     if (!dia) continue;
     for (const turno of TURNOS_ORDEN) if (dia[turno]?.activo) n += 1;
@@ -470,13 +543,19 @@ export function generarSalidas(opciones: {
   plan: PlanSemanal;
   /** En el orden en el que conviene usarlos (el primero, el más olvidado). */
   territoriosSugeridos?: string[];
+  /** Del día X al día Y del mes. Sin esto, el mes entero. */
+  rango?: Partial<RangoDias> | null;
 }): SalidaBorrador[] {
   const sugeridos = opciones.territoriosSugeridos ?? [];
   const out: SalidaBorrador[] = [];
   let siguiente = 0;
-  const ultimo = new Date(opciones.anio, opciones.mes, 0).getDate();
+  const { desde, hasta } = normalizarRango(
+    opciones.anio,
+    opciones.mes,
+    opciones.rango,
+  );
 
-  for (let d = 1; d <= ultimo; d++) {
+  for (let d = desde; d <= hasta; d++) {
     const fecha = new Date(opciones.anio, opciones.mes - 1, d, 12, 0, 0);
     const dia = opciones.plan?.[fecha.getDay()];
     if (!dia) continue;
@@ -522,6 +601,79 @@ export function ordenarSalidas<
       s.turno === TURNOS.MANANA ? "0" : "1"
     }|${s.time.padStart(5, "0")}`;
   return [...salidas].sort((a, b) => clave(a).localeCompare(clave(b)));
+}
+
+// ---------------------------------------------------------------------------
+//  REPARTO AUTOMÁTICO DE TERRITORIOS
+// ---------------------------------------------------------------------------
+
+/**
+ * Reparte los territorios entre las salidas, lo más parejo posible.
+ *
+ * Se recorren las salidas en el orden del programa y se van dando los
+ * territorios en círculo, empezando por el que lleva más tiempo sin
+ * predicarse. Como la vuelta es entera antes de repetir, ninguno sale más de
+ * una vez más que otro: con 10 salidas y 4 territorios, dos salen 3 veces y
+ * dos salen 2. Y entre dos turnos del mismo territorio pasa la vuelta
+ * completa, así que no cae el mismo dos días seguidos mientras queden otros.
+ *
+ * Es una propuesta: devuelve salidas nuevas y no toca las que le pasan, para
+ * que la pantalla las siga pudiendo cambiar a mano antes de guardar.
+ */
+export function asignarTerritorios(
+  salidas: SalidaBorrador[],
+  territoriosSugeridos: string[],
+): SalidaBorrador[] {
+  const sugeridos = territoriosSugeridos.filter((id) => Boolean(id));
+  if (sugeridos.length === 0) return salidas.map((s) => ({ ...s }));
+  const leToca = new Map<string, string>();
+  ordenarSalidas(salidas).forEach((s, i) => {
+    leToca.set(s.key, sugeridos[i % sugeridos.length]);
+  });
+  return salidas.map((s) => ({
+    ...s,
+    territoryId: leToca.get(s.key) ?? s.territoryId,
+  }));
+}
+
+/** Cuántas veces le toca a cada territorio en estas salidas. */
+export function vecesPorTerritorio(
+  salidas: { territoryId: string }[],
+): Map<string, number> {
+  const cuenta = new Map<string, number>();
+  for (const s of salidas) {
+    if (!s.territoryId) continue;
+    cuenta.set(s.territoryId, (cuenta.get(s.territoryId) ?? 0) + 1);
+  }
+  return cuenta;
+}
+
+/**
+ * El reparto en palabras, para enseñarlo antes de guardar:
+ * "24 salidas repartidas entre 23 territorios: cada uno sale 1 o 2 veces."
+ */
+export function resumenDelReparto(salidas: { territoryId: string }[]): string {
+  const cuenta = vecesPorTerritorio(salidas);
+  if (cuenta.size === 0) return "Ninguna salida tiene territorio.";
+
+  const con = salidas.filter((s) => s.territoryId).length;
+  const sin = salidas.length - con;
+  const veces = [...cuenta.values()];
+  const minimo = Math.min(...veces);
+  const maximo = Math.max(...veces);
+  const cuantas =
+    minimo === maximo
+      ? `cada uno sale ${minimo} ${minimo === 1 ? "vez" : "veces"}`
+      : `cada uno sale ${minimo} o ${maximo} veces`;
+  const cola =
+    sin > 0
+      ? ` ${sin} ${sin === 1 ? "salida queda" : "salidas quedan"} sin territorio.`
+      : "";
+  return (
+    `${con} ${con === 1 ? "salida repartida" : "salidas repartidas"} entre ` +
+    `${cuenta.size} ${cuenta.size === 1 ? "territorio" : "territorios"}: ` +
+    `${cuantas}.${cola}`
+  );
 }
 
 /** Las filas del PDF del programa, ya con todo escrito. */

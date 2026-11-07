@@ -1,16 +1,19 @@
 // Prueba de ida y vuelta del lector de PDF de responsabilidades:
-// genera un PDF con el MISMO formato que produce /api/responsabilidades-pdf y
-// verifica que el parser recupere exactamente los mismos nombres y fechas.
+// genera el PDF con el MISMO código que usa /api/responsabilidades-pdf
+// (src/lib/responsabilidades-pdf.ts) y verifica que el parser recupere
+// exactamente los mismos nombres y fechas.
 //   npx tsx scripts/test-resp-pdf.mts
+//   LONG=1 npx tsx scripts/test-resp-pdf.mts   (nombres largos, dos renglones)
+//   PALETA=verdes npx tsx scripts/test-resp-pdf.mts
+//   GUARDAR=ruta.pdf npx tsx scripts/test-resp-pdf.mts   (deja el PDF en disco)
+import { writeFileSync } from "node:fs";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { parseResponsibilitiesPdf, type PdfItem } from "../src/lib/resp-pdf-parser.js";
-
-const DAY_LABEL: Record<string, string> = { JUEVES: "Jueves", SABADO: "Sábado" };
-const GROUP_FILLS: [number, number, number][] = [
-  [252, 224, 168], [246, 178, 178], [178, 233, 200],
-  [178, 200, 240], [222, 198, 240], [200, 224, 210],
-];
+import {
+  dibujarResponsabilidades,
+  type FilaResponsabilidad,
+} from "../src/lib/responsabilidades-pdf.js";
 
 // --- Datos de prueba: septiembre 2026 (jueves 3,10,17,24 / sábados 5,12,19,26)
 type Row = { dateISO: string; day: "JUEVES" | "SABADO"; v: Record<string, string> };
@@ -40,89 +43,33 @@ const rows: Row[] = dates.map(([d, day], i) => ({
   },
 }));
 
-// --- Generación del PDF (copia fiel de la ruta /api/responsabilidades-pdf) ---
-const period = "SEPTIEMBRE 2026";
+// --- Generación del PDF (el código de verdad, sin copias) ---
+const filas: FilaResponsabilidad[] = rows.map((r) => ({
+  dateISO: r.dateISO,
+  audio: r.v.r_audio,
+  video: r.v.r_video,
+  microfono: [r.v.r_microfono, r.v.r_microfono_2].filter(Boolean).join(" / "),
+  plataforma: r.v.r_acom_plataforma,
+  entrada: r.v.r_acom_entrada,
+  auditorio: r.v.r_acom_auditorio,
+  limpieza: r.v.r_limpieza,
+}));
+
 const doc = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
-const pageW = doc.internal.pageSize.getWidth();
-const marginX = 36;
-const dateCol = (r: Row) => `${DAY_LABEL[r.day]} ${Number(r.dateISO.split("-")[2])}`;
-
-doc.setFont("helvetica", "bold");
-doc.setFontSize(13);
-// El mismo formato que /api/responsabilidades-pdf, incluida la línea con el
-// nombre de la congregación: si el lector no la ignorara, leería mal la tabla.
-const CONGREGACION = "Congregación Ocoa";
-const subtitulo = (y: number): number => {
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(70, 85, 105);
-  doc.text(CONGREGACION, pageW / 2, y, { align: "center" });
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(30, 41, 59);
-  return y + 14;
-};
-
-doc.text("ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO", pageW / 2, 40, { align: "center" });
-autoTable(doc, {
-  startY: subtitulo(56),
-  margin: { left: marginX, right: marginX },
-  // Mismo orden que /api/responsabilidades-pdf: el mes encabeza la tabla.
-  head: [
-    [{ content: period, colSpan: 5 }],
-    [{ content: "DIA/MES" }, { content: "AUDIO" }, { content: "VIDEO" }, { content: "MICROFONO" }, { content: "PLATAFORMA" }],
-  ],
-  body: rows.map((r) => [
-    dateCol(r), r.v.r_audio, r.v.r_video,
-    [r.v.r_microfono, r.v.r_microfono_2].filter(Boolean).join(" / "),
-    r.v.r_acom_plataforma,
-  ]),
-  styles: { fontSize: 9, halign: "center", valign: "middle", cellPadding: 4, lineColor: [148, 163, 184], lineWidth: 0.5 },
-  headStyles: { fillColor: [149, 180, 216], textColor: [20, 30, 50], fontStyle: "bold" },
-  columnStyles: { 0: { fontStyle: "bold", fillColor: [235, 240, 248] } },
-});
-
-const limpiezaBody: any[][] = [];
-const groupIndex = new Map<string, number>();
-let nextColor = 0;
-for (let i = 0; i < rows.length; i++) {
-  const r = rows[i];
-  const g = r.v.r_limpieza || "";
-  const row: any[] = [dateCol(r), r.v.r_acom_entrada, r.v.r_acom_auditorio];
-  const prevG = i > 0 ? rows[i - 1].v.r_limpieza || "" : null;
-  if (g && g === prevG) {
-    for (let j = limpiezaBody.length - 1; j >= 0; j--) {
-      const last = limpiezaBody[j][3];
-      if (last && typeof last === "object") { last.rowSpan = (last.rowSpan ?? 1) + 1; break; }
-    }
-  } else {
-    let fill: [number, number, number] | undefined;
-    if (g) {
-      if (!groupIndex.has(g)) { groupIndex.set(g, nextColor % GROUP_FILLS.length); nextColor++; }
-      fill = GROUP_FILLS[groupIndex.get(g)!];
-    }
-    row.push({ content: g, rowSpan: 1, styles: { fontStyle: "bold", fontSize: 11, fillColor: fill ?? [255, 255, 255] } });
-  }
-  limpiezaBody.push(row);
-}
-const afterY = (doc as any).lastAutoTable.finalY + 28;
-doc.setFont("helvetica", "bold");
-doc.setFontSize(13);
-doc.text("ASIGNACIONES PARA LAS REUNIONES ACOMODACIÓN Y LIMPIEZA", pageW / 2, afterY, { align: "center" });
-autoTable(doc, {
-  startY: subtitulo(afterY + 16),
-  margin: { left: marginX, right: marginX },
-  head: [
-    [{ content: period, colSpan: 4 }],
-    [{ content: "DIA/MES" }, { content: "ACOMODADOR ENTRADA" }, { content: "ACOMODADOR AUDITORIO" }, { content: "LIMPIEZA POR GRUPOS" }],
-  ],
-  body: limpiezaBody,
-  styles: { fontSize: 9, halign: "center", valign: "middle", cellPadding: 4, lineColor: [148, 163, 184], lineWidth: 0.5 },
-  headStyles: { fillColor: [168, 208, 168], textColor: [20, 40, 20], fontStyle: "bold" },
-  columnStyles: { 0: { fontStyle: "bold", fillColor: [235, 244, 235], cellWidth: 90 }, 3: { cellWidth: 150 } },
+dibujarResponsabilidades(doc, autoTable, {
+  periodo: "SEPTIEMBRE 2026",
+  // La misma línea con el nombre de la congregación que lleva el PDF real: si
+  // el lector no la ignorara, leería mal la tabla.
+  congregacion: "Congregación Ocoa",
+  filas,
+  paleta: process.env.PALETA ?? "azules",
 });
 
 const bytes = new Uint8Array(doc.output("arraybuffer") as ArrayBuffer);
+if (process.env.GUARDAR) {
+  writeFileSync(process.env.GUARDAR, bytes);
+  console.log(`PDF guardado en ${process.env.GUARDAR} (${bytes.length} bytes)`);
+}
 
 // --- Lectura y comparación ---
 const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -131,12 +78,13 @@ const items: PdfItem[] = [];
 for (let p = 1; p <= pdf.numPages; p++) {
   const page = await pdf.getPage(p);
   const c = await page.getTextContent();
-  for (const raw of c.items as any[]) {
-    if (!raw.str?.trim()) continue;
+  for (const item of c.items) {
+    const raw = item as { str?: string; transform?: number[]; width?: number };
+    if (!raw.str?.trim() || !raw.transform) continue;
     items.push({ text: raw.str, x: raw.transform[4], y: raw.transform[5], width: raw.width ?? 0, page: p });
   }
 }
-console.log(`Fragmentos de texto leídos: ${items.length}`);
+console.log(`Páginas: ${pdf.numPages} · fragmentos de texto leídos: ${items.length}`);
 
 const validDates = rows.map((r) => ({ dateISO: r.dateISO, day: r.day }));
 const parsed = parseResponsibilitiesPdf(items, validDates);

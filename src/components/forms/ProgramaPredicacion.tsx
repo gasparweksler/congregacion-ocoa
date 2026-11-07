@@ -5,14 +5,19 @@
 //
 //  Primero se dice cómo es una semana normal en la congregación: para cada
 //  día, si se predica de mañana, de tarde, las dos o ninguna, y con qué
-//  hora, lugar de encuentro, capitán y (si se quiere) territorio fijo. Con
-//  eso la pantalla propone todas las salidas del mes, con los territorios
-//  repartidos empezando por los que llevan más tiempo sin predicarse.
+//  hora, lugar de encuentro, capitán y (si se quiere) territorio fijo. Se
+//  elige también desde qué día hasta qué día (el mes entero, o del 1 al 15),
+//  y con eso la pantalla propone las salidas, con los territorios repartidos
+//  empezando por los que llevan más tiempo sin predicarse.
 //
-//  Después se corrige lo que haga falta salida por salida, se guarda y se
-//  descarga en PDF, con o sin los mapas. Al guardar, las salidas cuentan
-//  para las estadísticas de los territorios, y el plan de la semana queda
-//  guardado para el mes siguiente.
+//  Después se corrige lo que haga falta salida por salida —fecha, turno,
+//  hora, lugar, territorio y capitán, cada uno aparte—, se guarda y se
+//  descarga en PDF, con o sin los mapas. "Asignar territorio
+//  automáticamente" vuelve a repartir los territorios entre las salidas que
+//  haya en la tabla, también como propuesta que se puede cambiar a mano.
+//
+//  Al guardar, las salidas cuentan para las estadísticas de los territorios,
+//  y el plan de la semana queda guardado para el mes siguiente.
 // ============================================================================
 
 import { useActionState, useState } from "react";
@@ -26,6 +31,7 @@ import {
   ORDEN_SEMANA,
   TURNOS,
   TURNOS_ORDEN,
+  asignarTerritorios,
   cuantasSalidas,
   etiquetaDeFecha,
   fechaDeISO,
@@ -33,13 +39,19 @@ import {
   generarSalidas,
   isoDeFecha,
   nombreCompleto,
+  normalizarRango,
   nuevaKey,
   ordenarSalidas,
+  periodoDelPrograma,
+  rangoDelMes,
   resumenDelPlan,
+  resumenDelReparto,
   territoriosDelPrograma,
   turnoLabel,
   turnosDelPlan,
+  ultimoDiaDelMes,
   type PlanSemanal,
+  type RangoDias,
   type Salida,
   type SalidaBorrador,
   type Territorio,
@@ -54,6 +66,29 @@ const etiqueta = "mb-0.5 block text-xs text-muted";
 
 function plural(n: number, singular: string, muchos: string): string {
   return n === 1 ? singular : muchos;
+}
+
+/** El día del mes de una fecha "2026-11-15" (0 si no se entiende). */
+function diaDelIso(iso: string): number {
+  const n = Number(iso.split("-")[2]);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Qué trozo del mes abarcan estas salidas. Si no hay ninguna, el mes entero:
+ * así el programa nuevo empieza propuesto completo.
+ */
+function rangoDeLasSalidas(
+  anio: number,
+  mes: number,
+  salidas: SalidaBorrador[],
+): RangoDias {
+  const dias = salidas.map((s) => diaDelIso(s.iso)).filter((d) => d > 0);
+  if (dias.length === 0) return rangoDelMes(anio, mes);
+  return normalizarRango(anio, mes, {
+    desde: Math.min(...dias),
+    hasta: Math.max(...dias),
+  });
 }
 
 export function ProgramaPredicacion({
@@ -81,12 +116,19 @@ export function ProgramaPredicacion({
 }) {
   const [salidas, setSalidas] = useState<SalidaBorrador[]>(salidasGuardadas);
   const [plan, setPlan] = useState<PlanSemanal>(planInicial);
+  // Desde qué día hasta qué día se arma el programa. Si el mes ya tiene uno
+  // guardado, se parte del trozo que abarca; si no, del mes entero.
+  const [rango, setRango] = useState<RangoDias>(() =>
+    rangoDeLasSalidas(anio, mes, salidasGuardadas),
+  );
   // El plan ocupa bastante: si el mes ya tiene su programa guardado, se
   // enseña plegado con su resumen y se abre al pulsar "Cambiar".
   const [verPlan, setVerPlan] = useState(salidasGuardadas.length === 0);
   const [conMapas, setConMapas] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [avisoPdf, setAvisoPdf] = useState("");
+  // El resultado del último reparto automático, para verlo antes de guardar.
+  const [avisoReparto, setAvisoReparto] = useState("");
 
   const [state, action] = useActionState(
     guardarProgramaAction,
@@ -140,10 +182,56 @@ export function ProgramaPredicacion({
     };
   }
 
+  /**
+   * Arma las salidas del trozo elegido.
+   *
+   * Solo toca los días del rango: lo que haya fuera se queda como está, para
+   * poder armar el programa en dos veces (del 1 al 15 y después del 16 al 30)
+   * sin perder la primera mitad. Con el mes entero, reemplaza todo.
+   */
   function generar() {
-    setSalidas(
-      generarSalidas({ anio, mes, plan, territoriosSugeridos: sugeridos }),
-    );
+    const nuevas = generarSalidas({
+      anio,
+      mes,
+      plan,
+      rango,
+      territoriosSugeridos: sugeridos,
+    });
+    const prefijo = `${anio}-${String(mes).padStart(2, "0")}-`;
+    setSalidas((previas) => {
+      const fuera = previas.filter((s) => {
+        // Una fila que alguien movió a otro mes no la toca nadie.
+        if (!s.iso.startsWith(prefijo)) return true;
+        const dia = diaDelIso(s.iso);
+        return dia > 0 && (dia < rango.desde || dia > rango.hasta);
+      });
+      return ordenarSalidas([...fuera, ...nuevas]);
+    });
+    setAvisoPdf("");
+    setAvisoReparto("");
+  }
+
+  // --- El rango de días ----------------------------------------------------
+
+  /** La fecha de un día del mes, como la quiere <input type="date">. */
+  function isoDelDia(dia: number): string {
+    return isoDeFecha(new Date(anio, mes - 1, dia, 12, 0, 0));
+  }
+
+  function cambiarRango(cambios: Partial<RangoDias>) {
+    setRango((previo) => normalizarRango(anio, mes, { ...previo, ...cambios }));
+  }
+
+  // --- El reparto automático de territorios --------------------------------
+
+  /**
+   * Reparte los territorios entre las salidas que haya en la tabla. Es una
+   * propuesta: queda en pantalla y se puede cambiar antes de guardar.
+   */
+  function repartirTerritorios() {
+    const propuesta = asignarTerritorios(salidas, sugeridos);
+    setSalidas(propuesta);
+    setAvisoReparto(resumenDelReparto(propuesta));
     setAvisoPdf("");
   }
 
@@ -242,7 +330,13 @@ export function ProgramaPredicacion({
       const doc = new jsPDF({ unit: "pt", format: "letter" });
       pdfLib.dibujarProgramaPredicacion(doc, autoTable, {
         titulo: "Programa de Predicación",
-        periodo: `${monthName(mes)} ${anio}`,
+        // El período dice lo que realmente abarca el programa: el mes entero,
+        // o "Del 1 al 15 de noviembre de 2026" si es solo un trozo.
+        periodo: periodoDelPrograma(
+          anio,
+          mes,
+          rangoDeLasSalidas(anio, mes, salidas),
+        ),
         congregacion,
         filas: filasDelPrograma(listas),
         mapas,
@@ -272,7 +366,8 @@ export function ProgramaPredicacion({
   const enOrden = ordenarSalidas(salidas);
   const sinTerritorio = salidas.filter((s) => !s.territoryId).length;
   const turnosPorSemana = turnosDelPlan(plan);
-  const seCrearan = cuantasSalidas(anio, mes, plan);
+  const seCrearan = cuantasSalidas(anio, mes, plan, rango);
+  const mesCompleto = rango.desde === 1 && rango.hasta === ultimoDiaDelMes(anio, mes);
 
   return (
     <div className="space-y-6">
@@ -446,15 +541,72 @@ export function ProgramaPredicacion({
         ) : null}
 
         {verPlan ? (
+          <div className="space-y-3 border-t border-border pt-3">
+          {/* Desde qué día hasta qué día: el mes entero, o solo un trozo. */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <span className={etiqueta}>Mes correspondiente</span>
+              <p className="py-1.5 text-sm font-medium text-foreground">
+                {monthName(mes)} de {anio}
+              </p>
+            </div>
+            <div>
+              <label className={etiqueta} htmlFor="rango-desde">
+                Fecha de inicio
+              </label>
+              <input
+                id="rango-desde"
+                type="date"
+                value={isoDelDia(rango.desde)}
+                min={isoDelDia(1)}
+                max={isoDelDia(ultimoDiaDelMes(anio, mes))}
+                onChange={(e) =>
+                  cambiarRango({ desde: diaDelIso(e.target.value) })
+                }
+                className={`${campo} w-40`}
+              />
+            </div>
+            <div>
+              <label className={etiqueta} htmlFor="rango-hasta">
+                Fecha de término
+              </label>
+              <input
+                id="rango-hasta"
+                type="date"
+                value={isoDelDia(rango.hasta)}
+                min={isoDelDia(1)}
+                max={isoDelDia(ultimoDiaDelMes(anio, mes))}
+                onChange={(e) =>
+                  cambiarRango({ hasta: diaDelIso(e.target.value) })
+                }
+                className={`${campo} w-40`}
+              />
+            </div>
+            {!mesCompleto ? (
+              <button
+                type="button"
+                onClick={() => setRango(rangoDelMes(anio, mes))}
+                className="rounded-md px-2.5 py-1.5 text-sm font-medium text-primary hover:bg-indigo-50"
+              >
+                Todo el mes
+              </button>
+            ) : null}
+          </div>
+
           <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={generar} disabled={turnosPorSemana === 0}>
-            🗓️ Generar las salidas de {monthName(mes)}
-          </Button>
-          <span className="text-xs text-muted">
-            {turnosPorSemana === 0
-              ? "Marca al menos un turno para poder generar."
-              : `Se armarán ${seCrearan} ${plural(seCrearan, "salida", "salidas")} en ${monthName(mes)}: ${resumenDelPlan(plan)}. Reemplaza lo que haya en la tabla de abajo (todavía sin guardar).`}
-          </span>
+            <Button onClick={generar} disabled={turnosPorSemana === 0}>
+              🗓️ Generar las salidas
+            </Button>
+            <span className="text-xs text-muted">
+              {turnosPorSemana === 0
+                ? "Marca al menos un turno para poder generar."
+                : `Se armarán ${seCrearan} ${plural(seCrearan, "salida", "salidas")} · ${periodoDelPrograma(anio, mes, rango)} · ${resumenDelPlan(plan)}. ${
+                    mesCompleto
+                      ? "Reemplaza lo que haya en la tabla de abajo"
+                      : "Reemplaza solo esos días: lo que haya fuera del rango se queda como está"
+                  } (todavía sin guardar).`}
+            </span>
+          </div>
           </div>
         ) : null}
       </div>
@@ -604,18 +756,42 @@ export function ProgramaPredicacion({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="secondary" onClick={anadir}>
-          ✚ Añadir una salida
-        </Button>
-        {salidas.length > 0 ? (
-          <span className="text-xs text-muted">
-            {salidas.length} {plural(salidas.length, "salida", "salidas")}
-            {sinTerritorio > 0
-              ? ` · ${sinTerritorio} sin territorio (no cuentan para las estadísticas)`
-              : ""}
-          </span>
-        ) : null}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="secondary" onClick={anadir}>
+            ✚ Añadir una salida
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={repartirTerritorios}
+            disabled={salidas.length === 0 || sugeridos.length === 0}
+          >
+            🎯 Asignar territorio automáticamente
+          </Button>
+          {salidas.length > 0 ? (
+            <span className="text-xs text-muted">
+              {salidas.length} {plural(salidas.length, "salida", "salidas")}
+              {sinTerritorio > 0
+                ? ` · ${sinTerritorio} sin territorio (no cuentan para las estadísticas)`
+                : ""}
+            </span>
+          ) : null}
+        </div>
+
+        {avisoReparto ? (
+          <Alert tone="info">
+            <strong>Propuesta de territorios.</strong> {avisoReparto} Revisa la
+            columna “Territorio” y cambia a mano lo que haga falta: nada se
+            guarda hasta que pulses “Guardar el programa”.
+          </Alert>
+        ) : (
+          <p className="text-xs text-muted">
+            “Asignar territorio automáticamente” reparte todos los territorios
+            entre las salidas de la tabla, empezando por los que llevan más
+            tiempo sin predicarse y sin que ninguno salga mucho más que otro.
+            Lo que proponga se puede cambiar antes de guardar.
+          </p>
+        )}
       </div>
 
       {/* ---------------- Guardar y descargar ---------------- */}
