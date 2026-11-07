@@ -264,7 +264,7 @@ function pintarPrograma(
       // ocupan lo mismo en caracteres, encoja lo que encoja la tabla.
       0: { fontStyle: "bold", cellWidth: 6 * escala.fontSize },
       1: { fontStyle: "bold", cellWidth: 4.2 * escala.fontSize },
-      2: { cellWidth: 5.6 * escala.fontSize },
+      2: { cellWidth: 6.6 * escala.fontSize },
     },
     didParseCell: (data) => {
       if (data.section === "head") {

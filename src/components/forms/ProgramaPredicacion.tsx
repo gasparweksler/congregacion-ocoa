@@ -1301,6 +1301,7 @@ export function ProgramaPredicacion({
           onChange={elegirPaleta}
           name="paleta-predicacion"
           ejemplo={["Sábado 7", "Domingo 8"]}
+          estilo="programa"
         />
       </CollapsibleCard>
 
