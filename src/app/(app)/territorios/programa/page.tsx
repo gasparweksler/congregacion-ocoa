@@ -26,6 +26,9 @@ import {
   TURNOS_ORDEN,
   planDeFilas,
   planPorDefecto,
+  gruposDeFilas,
+  gruposDeTexto,
+  type SalidaDeGrupo,
 } from "@/lib/territorios";
 import { deletePresetAction } from "@/server/territorio-actions";
 import { PageHeader } from "@/components/PageHeader";
@@ -55,6 +58,8 @@ export default async function ProgramaPredicacionPage({
     todasLasSalidas,
     congregacion,
     planFilas,
+    gruposDeLaCongregacion,
+    gruposFilas,
   ] = await Promise.all([
       prisma.territory.findMany({
         where: { congregationId: cong },
@@ -72,6 +77,7 @@ export default async function ProgramaPredicacionPage({
           place: true,
           captainName: true,
           territoryId: true,
+          groups: true,
         },
       }),
       // Solo las listas de sugerencias: el plan de la semana vive en una
@@ -93,6 +99,18 @@ export default async function ProgramaPredicacionPage({
       // El plan de la semana: una fila por día.
       prisma.servicePreset.findMany({
         where: { congregationId: cong, kind: PRESET_KINDS.PLAN },
+        select: { value: true },
+      }),
+      // Los grupos de predicación de la congregación, los que haya: tres,
+      // cuatro o los que sean. Salen solos, no hay que apuntarlos aquí.
+      prisma.group.findMany({
+        where: { congregationId: cong },
+        orderBy: { name: "asc" },
+        select: { name: true },
+      }),
+      // Las salidas de cada grupo: una fila por salida.
+      prisma.servicePreset.findMany({
+        where: { congregationId: cong, kind: PRESET_KINDS.GRUPOS },
         select: { value: true },
       }),
     ]);
@@ -125,6 +143,7 @@ export default async function ProgramaPredicacionPage({
     place: s.place,
     territoryId: s.territoryId ?? "",
     captainName: s.captainName,
+    groups: gruposDeTexto(s.groups ?? ""),
   }));
 
   const capitanes = presets
@@ -153,6 +172,20 @@ export default async function ProgramaPredicacionPage({
     }
     return copia;
   });
+
+  // Las salidas de los grupos guardadas, limpiando los grupos que ya no
+  // existen y los territorios que se borraron.
+  const nombresDeGrupo = gruposDeLaCongregacion.map((g) => g.name);
+  const existe = new Set(nombresDeGrupo);
+  const salidasDeGrupo: SalidaDeGrupo[] = gruposDeFilas(
+    gruposFilas.map((f) => f.value),
+  )
+    .map((s) => ({
+      ...s,
+      grupos: s.grupos.filter((g) => existe.has(g)),
+      territoryId: idsValidos.has(s.territoryId) ? s.territoryId : "",
+    }))
+    .filter((s) => s.grupos.length > 0);
 
   return (
     <>
@@ -198,6 +231,8 @@ export default async function ProgramaPredicacionPage({
           lugares={lugares}
           salidasGuardadas={guardadas}
           planInicial={planInicial}
+          gruposDisponibles={nombresDeGrupo}
+          salidasDeGrupoIniciales={salidasDeGrupo}
           congregacion={congregacion}
         />
 

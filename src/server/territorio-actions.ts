@@ -28,6 +28,10 @@ import {
   PRESET_KINDS,
   normalizarPlan,
   planAFilas,
+  gruposAFilas,
+  gruposDeFilas,
+  gruposATexto,
+  limpiarGrupos,
   type ResultadoImportacion,
   type PaginaImportada,
 } from "@/lib/territorios";
@@ -419,6 +423,15 @@ export async function guardarProgramaAction(
   });
   const validos = new Set(territorios.map((t) => t.id));
 
+  // Los grupos que de verdad existen en esta congregación. Un nombre que no
+  // esté se descarta: la salida pasa a ser de toda la congregación en vez de
+  // imprimir un grupo inventado.
+  const grupos = await prisma.group.findMany({
+    where: { congregationId: cong },
+    select: { name: true },
+  });
+  const gruposValidos = new Set(grupos.map((g) => g.name));
+
   const desde = new Date(anio, mes - 1, 1, 0, 0, 0);
   const hasta = new Date(anio, mes, 1, 0, 0, 0);
 
@@ -430,6 +443,7 @@ export async function guardarProgramaAction(
     place: string;
     territoryId: string | null;
     captainName: string;
+    groups: string;
   }[] = [];
 
   for (const s of parsed.data) {
@@ -445,6 +459,9 @@ export async function guardarProgramaAction(
       place: s.place,
       territoryId: validos.has(s.territoryId) ? s.territoryId : null,
       captainName: s.captainName,
+      groups: gruposATexto(
+        limpiarGrupos(s.groups ?? []).filter((g) => gruposValidos.has(g)),
+      ),
     });
   }
 
@@ -489,6 +506,13 @@ export async function guardarProgramaAction(
   // puesto y no hay que rellenarlo otra vez. Solo se guarda uno por
   // congregación, así que se reemplaza el anterior.
   await guardarPlanSemanal(cong, String(formData.get("plan") ?? ""));
+  // Y con él, las salidas de cada grupo: qué día sale cada uno, a qué hora,
+  // desde dónde y en qué territorio.
+  await guardarSalidasDeGrupo(
+    cong,
+    String(formData.get("planGrupos") ?? ""),
+    gruposValidos,
+  );
 
   await logAudit({
     userId: user.id,
@@ -533,6 +557,47 @@ async function guardarPlanSemanal(cong: string, crudo: string): Promise<void> {
     ]);
   } catch {
     // Un plan que no se puede leer se ignora, sin molestar a nadie.
+  }
+}
+
+/**
+ * Guarda las salidas de los grupos, una fila por salida.
+ *
+ * Los nombres se comprueban contra los grupos de la congregación: si un
+ * grupo ya no existe, se cae de la salida; y si la salida se queda sin
+ * ningún grupo, no se guarda (sería un duplicado de la de todos).
+ */
+async function guardarSalidasDeGrupo(
+  cong: string,
+  crudo: string,
+  gruposValidos: Set<string>,
+): Promise<void> {
+  if (crudo.length > 40000) return;
+  try {
+    const lista = crudo ? (JSON.parse(crudo) as unknown) : [];
+    if (!Array.isArray(lista)) return;
+    const salidas = gruposDeFilas(lista.map((s) => JSON.stringify(s)))
+      .map((s) => ({
+        ...s,
+        grupos: s.grupos.filter((g) => gruposValidos.has(g)),
+      }))
+      .filter((s) => s.grupos.length > 0);
+
+    const filas = gruposAFilas(salidas).map((value) => ({
+      congregationId: cong,
+      kind: PRESET_KINDS.GRUPOS,
+      value,
+    }));
+    await prisma.$transaction([
+      prisma.servicePreset.deleteMany({
+        where: { congregationId: cong, kind: PRESET_KINDS.GRUPOS },
+      }),
+      ...(filas.length > 0
+        ? [prisma.servicePreset.createMany({ data: filas, skipDuplicates: true })]
+        : []),
+    ]);
+  } catch {
+    // Igual que con el plan: lo que no se entiende se deja como estaba.
   }
 }
 

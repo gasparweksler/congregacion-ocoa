@@ -41,6 +41,17 @@ import {
   planVacio,
   resumenDelPlan,
   asignarTerritorios,
+  etiquetaCortaDeFecha,
+  etiquetaDeGrupos,
+  gruposAFilas,
+  gruposATexto,
+  gruposDeFilas,
+  gruposDeTexto,
+  horaEn24,
+  limpiarGrupos,
+  salidaDeGrupoEnBlanco,
+  turnoDeHora,
+  type FilaPrograma,
   esMesCompleto,
   normalizarRango,
   periodoDelPrograma,
@@ -541,8 +552,7 @@ titulo("5. El orden del programa y sus filas");
   const filas = filasDelPrograma(salidas);
   check(filas.length === 3, "una fila por salida");
   check(
-    filas[0].fecha === "domingo 3 de enero" &&
-      filas[0].horario === "Mañana · 9:30",
+    filas[0].fecha === "Domingo 3" && filas[0].horario === "09:30 HRS",
     `la primera fila (${filas[0].fecha} / ${filas[0].horario})`,
   );
   check(
@@ -798,12 +808,12 @@ function pngDePrueba(ancho: number, alto: number): Buffer {
     "las cinco columnas que se piden",
   );
   check(
-    texto.includes("domingo 3 de enero") && texto.includes("domingo 10 de enero"),
-    "las fechas con su día de la semana",
+    texto.includes("Domingo 3") && texto.includes("Domingo 10"),
+    "las fechas, con el día de la semana y sin el mes",
   );
   check(
-    texto.includes("Mañana · 9:30") && texto.includes("Tarde · 15:30"),
-    "los horarios con su turno",
+    texto.includes("09:30 HRS") && texto.includes("15:30 HRS"),
+    "los horarios en 24 horas, con HRS",
   );
   check(
     texto.includes("Salón del Reino") && texto.includes("Plaza de Ocoa"),
@@ -987,6 +997,7 @@ titulo("9. Del día X al día Y, y el reparto automático de territorios");
     place: "Salón del Reino",
     territoryId: "",
     captainName: "",
+    groups: [],
   });
   const veinticuatro = Array.from({ length: 24 }, (_, i) =>
     salida(`2026-11-${String(i + 1).padStart(2, "0")}`, i),
@@ -1071,6 +1082,275 @@ titulo("9. Del día X al día Y, y el reparto automático de territorios");
   check(
     resumenDelReparto([]) === "Ninguna salida tiene territorio.",
     "sin nada repartido lo dice en vez de quedarse en blanco",
+  );
+}
+
+// ---------------------------------------------------------------------------
+titulo("10. Fecha y hora del impreso, y predicación por grupos");
+{
+  // --- Cómo se escribe la fecha y la hora en el PDF ---
+  check(
+    etiquetaCortaDeFecha(F("2026-11-01")) === "Domingo 1" &&
+      etiquetaCortaDeFecha(F("2026-11-25")) === "Miércoles 25",
+    `la fecha va sin el mes (${etiquetaCortaDeFecha(F("2026-11-01"))}, ${etiquetaCortaDeFecha(F("2026-11-25"))})`,
+  );
+  check(
+    horaEn24("9:30") === "09:30 HRS" && horaEn24("16:00") === "16:00 HRS",
+    `la hora va en 24 horas y con HRS (${horaEn24("9:30")}, ${horaEn24("16:00")})`,
+  );
+  check(
+    horaEn24("4:00", "TARDE") === "16:00 HRS" &&
+      horaEn24("9:30", "MANANA") === "09:30 HRS",
+    `una salida de tarde a las "4" son las 16:00 (${horaEn24("4:00", "TARDE")})`,
+  );
+  check(
+    horaEn24("4 pm") === "16:00 HRS" && horaEn24("12:15 am") === "00:15 HRS",
+    `también se entiende el am/pm (${horaEn24("4 pm")}, ${horaEn24("12:15 am")})`,
+  );
+  check(
+    horaEn24("10") === "10:00 HRS" && horaEn24("18.30") === "18:30 HRS",
+    `y las formas sueltas (${horaEn24("10")}, ${horaEn24("18.30")})`,
+  );
+  check(
+    horaEn24("a convenir") === "a convenir" && horaEn24("99:99") === "99:99",
+    "lo que no es una hora se imprime tal cual en vez de inventarse una",
+  );
+  check(
+    horaEn24("12:00", "TARDE") === "12:00 HRS",
+    "el mediodía no se pasa a las 24:00",
+  );
+  check(
+    turnoDeHora("9:30") === "MANANA" &&
+      turnoDeHora("16:00") === "TARDE" &&
+      turnoDeHora("4 pm") === "TARDE",
+    "el turno sale solo de la hora",
+  );
+
+  // --- Nombres de grupos ---
+  check(
+    etiquetaDeGrupos([]) === "Toda la congregación" &&
+      etiquetaDeGrupos(["Grupo 1"]) === "Grupo 1" &&
+      etiquetaDeGrupos(["Grupo 1", "Grupo 2"]) === "Grupo 1 y Grupo 2" &&
+      etiquetaDeGrupos(["Grupo 1", "Grupo 2", "Grupo 3"]) ===
+        "Grupo 1, Grupo 2 y Grupo 3",
+    "los grupos se leen como se dicen",
+  );
+  check(
+    limpiarGrupos([" Grupo 1 ", "Grupo 1", "", null, "Gru|po 2"]).join(",") ===
+      "Grupo 1,Gru po 2",
+    `los nombres se limpian: ni repetidos, ni vacíos, ni "|" (${limpiarGrupos([" Grupo 1 ", "Grupo 1", "", null, "Gru|po 2"]).join(",")})`,
+  );
+  check(
+    gruposDeTexto(gruposATexto(["Grupo 1", "Grupo 2"])).join(",") ===
+      "Grupo 1,Grupo 2" && gruposDeTexto("").length === 0,
+    "ida y vuelta a la columna de la base",
+  );
+
+  // --- Las salidas de grupo entran en el programa ---
+  const territoriosG: Territorio[] = [
+    { id: "t1", number: 1, name: "Camino al Túnel", order: 1 },
+    { id: "t2", number: 2, name: "La Febre 1", order: 2 },
+  ];
+  const planGeneral = planVacio("Salón del Reino");
+  planGeneral[0].MANANA.activo = true; // domingos, toda la congregación
+
+  const deGrupo = [
+    {
+      ...salidaDeGrupoEnBlanco(["Grupo 1", "Grupo 2"], "Salón del Reino"),
+      dia: 6, // sábados
+      time: "10:00",
+      territoryId: "t1",
+    },
+    {
+      ...salidaDeGrupoEnBlanco(["Grupo 3"], "Plaza de Armas"),
+      dia: 3, // miércoles
+      time: "18:00",
+    },
+  ];
+
+  // Noviembre de 2026: 5 domingos, 4 sábados, 4 miércoles.
+  const conGrupos = generarSalidas({
+    anio: 2026,
+    mes: 11,
+    plan: planGeneral,
+    salidasDeGrupo: deGrupo,
+    territoriosSugeridos: territoriosG.map((t) => t.id),
+  });
+  check(
+    conGrupos.length === 13,
+    `5 domingos + 4 sábados + 4 miércoles = 13 salidas (${conGrupos.length})`,
+  );
+  check(
+    conGrupos.filter((s) => s.groups.length === 0).length === 5,
+    "las cinco de toda la congregación no llevan grupo",
+  );
+  const compartidas = conGrupos.filter((s) => s.groups.length === 2);
+  check(
+    compartidas.length === 4 &&
+      compartidas.every(
+        (s) =>
+          s.groups.join(",") === "Grupo 1,Grupo 2" &&
+          s.territoryId === "t1" &&
+          s.time === "10:00" &&
+          s.turno === "MANANA",
+      ),
+    `los sábados salen Grupo 1 y Grupo 2 juntos, en una sola salida (${compartidas.length})`,
+  );
+  check(
+    conGrupos
+      .filter((s) => s.groups.join(",") === "Grupo 3")
+      .every((s) => s.turno === "TARDE" && s.place === "Plaza de Armas"),
+    "la salida de las 18:00 se guarda como de tarde, sin preguntarlo",
+  );
+  check(
+    conGrupos.filter((s) => s.groups.includes("Grupo 1")).length === 4,
+    "no se duplica la salida compartida: una sola fila con los dos grupos",
+  );
+  check(
+    generarSalidas({ anio: 2026, mes: 11, plan: planVacio() }).length === 0 &&
+      generarSalidas({
+        anio: 2026,
+        mes: 11,
+        plan: planVacio(),
+        salidasDeGrupo: deGrupo,
+      }).length === 8,
+    "sin plan general, siguen saliendo solo las de los grupos",
+  );
+
+  // --- Lo guardado se vuelve a leer ---
+  const vuelta = gruposDeFilas(gruposAFilas(deGrupo));
+  check(
+    vuelta.length === 2 &&
+      vuelta[0].grupos.join(",") === "Grupo 1,Grupo 2" &&
+      vuelta[0].dia === 6 &&
+      vuelta[0].time === "10:00" &&
+      vuelta[1].grupos.join(",") === "Grupo 3",
+    "las salidas de grupo se guardan y se vuelven a leer igual, y en orden",
+  );
+  check(
+    gruposAFilas(deGrupo).every((f) => Buffer.byteLength(f, "utf8") < 2700),
+    `cada fila cabe en el índice de Postgres (la mayor: ${Math.max(...gruposAFilas(deGrupo).map((f) => Buffer.byteLength(f, "utf8")))} bytes)`,
+  );
+  check(
+    gruposDeFilas(["no es json", "{}", '{"dia":9}']).length === 0,
+    "una fila ilegible se salta en vez de romper la pantalla",
+  );
+
+  // --- Cómo sale todo esto en las filas del PDF ---
+  const porIdG = new Map(territoriosG.map((t) => [t.id, t]));
+  const comoSalidas: Salida[] = conGrupos.map((s) => ({
+    id: s.key,
+    date: F(s.iso),
+    turno: s.turno,
+    time: s.time,
+    place: s.place,
+    captainName: s.captainName,
+    territorio: porIdG.get(s.territoryId) ?? null,
+    grupos: s.groups,
+  }));
+  const filasG = filasDelPrograma(comoSalidas);
+  check(
+    filasG.some((f) => f.grupos === "Toda la congregación" && !f.esDeGrupo),
+    "la predicación general se distingue en el PDF",
+  );
+  check(
+    filasG.some((f) => f.grupos === "Grupo 1 y Grupo 2" && f.compartida),
+    "la compartida también, con los dos nombres",
+  );
+  check(
+    filasG.some((f) => f.grupos === "Grupo 3" && f.esDeGrupo && !f.compartida),
+    "y la de un grupo solo",
+  );
+}
+
+// ---------------------------------------------------------------------------
+titulo("11. El PDF cabe en una hoja");
+{
+  const unaFila = (i: number, grupos = ""): FilaPrograma => ({
+    fecha: `Lunes ${(i % 28) + 1}`,
+    horario: "09:30 HRS",
+    lugar: "Salón del Reino",
+    territorio: `${i + 1} - Territorio de prueba ${i + 1}`,
+    capitan: "Gastón Mondaca",
+    grupos: grupos || "Toda la congregación",
+    esDeGrupo: Boolean(grupos),
+    compartida: grupos.includes(" y "),
+  });
+
+  // 72 es el mes más cargado posible: todos los días, mañana y tarde, más
+  // las salidas de los grupos.
+  for (const cuantas of [9, 23, 31, 44, 60, 72]) {
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    dibujarProgramaPredicacion(doc, autoTable, {
+      titulo: "Programa de Predicación",
+      periodo: "Noviembre 2026",
+      congregacion: "Congregación Ocoa",
+      filas: Array.from({ length: cuantas }, (_, i) => unaFila(i)),
+    });
+    check(
+      doc.getNumberOfPages() === 1,
+      `${cuantas} salidas caben en una sola hoja (${doc.getNumberOfPages()})`,
+    );
+  }
+
+  // Con la columna de grupos, que es una más, también.
+  const docG = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(docG, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    congregacion: "Congregación Ocoa",
+    filas: Array.from({ length: 44 }, (_, i) =>
+      unaFila(i, i % 3 === 0 ? "Grupo 1 y Grupo 2" : i % 3 === 1 ? "Grupo 3" : ""),
+    ),
+  });
+  check(
+    docG.getNumberOfPages() === 1,
+    `44 salidas con la columna de grupos, en una hoja (${docG.getNumberOfPages()})`,
+  );
+  const textoG = await extractPdfItems(
+    new Uint8Array(docG.output("arraybuffer") as ArrayBuffer),
+  )
+    .then((items) => items.map((i) => i.text).join(" "));
+  check(
+    textoG.includes("Grupos") &&
+      textoG.includes("Grupo 1 y Grupo 2") &&
+      textoG.includes("Toda la congregación"),
+    "y el PDF dice de quién es cada salida",
+  );
+
+  // Sin grupos, el PDF sigue teniendo las cinco columnas de siempre.
+  const docSin = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(docSin, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    filas: Array.from({ length: 9 }, (_, i) => unaFila(i)),
+  });
+  const textoSin = await extractPdfItems(
+    new Uint8Array(docSin.output("arraybuffer") as ArrayBuffer),
+  ).then((items) => items.map((i) => i.text).join(" "));
+  check(
+    !textoSin.includes("Grupos") && !textoSin.includes("Toda la congregación"),
+    "una congregación sin grupos baja el PDF exactamente igual que antes",
+  );
+
+  // Los mapas siguen yendo cada uno en su hoja, detrás del programa.
+  const docMapas = new jsPDF({ unit: "pt", format: "letter" });
+  dibujarProgramaPredicacion(docMapas, autoTable, {
+    titulo: "Programa de Predicación",
+    periodo: "Noviembre 2026",
+    filas: Array.from({ length: 44 }, (_, i) => unaFila(i)),
+    mapas: [
+      {
+        titulo: "1 - Camino al Túnel",
+        dataUrl: `data:image/png;base64,${pngDePrueba(80, 60).toString("base64")}`,
+        ancho: 600,
+        alto: 400,
+      },
+    ],
+  });
+  check(
+    docMapas.getNumberOfPages() === 2,
+    `el programa en una hoja y el mapa en la suya (${docMapas.getNumberOfPages()})`,
   );
 }
 

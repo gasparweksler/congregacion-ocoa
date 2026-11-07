@@ -7,11 +7,11 @@
 //  programa de su congregación no quiere volver a elegirlos cada mes.
 // ============================================================================
 
-import { useEffect, useState } from "react";
 import { DownloadButton } from "@/components/DownloadButton";
 import { CollapsibleCard } from "@/components/ui";
 import { PaletaOpciones } from "@/components/forms/PaletaOpciones";
-import { paletaDe, type PaletaId } from "@/lib/programa-paletas";
+import { usePaletaRecordada } from "@/components/forms/usePaletaRecordada";
+import { paletaDe } from "@/lib/programa-paletas";
 
 const RECUERDO = "paleta-responsabilidades";
 
@@ -22,26 +22,7 @@ export function RespPdfDownload({
   year: number;
   month: number;
 }) {
-  const [paleta, setPaleta] = useState<PaletaId>("azules");
-
-  // En un efecto, para que servidor y navegador pinten lo mismo al principio.
-  useEffect(() => {
-    try {
-      const guardada = localStorage.getItem(RECUERDO);
-      if (guardada) setPaleta(paletaDe(guardada).id);
-    } catch {
-      /* navegador sin almacenamiento: se queda la de siempre */
-    }
-  }, []);
-
-  const elegir = (id: PaletaId) => {
-    setPaleta(id);
-    try {
-      localStorage.setItem(RECUERDO, id);
-    } catch {
-      /* da igual: la descarga funciona lo mismo */
-    }
-  };
+  const [paleta, elegir] = usePaletaRecordada(RECUERDO);
 
   return (
     <div className="space-y-3">

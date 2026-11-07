@@ -175,6 +175,13 @@ export const serviceOutingSchema = z.object({
   place: z.string().trim().max(120, "Lugar demasiado largo"),
   territoryId: z.string().max(40),
   captainName: z.string().trim().max(120, "Nombre de capitán demasiado largo"),
+  // Qué grupos salen. Ausente o vacío = toda la congregación, que es como
+  // llegaban todas las salidas antes de que existiera la predicación por
+  // grupos: los programas guardados se siguen leyendo igual.
+  groups: z
+    .array(z.string().trim().max(80, "Nombre de grupo demasiado largo"))
+    .max(20, "Demasiados grupos en una salida")
+    .optional(),
 });
 
 /**

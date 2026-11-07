@@ -177,19 +177,28 @@ export function periodoDelPrograma(
   return `Del ${rango.desde} al ${rango.hasta} de ${nombre} de ${anio}`;
 }
 
-/** Cuántas salidas saldrían de este mes (o de este trozo), sin armarlas. */
+/**
+ * Cuántas salidas saldrían de este mes (o de este trozo), sin armarlas.
+ * Las de los grupos cuentan igual que las demás, y una compartida cuenta
+ * como una sola, que es lo que se va a ver en la tabla.
+ */
 export function cuantasSalidas(
   anio: number,
   mes: number,
   plan: PlanSemanal,
   rango?: Partial<RangoDias> | null,
+  salidasDeGrupo?: SalidaDeGrupo[] | null,
 ): number {
   let n = 0;
   const { desde, hasta } = normalizarRango(anio, mes, rango);
+  const deGrupo = (salidasDeGrupo ?? []).filter((s) => s.grupos.length > 0);
   for (let d = desde; d <= hasta; d++) {
-    const dia = plan[new Date(anio, mes - 1, d, 12, 0, 0).getDay()];
-    if (!dia) continue;
-    for (const turno of TURNOS_ORDEN) if (dia[turno]?.activo) n += 1;
+    const semana = new Date(anio, mes - 1, d, 12, 0, 0).getDay();
+    const dia = plan[semana];
+    if (dia) {
+      for (const turno of TURNOS_ORDEN) if (dia[turno]?.activo) n += 1;
+    }
+    for (const salida of deGrupo) if (salida.dia === semana) n += 1;
   }
   return n;
 }
@@ -281,6 +290,144 @@ export function planDeFilas(valores: string[]): PlanSemanal | null {
 }
 
 // ---------------------------------------------------------------------------
+//  PREDICACIÓN POR GRUPOS
+//
+//  Además de la salida de toda la congregación, cada grupo puede tener la
+//  suya: su día, su hora, su lugar de encuentro y su territorio. Y dos o más
+//  grupos pueden salir juntos, que entonces es una sola salida con los dos
+//  nombres, no una por grupo.
+//
+//  Los grupos van por nombre, como el capitán y el lugar: lo que importa es
+//  lo que se imprime, y así renombrar o borrar un grupo no estropea los
+//  programas de los meses pasados.
+// ---------------------------------------------------------------------------
+
+/** Lo que se escribe cuando una salida no es de ningún grupo en concreto. */
+export const TODA_LA_CONGREGACION = "Toda la congregación";
+
+/** Separador de los nombres dentro de la columna "groups" de la base. */
+const SEPARADOR_GRUPOS = "|";
+
+/** Nombres sin espacios de sobra, sin vacíos, sin repetidos y sin el "|". */
+export function limpiarGrupos(grupos: unknown): string[] {
+  if (!Array.isArray(grupos)) return [];
+  const vistos = new Set<string>();
+  const out: string[] = [];
+  for (const g of grupos) {
+    if (typeof g !== "string") continue;
+    const nombre = g.split(SEPARADOR_GRUPOS).join(" ").trim().slice(0, 80);
+    if (!nombre || vistos.has(nombre)) continue;
+    vistos.add(nombre);
+    out.push(nombre);
+  }
+  return out.slice(0, 20);
+}
+
+/** Los nombres de grupo, listos para guardar en una sola columna de texto. */
+export function gruposATexto(grupos: string[]): string {
+  return limpiarGrupos(grupos).join(SEPARADOR_GRUPOS);
+}
+
+/** Lo contrario: de la columna de texto a la lista de nombres. */
+export function gruposDeTexto(texto: string): string[] {
+  return limpiarGrupos((texto ?? "").split(SEPARADOR_GRUPOS));
+}
+
+/** "Grupo 1", "Grupo 1 y Grupo 2", "Grupo 1, Grupo 2 y Grupo 3". */
+export function etiquetaDeGrupos(grupos: string[]): string {
+  const limpios = limpiarGrupos(grupos);
+  if (limpios.length === 0) return TODA_LA_CONGREGACION;
+  if (limpios.length === 1) return limpios[0];
+  return `${limpios.slice(0, -1).join(", ")} y ${limpios[limpios.length - 1]}`;
+}
+
+/** Una salida de uno o varios grupos, dentro del plan de la semana. */
+export type SalidaDeGrupo = {
+  /** Llave solo del editor. */
+  key: string;
+  /** Qué grupos salen. Dos o más = salida compartida, una sola actividad. */
+  grupos: string[];
+  /** Día de la semana, como lo numera el navegador (0 = domingo). */
+  dia: number;
+  time: string;
+  place: string;
+  /** Territorio fijo. Vacío = entra en el reparto con las demás. */
+  territoryId: string;
+  captainName: string;
+};
+
+/** Una salida de grupo recién añadida, con lo razonable puesto. */
+export function salidaDeGrupoEnBlanco(
+  grupos: string[] = [],
+  lugar = "",
+): SalidaDeGrupo {
+  return {
+    key: nuevaKey(),
+    grupos: limpiarGrupos(grupos),
+    dia: 6,
+    time: HORA_POR_DEFECTO.MANANA,
+    place: lugar,
+    territoryId: "",
+    captainName: "",
+  };
+}
+
+/** Comprueba que una salida de grupo guardada sigue teniendo sentido. */
+function normalizarSalidaDeGrupo(crudo: unknown): SalidaDeGrupo | null {
+  if (!crudo || typeof crudo !== "object") return null;
+  const c = crudo as Record<string, unknown>;
+  const dia = Math.trunc(Number(c.dia));
+  if (!Number.isFinite(dia) || dia < 0 || dia > 6) return null;
+  return {
+    key: nuevaKey(),
+    grupos: limpiarGrupos(c.grupos),
+    dia,
+    time: textoHasta(c.time, 20) || HORA_POR_DEFECTO.MANANA,
+    place: textoHasta(c.place, 120),
+    territoryId: textoHasta(c.territoryId, 40),
+    captainName: textoHasta(c.captainName, 120),
+  };
+}
+
+/**
+ * Las salidas de grupo, una fila de texto por salida.
+ *
+ * Igual que el plan de la semana: cada una en su fila, porque el índice de
+ * Postgres no admite valores muy largos y un solo JSON con todas se pasaría.
+ * El número de orden va dentro para que dos salidas iguales no choquen.
+ */
+export function gruposAFilas(salidas: SalidaDeGrupo[]): string[] {
+  return salidas.slice(0, 60).map((s, i) =>
+    JSON.stringify({
+      i,
+      grupos: limpiarGrupos(s.grupos),
+      dia: s.dia,
+      time: s.time,
+      place: s.place,
+      territoryId: s.territoryId,
+      captainName: s.captainName,
+    }),
+  );
+}
+
+/** Lo contrario: de las filas guardadas a las salidas de grupo. */
+export function gruposDeFilas(valores: string[]): SalidaDeGrupo[] {
+  const conOrden: { i: number; salida: SalidaDeGrupo }[] = [];
+  for (const valor of valores) {
+    try {
+      const crudo = JSON.parse(valor) as { i?: unknown };
+      const salida = normalizarSalidaDeGrupo(crudo);
+      if (!salida) continue;
+      const i = Number(crudo.i);
+      conOrden.push({ i: Number.isFinite(i) ? i : conOrden.length, salida });
+    } catch {
+      /* una fila ilegible se salta: el resto del plan vale igual */
+    }
+  }
+  return conOrden.sort((a, b) => a.i - b.i).map((x) => x.salida);
+}
+
+// ---------------------------------------------------------------------------
 //  FECHAS
 //  Todas las fechas se guardan a MEDIODÍA local, como el resto del sistema:
 //  así no se corren de día al convertirlas a UTC.
@@ -312,6 +459,51 @@ export function etiquetaDeFecha(d: Date): string {
   return `${weekdayName(d.getDay()).toLowerCase()} ${d.getDate()} de ${monthName(
     d.getMonth() + 1,
   ).toLowerCase()}`;
+}
+
+/**
+ * La fecha como va en el programa impreso: "Domingo 1", "Miércoles 25".
+ *
+ * Sin el mes: el mes ya encabeza la tabla, repetirlo en cada fila solo
+ * alargaba la columna y obligaba a partir el texto en dos renglones.
+ */
+export function etiquetaCortaDeFecha(d: Date): string {
+  return `${weekdayName(d.getDay())} ${d.getDate()}`;
+}
+
+/**
+ * La hora como va en el programa impreso: "09:30 HRS", "16:00 HRS".
+ *
+ * Siempre en 24 horas, porque así es como se lee de un vistazo sin pensar si
+ * era de mañana o de tarde. Lo que se escribe en pantalla es texto libre
+ * ("9:30", "4 pm", "16.00"), así que aquí se entiende lo que se pueda; si no
+ * hay forma de leerlo, se imprime tal cual en vez de inventar una hora.
+ */
+export function horaEn24(texto: string, turno?: Turno): string {
+  const t = (texto ?? "").trim();
+  const m = /^(\d{1,2})\s*[:.h]?\s*(\d{2})?/.exec(t);
+  if (!m) return t;
+  let hora = Number(m[1]);
+  const minuto = m[2] ? Number(m[2]) : 0;
+  if (!Number.isFinite(hora) || hora > 23 || minuto > 59) return t;
+
+  const tarde = /p\.?\s*m/i.test(t);
+  const manana = /a\.?\s*m/i.test(t);
+  if (tarde && hora < 12) hora += 12;
+  else if (manana && hora === 12) hora = 0;
+  // Sin "am" ni "pm": una salida de tarde a las "4" son las 16:00.
+  else if (!tarde && !manana && turno === TURNOS.TARDE && hora < 12) hora += 12;
+
+  return `${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")} HRS`;
+}
+
+/** De qué turno es una hora escrita a mano: de 13:00 en adelante, tarde. */
+export function turnoDeHora(texto: string): Turno {
+  const t = (texto ?? "").trim();
+  if (/p\.?\s*m/i.test(t)) return TURNOS.TARDE;
+  if (/a\.?\s*m/i.test(t)) return TURNOS.MANANA;
+  const hora = Number(/^(\d{1,2})/.exec(t)?.[1] ?? 0);
+  return Number.isFinite(hora) && hora >= 13 ? TURNOS.TARDE : TURNOS.MANANA;
 }
 
 /** Los días del mes que caen en alguno de esos días de la semana (0..6). */
@@ -518,6 +710,8 @@ export type SalidaBorrador = {
   /** Id del territorio, o "" si todavía no se eligió. */
   territoryId: string;
   captainName: string;
+  /** Qué grupos salen. Vacío = toda la congregación. */
+  groups: string[];
 };
 
 let contador = 0;
@@ -545,6 +739,8 @@ export function generarSalidas(opciones: {
   territoriosSugeridos?: string[];
   /** Del día X al día Y del mes. Sin esto, el mes entero. */
   rango?: Partial<RangoDias> | null;
+  /** Las salidas de cada grupo, que se suman a las de la congregación. */
+  salidasDeGrupo?: SalidaDeGrupo[];
 }): SalidaBorrador[] {
   const sugeridos = opciones.territoriosSugeridos ?? [];
   const out: SalidaBorrador[] = [];
@@ -555,26 +751,58 @@ export function generarSalidas(opciones: {
     opciones.rango,
   );
 
+  /** El territorio que toca: el fijo del plan, o el siguiente del reparto. */
+  const territorioQueToca = (fijo: string): string => {
+    if (fijo) return fijo;
+    if (sugeridos.length === 0) return "";
+    const id = sugeridos[siguiente % sugeridos.length];
+    siguiente += 1;
+    return id;
+  };
+
+  // Las salidas de grupo, ordenadas por el día de la semana al que van.
+  const deGrupoPorDia = new Map<number, SalidaDeGrupo[]>();
+  for (const s of opciones.salidasDeGrupo ?? []) {
+    const lista = deGrupoPorDia.get(s.dia) ?? [];
+    lista.push(s);
+    deGrupoPorDia.set(s.dia, lista);
+  }
+
   for (let d = desde; d <= hasta; d++) {
     const fecha = new Date(opciones.anio, opciones.mes - 1, d, 12, 0, 0);
+    const iso = isoDeFecha(fecha);
     const dia = opciones.plan?.[fecha.getDay()];
-    if (!dia) continue;
-    for (const turno of TURNOS_ORDEN) {
-      const cfg = dia[turno];
-      if (!cfg?.activo) continue;
-      let territoryId = cfg.territoryId ?? "";
-      if (!territoryId && sugeridos.length > 0) {
-        territoryId = sugeridos[siguiente % sugeridos.length];
-        siguiente += 1;
+
+    // Primero las de toda la congregación…
+    if (dia) {
+      for (const turno of TURNOS_ORDEN) {
+        const cfg = dia[turno];
+        if (!cfg?.activo) continue;
+        out.push({
+          key: nuevaKey(),
+          iso,
+          turno,
+          time: cfg.time || HORA_POR_DEFECTO[turno],
+          place: cfg.place ?? "",
+          territoryId: territorioQueToca(cfg.territoryId ?? ""),
+          captainName: cfg.captainName ?? "",
+          groups: [],
+        });
       }
+    }
+
+    // …y después las de los grupos que predican ese día.
+    for (const g of deGrupoPorDia.get(fecha.getDay()) ?? []) {
+      const time = g.time || HORA_POR_DEFECTO.MANANA;
       out.push({
         key: nuevaKey(),
-        iso: isoDeFecha(fecha),
-        turno,
-        time: cfg.time || HORA_POR_DEFECTO[turno],
-        place: cfg.place ?? "",
-        territoryId,
-        captainName: cfg.captainName ?? "",
+        iso,
+        turno: turnoDeHora(time),
+        time,
+        place: g.place ?? "",
+        territoryId: territorioQueToca(g.territoryId ?? ""),
+        captainName: g.captainName ?? "",
+        groups: limpiarGrupos(g.grupos),
       });
     }
   }
@@ -590,6 +818,8 @@ export type Salida = {
   place: string;
   captainName: string;
   territorio: { id: string; number: number; name: string } | null;
+  /** Qué grupos salen. Vacío o ausente = toda la congregación. */
+  grupos?: string[];
 };
 
 /** Las salidas en el orden del programa impreso: por fecha y turno. */
@@ -678,21 +908,38 @@ export function resumenDelReparto(salidas: { territoryId: string }[]): string {
 
 /** Las filas del PDF del programa, ya con todo escrito. */
 export type FilaPrograma = {
+  /** "Domingo 1" */
   fecha: string;
+  /** "09:30 HRS" */
   horario: string;
   lugar: string;
   territorio: string;
   capitan: string;
+  /** "Toda la congregación", "Grupo 1" o "Grupo 1 y Grupo 2". */
+  grupos: string;
+  /** Si es de uno o varios grupos (para destacarlo en el PDF). */
+  esDeGrupo: boolean;
+  /** Si la comparten dos o más grupos. */
+  compartida: boolean;
 };
 
 export function filasDelPrograma(salidas: Salida[]): FilaPrograma[] {
-  return ordenarSalidas(salidas).map((s) => ({
-    fecha: etiquetaDeFecha(s.date),
-    horario: `${turnoLabel(s.turno)} · ${s.time}`,
-    lugar: s.place || "—",
-    territorio: s.territorio ? nombreCompleto(s.territorio) : "—",
-    capitan: s.captainName || "—",
-  }));
+  return ordenarSalidas(salidas).map((s) => {
+    const grupos = limpiarGrupos(s.grupos ?? []);
+    return {
+      fecha: etiquetaCortaDeFecha(s.date),
+      horario: horaEn24(
+        s.time,
+        s.turno === TURNOS.TARDE ? TURNOS.TARDE : TURNOS.MANANA,
+      ),
+      lugar: s.place || "—",
+      territorio: s.territorio ? nombreCompleto(s.territorio) : "—",
+      capitan: s.captainName || "—",
+      grupos: etiquetaDeGrupos(grupos),
+      esDeGrupo: grupos.length > 0,
+      compartida: grupos.length > 1,
+    };
+  });
 }
 
 /** Los territorios que aparecen en el programa, sin repetir y en orden. */
@@ -803,6 +1050,8 @@ export const PRESET_KINDS = {
   CAPITAN: "CAPITAN",
   LUGAR: "LUGAR",
   PLAN: "PLAN_SEMANAL",
+  /** Las salidas de los grupos: una fila por salida. */
+  GRUPOS: "PLAN_GRUPOS",
 } as const;
 
 /** Las listas de sugerencias (lo que se enseña en "guardados"). */

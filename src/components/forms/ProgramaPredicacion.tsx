@@ -30,10 +30,14 @@ import {
   Card,
   CardBody,
   CardHeader,
+  CollapsibleCard,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PaletaOpciones } from "@/components/forms/PaletaOpciones";
+import { usePaletaRecordada } from "@/components/forms/usePaletaRecordada";
+import { paletaDe } from "@/lib/programa-paletas";
 import { monthName, weekdayName } from "@/lib/constants";
 import {
   HORA_POR_DEFECTO,
@@ -41,6 +45,7 @@ import {
   TURNOS,
   TURNOS_ORDEN,
   asignarTerritorios,
+  etiquetaDeGrupos,
   cuantasSalidas,
   etiquetaDeFecha,
   fechaDeISO,
@@ -53,6 +58,7 @@ import {
   ordenarSalidas,
   periodoDelPrograma,
   rangoDelMes,
+  salidaDeGrupoEnBlanco,
   resumenDelPlan,
   resumenDelReparto,
   territoriosDelPrograma,
@@ -61,6 +67,7 @@ import {
   ultimoDiaDelMes,
   type PlanSemanal,
   type RangoDias,
+  type SalidaDeGrupo,
   type Salida,
   type SalidaBorrador,
   type Territorio,
@@ -72,6 +79,9 @@ const campo =
   "rounded-[10px] border border-border bg-white px-2.5 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25";
 
 const etiqueta = "mb-0.5 block text-xs text-muted";
+
+/** Dónde se recuerda la paleta elegida para este PDF, en este navegador. */
+const RECUERDO_PALETA = "paleta-programa-predicacion";
 
 function plural(n: number, singular: string, muchos: string): string {
   return n === 1 ? singular : muchos;
@@ -109,6 +119,8 @@ export function ProgramaPredicacion({
   lugares,
   salidasGuardadas,
   planInicial,
+  gruposDisponibles,
+  salidasDeGrupoIniciales,
   congregacion,
 }: {
   anio: number;
@@ -121,6 +133,10 @@ export function ProgramaPredicacion({
   salidasGuardadas: SalidaBorrador[];
   /** Cómo es una semana normal: lo último que se guardó. */
   planInicial: PlanSemanal;
+  /** Los grupos de la congregación, los que haya: salen de la base. */
+  gruposDisponibles: string[];
+  /** Las salidas de cada grupo: lo último que se guardó. */
+  salidasDeGrupoIniciales: SalidaDeGrupo[];
   congregacion: string;
 }) {
   const [salidas, setSalidas] = useState<SalidaBorrador[]>(salidasGuardadas);
@@ -141,6 +157,13 @@ export function ProgramaPredicacion({
   // Qué pasó al limpiar el programa, para que nadie crea que se borró más.
   const [avisoLimpieza, setAvisoLimpieza] = useState("");
   const [confirmarLimpieza, setConfirmarLimpieza] = useState(false);
+  // Las salidas de cada grupo, dentro del plan de la semana.
+  const [salidasDeGrupo, setSalidasDeGrupo] = useState<SalidaDeGrupo[]>(
+    salidasDeGrupoIniciales,
+  );
+  // La paleta del PDF, con el mismo selector y la misma forma de recordarla
+  // que la descarga de Responsabilidades.
+  const [paleta, elegirPaleta] = usePaletaRecordada(RECUERDO_PALETA);
 
   const [state, action] = useActionState(
     guardarProgramaAction,
@@ -171,6 +194,50 @@ export function ProgramaPredicacion({
         TARDE: { ...previo[dia].TARDE },
       })),
     );
+  }
+
+  // --- Las salidas de cada grupo -------------------------------------------
+
+  function cambiarSalidaDeGrupo(key: string, cambios: Partial<SalidaDeGrupo>) {
+    setSalidasDeGrupo((previas) =>
+      previas.map((s) => (s.key === key ? { ...s, ...cambios } : s)),
+    );
+  }
+
+  /** Marca o desmarca un grupo en una salida (varios = salida compartida). */
+  function alternarGrupo(key: string, grupo: string) {
+    setSalidasDeGrupo((previas) =>
+      previas.map((s) =>
+        s.key === key
+          ? {
+              ...s,
+              grupos: s.grupos.includes(grupo)
+                ? s.grupos.filter((g) => g !== grupo)
+                : [...s.grupos, grupo],
+            }
+          : s,
+      ),
+    );
+  }
+
+  function anadirSalidaDeGrupo() {
+    const porDefecto = valoresPorDefecto();
+    // El primer grupo que todavía no sale ningún día: lo más habitual es ir
+    // añadiendo uno por grupo.
+    const yaSalen = new Set(salidasDeGrupo.flatMap((s) => s.grupos));
+    const libre = gruposDisponibles.find((g) => !yaSalen.has(g));
+    const nueva = salidaDeGrupoEnBlanco(
+      libre ? [libre] : [],
+      porDefecto.place || lugares[0] || "",
+    );
+    setSalidasDeGrupo((previas) => [
+      ...previas,
+      { ...nueva, captainName: porDefecto.captainName },
+    ]);
+  }
+
+  function quitarSalidaDeGrupo(key: string) {
+    setSalidasDeGrupo((previas) => previas.filter((s) => s.key !== key));
   }
 
   /** Lo que se pone en una salida añadida a mano: lo del primer día activo. */
@@ -208,6 +275,7 @@ export function ProgramaPredicacion({
       plan,
       rango,
       territoriosSugeridos: sugeridos,
+      salidasDeGrupo,
     });
     const prefijo = `${anio}-${String(mes).padStart(2, "0")}-`;
     setSalidas((previas) => {
@@ -295,8 +363,25 @@ export function ProgramaPredicacion({
         place: ultima?.place ?? porDefecto.place,
         territoryId: "",
         captainName: ultima?.captainName ?? porDefecto.captainName,
+        groups: [],
       },
     ]);
+  }
+
+  /** Marca o desmarca un grupo en una salida ya generada de la tabla. */
+  function alternarGrupoDeSalida(key: string, grupo: string) {
+    setSalidas((previas) =>
+      previas.map((s) =>
+        s.key === key
+          ? {
+              ...s,
+              groups: s.groups.includes(grupo)
+                ? s.groups.filter((g) => g !== grupo)
+                : [...s.groups, grupo],
+            }
+          : s,
+      ),
+    );
   }
 
   /** Las salidas como las necesita el PDF, ya con el territorio resuelto. */
@@ -314,6 +399,7 @@ export function ProgramaPredicacion({
         place: s.place,
         captainName: s.captainName,
         territorio: t ? { id: t.id, number: t.number, name: t.name } : null,
+        grupos: s.groups,
       });
     }
     return out;
@@ -375,6 +461,7 @@ export function ProgramaPredicacion({
         congregacion,
         filas: filasDelPrograma(listas),
         mapas,
+        paleta,
       });
       doc.save(`programa-predicacion-${anio}-${String(mes).padStart(2, "0")}.pdf`);
 
@@ -401,7 +488,11 @@ export function ProgramaPredicacion({
   const enOrden = ordenarSalidas(salidas);
   const sinTerritorio = salidas.filter((s) => !s.territoryId).length;
   const turnosPorSemana = turnosDelPlan(plan);
-  const seCrearan = cuantasSalidas(anio, mes, plan, rango);
+  const seCrearan = cuantasSalidas(anio, mes, plan, rango, salidasDeGrupo);
+  // Se puede armar el programa solo con las salidas de los grupos, aunque no
+  // haya ningún turno de toda la congregación.
+  const gruposQueSalen = salidasDeGrupo.filter((s) => s.grupos.length > 0);
+  const sePuedeGenerar = turnosPorSemana > 0 || gruposQueSalen.length > 0;
   const mesCompleto = rango.desde === 1 && rango.hasta === ultimoDiaDelMes(anio, mes);
 
   return (
@@ -587,6 +678,191 @@ export function ProgramaPredicacion({
           </div>
         ) : null}
 
+        {/* ---------------- Predicación por grupos ----------------
+            Los grupos salen solos de la congregación: los que haya. */}
+        {verPlan ? (
+          <div className="rounded-2xl border border-border bg-white p-3">
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Predicación por grupos
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {gruposDisponibles.length === 0
+                    ? "Esta congregación todavía no tiene grupos. Se crean en Publicadores → Grupos y aparecen aquí solos."
+                    : `${gruposDisponibles.length} ${plural(gruposDisponibles.length, "grupo", "grupos")}: ${gruposDisponibles.join(", ")}. Marca dos o más en la misma salida y saldrán juntos, como una sola actividad.`}
+                </p>
+              </div>
+              {gruposDisponibles.length > 0 ? (
+                <Button variant="secondary" onClick={anadirSalidaDeGrupo}>
+                  ✚ Añadir salida de grupo
+                </Button>
+              ) : null}
+            </div>
+
+            {gruposDisponibles.length > 0 && salidasDeGrupo.length === 0 ? (
+              <p className="text-xs text-muted">
+                Todavía no hay ninguna. Sin salidas de grupo, el programa es
+                solo el de toda la congregación, como hasta ahora.
+              </p>
+            ) : null}
+
+            <div className="space-y-3">
+              {salidasDeGrupo.map((s) => (
+                <div
+                  key={s.key}
+                  className={
+                    s.grupos.length === 0
+                      ? "rounded-xl border border-amber-300 bg-amber-50/60 p-3"
+                      : "rounded-xl border border-border bg-slate-50 p-3"
+                  }
+                >
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {gruposDisponibles.map((g) => {
+                        const puesto = s.grupos.includes(g);
+                        return (
+                          <label
+                            key={g}
+                            className={
+                              puesto
+                                ? "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-primary bg-indigo-50 px-2.5 py-1 text-xs font-medium text-primary"
+                                : "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1 text-xs text-muted hover:border-primary/40"
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={puesto}
+                              onChange={() => alternarGrupo(s.key, g)}
+                              className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/25"
+                            />
+                            {g}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => quitarSalidaDeGrupo(s.key)}
+                      className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+
+                  {s.grupos.length === 0 ? (
+                    <p className="mb-2 text-xs text-amber-800">
+                      Marca al menos un grupo: si no, esta salida no se guarda.
+                    </p>
+                  ) : (
+                    <p className="mb-2 text-xs text-muted">
+                      {s.grupos.length > 1 ? "Salida compartida · " : ""}
+                      {etiquetaDeGrupos(s.grupos)}
+                    </p>
+                  )}
+
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <label className={etiqueta} htmlFor={`g-dia-${s.key}`}>
+                        Día de predicación
+                      </label>
+                      <select
+                        id={`g-dia-${s.key}`}
+                        value={s.dia}
+                        onChange={(e) =>
+                          cambiarSalidaDeGrupo(s.key, {
+                            dia: Number(e.target.value),
+                          })
+                        }
+                        className={`${campo} w-full`}
+                      >
+                        {ORDEN_SEMANA.map((d) => (
+                          <option key={d} value={d}>
+                            {weekdayName(d)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={etiqueta} htmlFor={`g-hora-${s.key}`}>
+                        Horario
+                      </label>
+                      <input
+                        id={`g-hora-${s.key}`}
+                        value={s.time}
+                        onChange={(e) =>
+                          cambiarSalidaDeGrupo(s.key, { time: e.target.value })
+                        }
+                        className={`${campo} w-full`}
+                        maxLength={20}
+                        placeholder="10:00"
+                      />
+                    </div>
+                    <div>
+                      <label className={etiqueta} htmlFor={`g-lugar-${s.key}`}>
+                        Lugar de encuentro
+                      </label>
+                      <input
+                        id={`g-lugar-${s.key}`}
+                        value={s.place}
+                        onChange={(e) =>
+                          cambiarSalidaDeGrupo(s.key, { place: e.target.value })
+                        }
+                        list="lugares-guardados"
+                        placeholder="Salón del Reino"
+                        className={`${campo} w-full`}
+                        maxLength={120}
+                      />
+                    </div>
+                    <div>
+                      <label className={etiqueta} htmlFor={`g-terr-${s.key}`}>
+                        Territorio
+                      </label>
+                      <select
+                        id={`g-terr-${s.key}`}
+                        value={s.territoryId}
+                        onChange={(e) =>
+                          cambiarSalidaDeGrupo(s.key, {
+                            territoryId: e.target.value,
+                          })
+                        }
+                        className={`${campo} w-full`}
+                      >
+                        <option value="">— Se reparte solo —</option>
+                        {territorios.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {nombreCompleto(t)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <label
+                        className={etiqueta}
+                        htmlFor={`g-capitan-${s.key}`}
+                      >
+                        Capitán
+                      </label>
+                      <input
+                        id={`g-capitan-${s.key}`}
+                        value={s.captainName}
+                        onChange={(e) =>
+                          cambiarSalidaDeGrupo(s.key, {
+                            captainName: e.target.value,
+                          })
+                        }
+                        list="capitanes-guardados"
+                        placeholder="Gastón Mondaca"
+                        className={`${campo} w-full`}
+                        maxLength={120}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* ---------------- Qué días se arman ----------------
@@ -661,13 +937,13 @@ export function ProgramaPredicacion({
           />
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={generar} disabled={turnosPorSemana === 0}>
+            <Button onClick={generar} disabled={!sePuedeGenerar}>
               🗓️ Generar salidas
             </Button>
             <span className="text-xs text-muted">
-              {turnosPorSemana === 0
-                ? "Marca al menos un turno en “Cómo es una semana normal” para poder generar."
-                : `Se armarán ${seCrearan} ${plural(seCrearan, "salida", "salidas")} · ${periodoDelPrograma(anio, mes, rango)} · ${resumenDelPlan(plan)}. ${
+              {!sePuedeGenerar
+                ? "Marca al menos un turno en “Cómo es una semana normal”, o una salida de grupo, para poder generar."
+                : `Se armarán ${seCrearan} ${plural(seCrearan, "salida", "salidas")} · ${periodoDelPrograma(anio, mes, rango)} · ${turnosPorSemana === 0 ? "solo las de los grupos" : resumenDelPlan(plan)}${gruposQueSalen.length > 0 && turnosPorSemana > 0 ? `, y ${gruposQueSalen.length} ${plural(gruposQueSalen.length, "salida de grupo", "salidas de grupo")} por semana` : ""}. ${
                     mesCompleto
                       ? "Reemplaza lo que haya en la tabla de abajo"
                       : "Reemplaza solo esos días: lo que haya fuera del rango se queda como está"
@@ -740,6 +1016,11 @@ export function ProgramaPredicacion({
                 <th className="border-b border-border px-2 py-2 text-left font-semibold text-muted">
                   Capitán
                 </th>
+                {gruposDisponibles.length > 0 ? (
+                  <th className="border-b border-border px-2 py-2 text-left font-semibold text-muted">
+                    Grupos
+                  </th>
+                ) : null}
                 <th className="border-b border-border px-2 py-2" />
               </tr>
             </thead>
@@ -827,6 +1108,33 @@ export function ProgramaPredicacion({
                         aria-label="Capitán"
                       />
                     </td>
+                    {gruposDisponibles.length > 0 ? (
+                      <td className="border-b border-border px-2 py-2">
+                        <div className="flex flex-col gap-0.5">
+                          {gruposDisponibles.map((g) => (
+                            <label
+                              key={g}
+                              className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-foreground"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={s.groups.includes(g)}
+                                onChange={() => alternarGrupoDeSalida(s.key, g)}
+                                className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/25"
+                              />
+                              {g}
+                            </label>
+                          ))}
+                          <span className="mt-0.5 text-[0.65rem] text-muted">
+                            {s.groups.length === 0
+                              ? "Toda la congregación"
+                              : s.groups.length > 1
+                                ? "Compartida"
+                                : ""}
+                          </span>
+                        </div>
+                      </td>
+                    ) : null}
                     <td className="border-b border-border px-2 py-2 text-right">
                       <button
                         type="button"
@@ -891,6 +1199,21 @@ export function ProgramaPredicacion({
           {/* El plan viaja con el programa: así el mes que viene ya aparece
               puesto y no hay que marcarlo de nuevo. */}
           <input type="hidden" name="plan" value={JSON.stringify(plan)} />
+          {/* Y las salidas de cada grupo, por lo mismo. */}
+          <input
+            type="hidden"
+            name="planGrupos"
+            value={JSON.stringify(
+              salidasDeGrupo.map((s) => ({
+                grupos: s.grupos,
+                dia: s.dia,
+                time: s.time,
+                place: s.place,
+                territoryId: s.territoryId,
+                captainName: s.captainName,
+              })),
+            )}
+          />
           <input
             type="hidden"
             name="salidas"
@@ -902,6 +1225,7 @@ export function ProgramaPredicacion({
                 place: s.place,
                 territoryId: s.territoryId,
                 captainName: s.captainName,
+                groups: s.groups,
               })),
             )}
           />
@@ -934,6 +1258,20 @@ export function ProgramaPredicacion({
           </Badge>
         ) : null}
       </div>
+
+      {/* La misma elección de colores que el PDF de Responsabilidades: el
+          mismo componente, las mismas cinco paletas. */}
+      <CollapsibleCard
+        title="Elegir Paleta de Colores"
+        description={`Ahora mismo: ${paletaDe(paleta).nombre}. Así se verá la tabla del PDF.`}
+      >
+        <PaletaOpciones
+          value={paleta}
+          onChange={elegirPaleta}
+          name="paleta-predicacion"
+          ejemplo={["Sábado 7", "Domingo 8"]}
+        />
+      </CollapsibleCard>
         </CardBody>
       </Card>
     </div>
