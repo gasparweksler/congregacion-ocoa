@@ -465,6 +465,48 @@ export async function guardarProgramaAction(
     });
   }
 
+  // El plan de la semana (qué días y turnos se predica, con su hora, lugar y
+  // capitán) y las salidas de cada grupo se guardan antes que nada: son una
+  // comodidad para el mes que viene y quien envía el formulario acaba de
+  // rellenarlos, así que no se pierden ni cuando el programa no llega a
+  // guardarse. Solo hay uno por congregación: reemplaza el anterior.
+  await guardarPlanSemanal(cong, String(formData.get("plan") ?? ""));
+  await guardarSalidasDeGrupo(
+    cong,
+    String(formData.get("planGrupos") ?? ""),
+    gruposValidos,
+  );
+
+  // Guardar con la tabla de salidas vacía no guarda nada, y encima borra el
+  // programa que hubiera. Pasó de verdad: se rellenó el plan de la semana, se
+  // pulsó "Guardar el programa" sin pasar por "Generar salidas", y el mes
+  // quedó en cero sin que nada lo avisara (el mensaje decía "se borraron las
+  // salidas", en verde, como si fuera lo pedido). Así que una tabla vacía ya
+  // no se guarda sin más: o faltan las salidas, o se está borrando el
+  // programa a propósito, y eso se confirma aparte.
+  if (filas.length === 0) {
+    const yaGuardadas = await prisma.serviceOuting.count({
+      where: { congregationId: cong, date: { gte: desde, lt: hasta } },
+    });
+    if (yaGuardadas === 0) {
+      return {
+        error:
+          "No se guardó ninguna salida porque la tabla está vacía. Elige los " +
+          "días y pulsa “Generar salidas”: el plan de la semana por sí solo " +
+          "no crea el programa. El plan sí quedó guardado.",
+      };
+    }
+    if (String(formData.get("vaciar") ?? "") !== "1") {
+      return {
+        error:
+          `La tabla de salidas está vacía y ${monthName(mes)} de ${anio} tiene ` +
+          `${yaGuardadas} ${yaGuardadas === 1 ? "salida" : "salidas"} guardadas: ` +
+          "guardar así las borraría. Pulsa “Generar salidas” para rearmar el " +
+          "programa, o confirma el borrado en el botón rojo.",
+      };
+    }
+  }
+
   await prisma.$transaction([
     prisma.serviceOuting.deleteMany({
       where: { congregationId: cong, date: { gte: desde, lt: hasta } },
@@ -501,33 +543,41 @@ export async function guardarProgramaAction(
     });
   }
 
-  // El plan de la semana (qué días y turnos se predica, con su hora, lugar y
-  // capitán) se guarda junto al programa: así el mes siguiente ya viene
-  // puesto y no hay que rellenarlo otra vez. Solo se guarda uno por
-  // congregación, así que se reemplaza el anterior.
-  await guardarPlanSemanal(cong, String(formData.get("plan") ?? ""));
-  // Y con él, las salidas de cada grupo: qué día sale cada uno, a qué hora,
-  // desde dónde y en qué territorio.
-  await guardarSalidasDeGrupo(
-    cong,
-    String(formData.get("planGrupos") ?? ""),
-    gruposValidos,
-  );
+  const conTerritorio = filas.filter((f) => f.territoryId).length;
 
   await logAudit({
     userId: user.id,
-    action: "EDITAR",
+    // Un guardado con la tabla vacía es un borrado, y así queda anotado: en
+    // el registro se distingue de haber guardado un programa de verdad.
+    action: filas.length === 0 ? "ELIMINAR" : "EDITAR",
     entity: "ProgramaPredicacion",
-    details: `Programa de predicación de ${monthName(mes)} ${anio}: ${filas.length} salida(s).`,
+    details:
+      filas.length === 0
+        ? `Programa de predicación de ${monthName(mes)} ${anio} borrado ` +
+          "(se guardó con la tabla vacía, confirmado)."
+        : `Programa de predicación de ${monthName(mes)} ${anio}: ` +
+          `${filas.length} salida(s), ${conTerritorio} con territorio.`,
   });
 
   refrescar();
+  if (filas.length === 0) {
+    return {
+      success:
+        `Se borró el programa de ${monthName(mes)} ${anio}. Esas salidas ya ` +
+        "no cuentan para las estadísticas.",
+    };
+  }
   return {
     success:
-      filas.length === 0
-        ? `Se borraron las salidas de ${monthName(mes)} ${anio}.`
-        : `Programa de ${monthName(mes)} ${anio} guardado con ${filas.length} salida(s). ` +
-          "Ya cuentan para las estadísticas.",
+      `Programa de ${monthName(mes)} ${anio} guardado con ${filas.length} ` +
+      `${filas.length === 1 ? "salida" : "salidas"}. ` +
+      (conTerritorio === filas.length
+        ? "Todas tienen territorio y ya cuentan para las estadísticas."
+        : conTerritorio === 0
+          ? "Ninguna tiene territorio, así que no cuentan para las " +
+            "estadísticas de los territorios."
+          : `${conTerritorio} tienen territorio y cuentan para las ` +
+            `estadísticas; las otras ${filas.length - conTerritorio}, no.`),
   };
 }
 

@@ -21,6 +21,7 @@
 // ============================================================================
 
 import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { guardarProgramaAction } from "@/server/territorio-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
 import {
@@ -89,6 +90,46 @@ const RECUERDO_PALETA = "paleta-programa-predicacion";
 
 function plural(n: number, singular: string, muchos: string): string {
   return n === 1 ? singular : muchos;
+}
+
+/**
+ * La confirmación de borrar el programa guardado al guardar con la tabla
+ * vacía.
+ *
+ * Vive dentro del <form> para saber con useFormStatus cuándo se está
+ * enviando, y quien envía de verdad es el botón del diálogo (ConfirmDialog sin
+ * onConfirm manda el formulario que lo contiene).
+ */
+function DialogoVaciar({
+  open,
+  mes,
+  anio,
+  cuantas,
+  onCancel,
+}: {
+  open: boolean;
+  mes: number;
+  anio: number;
+  cuantas: number;
+  onCancel: () => void;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <ConfirmDialog
+      open={open}
+      title={`¿Borrar el programa de ${monthName(mes)} de ${anio}?`}
+      description={
+        `La tabla de salidas está vacía, así que guardar ahora borra las ` +
+        `${cuantas} ${plural(cuantas, "salida", "salidas")} que hay guardadas ` +
+        `de ${monthName(mes)}. Dejan de contar para las estadísticas de los ` +
+        `territorios y no se puede deshacer. Los demás meses no se tocan.`
+      }
+      confirmLabel="Sí, borrar el programa"
+      pendingLabel="Borrando…"
+      pending={pending}
+      onCancel={onCancel}
+    />
+  );
 }
 
 /** El día del mes de una fecha "2026-11-15" (0 si no se entiende). */
@@ -164,6 +205,8 @@ export function ProgramaPredicacion({
   // Qué pasó al limpiar el programa, para que nadie crea que se borró más.
   const [avisoLimpieza, setAvisoLimpieza] = useState("");
   const [confirmarLimpieza, setConfirmarLimpieza] = useState(false);
+  // Guardar con la tabla vacía borra el programa del mes, así que se pregunta.
+  const [confirmarVaciado, setConfirmarVaciado] = useState(false);
   // Las salidas de cada grupo, dentro del plan de la semana.
   const [salidasDeGrupo, setSalidasDeGrupo] = useState<SalidaDeGrupo[]>(
     salidasDeGrupoIniciales,
@@ -517,6 +560,10 @@ export function ProgramaPredicacion({
   }
 
   const enOrden = ordenarSalidas(salidas);
+  // Sin salidas en la tabla no hay programa que guardar: el plan de la semana
+  // dice cómo armarlo, pero hasta pulsar "Generar salidas" no existe ninguna.
+  const tablaVacia = enOrden.length === 0;
+  const hayGuardadas = salidasGuardadas.length > 0;
   const sinTerritorio = salidas.filter((s) => !s.territoryId).length;
   const turnosPorSemana = turnosDelPlan(plan);
   const seCrearan = cuantasSalidas(anio, mes, plan, rango, salidasDeGrupo);
@@ -1260,9 +1307,40 @@ export function ProgramaPredicacion({
               })),
             )}
           />
-          <SubmitButton pendingText="Guardando…">
-            💾 Guardar el programa
-          </SubmitButton>
+          {/* Solo va a "1" mientras la confirmación está abierta: el servidor
+              se niega a borrar un programa sin esta señal. */}
+          <input
+            type="hidden"
+            name="vaciar"
+            value={confirmarVaciado ? "1" : ""}
+          />
+
+          {/* Con la tabla vacía, guardar no guarda nada: o faltan las salidas
+              (y entonces no hay nada que hacer aquí), o se está borrando el
+              programa del mes (y eso se pregunta). */}
+          {!tablaVacia ? (
+            <SubmitButton pendingText="Guardando…">
+              💾 Guardar el programa
+            </SubmitButton>
+          ) : hayGuardadas ? (
+            <>
+              <Button
+                variant="danger"
+                onClick={() => setConfirmarVaciado(true)}
+              >
+                🗑️ Borrar el programa guardado
+              </Button>
+              <DialogoVaciar
+                open={confirmarVaciado}
+                mes={mes}
+                anio={anio}
+                cuantas={salidasGuardadas.length}
+                onCancel={() => setConfirmarVaciado(false)}
+              />
+            </>
+          ) : (
+            <Button disabled>💾 Guardar el programa</Button>
+          )}
         </form>
 
         <Button
@@ -1283,12 +1361,36 @@ export function ProgramaPredicacion({
           Incluir el mapa de cada territorio
         </label>
 
-        {salidas.length > 0 ? (
+        {!tablaVacia ? (
           <Badge tone="amber">
             Guarda antes de salir: los cambios de la tabla no se guardan solos
           </Badge>
         ) : null}
       </div>
+
+      {/* El aviso que faltaba: con la tabla vacía, "Guardar el programa" no
+          guardaba nada y no lo decía. Ahora se lee antes de pulsarlo. */}
+      {tablaVacia ? (
+        <Alert tone="warning">
+          <strong>Todavía no hay ninguna salida.</strong> El plan de la semana
+          dice cómo es un mes normal, pero no crea el programa por sí solo:
+          sube a “Generar salidas”, elige los días y púlsalo. Las salidas
+          aparecerán en la tabla y entonces se pueden guardar.
+          {hayGuardadas
+            ? ` Mientras no guardes, el programa de ${monthName(mes)} sigue en la base con sus ${salidasGuardadas.length} ${plural(salidasGuardadas.length, "salida", "salidas")}.`
+            : ""}
+        </Alert>
+      ) : sinTerritorio > 0 ? (
+        <Alert tone="warning">
+          <strong>
+            {sinTerritorio} {plural(sinTerritorio, "salida", "salidas")} sin
+            territorio.
+          </strong>{" "}
+          Las salidas sin territorio se guardan y salen en el PDF, pero no
+          cuentan para las Estadísticas de Predicación. Usa “Asignar territorio
+          automáticamente” o elígelo a mano en la columna “Territorio”.
+        </Alert>
+      ) : null}
 
       {/* La misma elección de colores que el PDF de Responsabilidades: el
           mismo componente, las mismas cinco paletas. */}
