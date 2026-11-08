@@ -10,7 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { type FormState, sinDuplicar } from "@/server/actions-shared";
 import {
@@ -54,7 +54,7 @@ export async function createTerritorioAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const parsed = territorySchema.safeParse({
@@ -105,7 +105,7 @@ export async function createTerritoriosEnLoteAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const lineas = leerListaDeTerritorios(String(formData.get("lista") ?? ""));
@@ -189,7 +189,7 @@ export async function updateTerritorioAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Territorio no especificado." };
@@ -227,7 +227,7 @@ export async function updateTerritorioAction(
 }
 
 export async function deleteTerritorioAction(formData: FormData): Promise<void> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -262,7 +262,7 @@ export async function deleteTerritorioAction(formData: FormData): Promise<void> 
 
 /** Sube o baja un territorio en la lista, cambiándolo con su vecino. */
 export async function moverTerritorioAction(formData: FormData): Promise<void> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const id = String(formData.get("id") ?? "");
   const haciaArriba = String(formData.get("direccion") ?? "") === "arriba";
@@ -306,7 +306,7 @@ export async function addVisitaAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const parsed = territoryVisitSchema.safeParse({
@@ -349,7 +349,7 @@ export async function addVisitaAction(
 }
 
 export async function deleteVisitaAction(formData: FormData): Promise<void> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -387,7 +387,7 @@ export async function guardarProgramaAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const anio = Number(formData.get("anio"));
@@ -601,9 +601,90 @@ async function guardarSalidasDeGrupo(
   }
 }
 
+/**
+ * Borra programas de predicación enteros: todas las salidas de los meses
+ * que se indiquen.
+ *
+ * Llega una lista de meses ("2026-11"), no ids: un programa es justamente el
+ * conjunto de salidas de un mes. Al borrarlas, las estadísticas de los
+ * territorios se recalculan solas, porque salen de estas mismas filas.
+ *
+ * No se puede deshacer, así que la pantalla lo pregunta antes.
+ */
+export async function borrarProgramasAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireServiceAccess();
+  const cong = congregationId(user);
+
+  let crudos: unknown;
+  try {
+    crudos = JSON.parse(String(formData.get("meses") ?? "[]"));
+  } catch {
+    return { error: "No se pudo leer qué programas borrar." };
+  }
+  if (!Array.isArray(crudos) || crudos.length === 0) {
+    return { error: "No se eligió ningún programa." };
+  }
+  if (crudos.length > 120) {
+    return { error: "Son demasiados programas a la vez." };
+  }
+
+  // Cada mes, convertido a su tramo de fechas. Lo que no sea un mes válido
+  // se descarta: nunca se borra "por si acaso".
+  const tramos: { anio: number; mes: number }[] = [];
+  const vistos = new Set<string>();
+  for (const crudo of crudos) {
+    const texto = String(crudo ?? "");
+    const partes = /^(\d{4})-(\d{2})$/.exec(texto);
+    if (!partes) continue;
+    const anio = Number(partes[1]);
+    const mes = Number(partes[2]);
+    if (anio < 2000 || anio > 2100 || mes < 1 || mes > 12) continue;
+    if (vistos.has(texto)) continue;
+    vistos.add(texto);
+    tramos.push({ anio, mes });
+  }
+  if (tramos.length === 0) return { error: "No se eligió ningún programa." };
+
+  const { count } = await prisma.serviceOuting.deleteMany({
+    where: {
+      congregationId: cong,
+      OR: tramos.map(({ anio, mes }) => ({
+        date: {
+          gte: new Date(anio, mes - 1, 1, 0, 0, 0),
+          lt: new Date(anio, mes, 1, 0, 0, 0),
+        },
+      })),
+    },
+  });
+
+  const nombres = tramos
+    .sort((a, b) => a.anio - b.anio || a.mes - b.mes)
+    .map(({ anio, mes }) => `${monthName(mes)} ${anio}`);
+
+  await logAudit({
+    userId: user.id,
+    action: "ELIMINAR",
+    entity: "ProgramaPredicacion",
+    details:
+      `Se borraron ${tramos.length} programa(s) de predicación ` +
+      `(${count} salida(s)): ${nombres.join(", ")}.`,
+  });
+
+  refrescar();
+  return {
+    success:
+      tramos.length === 1
+        ? `Programa de ${nombres[0]} borrado (${count} salida(s)). Las estadísticas ya están al día.`
+        : `Se borraron ${tramos.length} programas (${count} salidas en total). Las estadísticas ya están al día.`,
+  };
+}
+
 /** Borra un capitán o un lugar de los guardados. */
 export async function deletePresetAction(formData: FormData): Promise<void> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -620,7 +701,7 @@ export async function deletePresetAction(formData: FormData): Promise<void> {
 
 /** Quita el mapa de un territorio (la imagen, no el territorio). */
 export async function deleteMapaAction(formData: FormData): Promise<void> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -670,7 +751,7 @@ function importacionFallida(error: string): ResultadoImportacion {
 export async function importarTarjetasAction(
   json: string,
 ): Promise<ResultadoImportacion> {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   let crudas: unknown;

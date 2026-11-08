@@ -13,7 +13,7 @@
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import {
   MAX_BYTES_MAPA,
@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 type Contexto = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: Contexto) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const { id } = await params;
 
   const mapa = await prisma.territoryMap.findFirst({
@@ -58,7 +58,7 @@ export async function GET(request: Request, { params }: Contexto) {
 }
 
 export async function POST(request: Request, { params }: Contexto) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const { id } = await params;
   const cong = congregationId(user);
 

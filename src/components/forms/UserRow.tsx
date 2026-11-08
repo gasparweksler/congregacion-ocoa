@@ -24,6 +24,7 @@ export type UserRowData = {
   groupName: string | null;
   active: boolean;
   alsoConfirmador: boolean;
+  alsoTerritorios: boolean;
   groupRoleLabel: string | null;
 };
 
@@ -67,6 +68,11 @@ export function UserRow({
           {user.alsoConfirmador ? (
             <span className="mt-1 inline-block">
               <Badge tone="violet">+ Encargado de Confirmaciones</Badge>
+            </span>
+          ) : null}
+          {user.alsoTerritorios ? (
+            <span className="mt-1 inline-block">
+              <Badge tone="blue">+ Sup. de Servicio - Territorios</Badge>
             </span>
           ) : null}
           {user.role === ROLES.SECRETARIO &&
@@ -208,6 +214,25 @@ export function UserRow({
               También <strong>Encargado de Confirmaciones</strong>
               <span className="block text-xs text-muted">
                 Le da acceso a la sección Reuniones además de Informes.
+              </span>
+            </span>
+          </label>
+        ) : null}
+
+        {needsGroup ? (
+          <label className="flex items-start gap-2 text-sm text-foreground sm:col-span-2">
+            <input
+              type="checkbox"
+              name="alsoTerritorios"
+              defaultChecked={user.alsoTerritorios}
+              className="mt-0.5 h-4 w-4 rounded border-border"
+            />
+            <span>
+              <strong>Sup. de Servicio - Territorios</strong>
+              <span className="block text-xs text-muted">
+                Le da acceso a los territorios, el programa de predicación y
+                sus estadísticas, con la misma información que el
+                Administrador.
               </span>
             </span>
           </label>

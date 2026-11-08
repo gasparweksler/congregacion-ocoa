@@ -7,7 +7,7 @@
 //  de predicación.
 // ============================================================================
 
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   estadisticas,
@@ -37,7 +37,7 @@ import {
 import { TerritorioRow } from "@/components/forms/TerritorioRow";
 
 export default async function TerritoriosPage() {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const [filas, visitas, salidas] = await Promise.all([

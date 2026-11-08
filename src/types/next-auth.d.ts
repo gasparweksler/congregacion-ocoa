@@ -19,6 +19,7 @@ declare module "next-auth" {
       username: string;
       mustChangePassword: boolean;
       alsoConfirmador: boolean;
+      alsoTerritorios: boolean;
     } & DefaultSession["user"];
   }
 
@@ -30,6 +31,7 @@ declare module "next-auth" {
     congregationName?: string | null;
     mustChangePassword?: boolean;
     alsoConfirmador?: boolean;
+    alsoTerritorios?: boolean;
   }
 }
 
@@ -43,5 +45,6 @@ declare module "next-auth/jwt" {
     username: string;
     mustChangePassword: boolean;
     alsoConfirmador: boolean;
+    alsoTerritorios: boolean;
   }
 }

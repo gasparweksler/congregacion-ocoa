@@ -57,6 +57,7 @@ export default async function UsuariosPage({
         groupId: true,
         active: true,
         alsoConfirmador: true,
+        alsoTerritorios: true,
         groupRoleLabel: true,
         group: { select: { name: true } },
       },
@@ -140,6 +141,7 @@ export default async function UsuariosPage({
                       groupName: u.group?.name ?? null,
                       active: u.active,
                       alsoConfirmador: u.alsoConfirmador,
+                      alsoTerritorios: u.alsoTerritorios,
                       groupRoleLabel: u.groupRoleLabel,
                     }}
                   />

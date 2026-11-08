@@ -152,6 +152,23 @@ export function UserCreateForm({
         </label>
       ) : null}
 
+      {needsGroup ? (
+        <label className="flex items-start gap-2 rounded-lg border border-border bg-slate-50 p-2.5 text-sm text-foreground">
+          <input
+            type="checkbox"
+            name="alsoTerritorios"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+          />
+          <span>
+            <strong>Sup. de Servicio - Territorios</strong>
+            <span className="block text-xs text-muted">
+              Le da acceso a los territorios, el programa de predicación y sus
+              estadísticas, con la misma información que el Administrador.
+            </span>
+          </span>
+        </label>
+      ) : null}
+
       <label className="flex items-center gap-2 text-sm text-foreground">
         <input
           type="checkbox"

@@ -39,6 +39,7 @@ const base = {
   congregationName: propia.name,
   mustChangePassword: false,
   alsoConfirmador: false,
+  alsoTerritorios: false,
 };
 const superadmin: SessionUser = {
   ...base,

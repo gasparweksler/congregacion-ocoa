@@ -967,6 +967,112 @@ export function filasDelPrograma(salidas: Salida[]): FilaPrograma[] {
   });
 }
 
+// ---------------------------------------------------------------------------
+//  HISTORIAL DE PROGRAMAS
+//
+//  No hay una tabla "Programa": un programa de predicación ES el conjunto de
+//  salidas de un mes. Así que el historial se saca agrupando las salidas
+//  guardadas por mes, sin guardar nada aparte que pudiera quedar descuadrado.
+// ---------------------------------------------------------------------------
+
+/** Lo que hace falta de cada salida para armar el historial. */
+export type SalidaDelHistorial = {
+  date: Date;
+  territoryId: string | null;
+  /** Nombres de grupo separados por "|"; vacío = toda la congregación. */
+  groups?: string | null;
+};
+
+/** Un programa del historial, ya resumido. */
+export type ProgramaDelHistorial = {
+  /** "2026-11" */
+  clave: string;
+  anio: number;
+  mes: number;
+  /** "Noviembre 2026" */
+  etiqueta: string;
+  /** Lo que abarca: "Noviembre 2026" o "Del 1 al 15 de noviembre de 2026". */
+  periodo: string;
+  /** Cuántas salidas tiene. */
+  salidas: number;
+  /** Cuántos territorios distintos se trabajaron. */
+  territorios: number;
+  /** Cuántas salidas son de uno o varios grupos. */
+  deGrupo: number;
+  /** Cuántas quedaron sin territorio. */
+  sinTerritorio: number;
+};
+
+/**
+ * Los programas guardados, del más nuevo al más viejo.
+ *
+ * Las salidas pueden llegar en cualquier orden: lo que manda es la fecha de
+ * cada una. Un mes sin salidas no existe como programa, que es justamente lo
+ * que queda después de borrarlo.
+ */
+export function historialDeProgramas(
+  salidas: SalidaDelHistorial[],
+): ProgramaDelHistorial[] {
+  type Acumulado = {
+    anio: number;
+    mes: number;
+    salidas: number;
+    territorios: Set<string>;
+    deGrupo: number;
+    sinTerritorio: number;
+    primerDia: number;
+    ultimoDia: number;
+  };
+
+  const porMes = new Map<string, Acumulado>();
+  for (const s of salidas) {
+    const clave = claveDeMes(s.date);
+    const dia = s.date.getDate();
+    const deGrupo = gruposDeTexto(s.groups ?? "").length > 0 ? 1 : 0;
+    const previo = porMes.get(clave);
+    if (previo) {
+      previo.salidas += 1;
+      if (s.territoryId) previo.territorios.add(s.territoryId);
+      else previo.sinTerritorio += 1;
+      previo.deGrupo += deGrupo;
+      previo.primerDia = Math.min(previo.primerDia, dia);
+      previo.ultimoDia = Math.max(previo.ultimoDia, dia);
+    } else {
+      porMes.set(clave, {
+        anio: s.date.getFullYear(),
+        mes: s.date.getMonth() + 1,
+        salidas: 1,
+        territorios: new Set(s.territoryId ? [s.territoryId] : []),
+        deGrupo,
+        sinTerritorio: s.territoryId ? 0 : 1,
+        primerDia: dia,
+        ultimoDia: dia,
+      });
+    }
+  }
+
+  return [...porMes.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([clave, a]) => ({
+      clave,
+      anio: a.anio,
+      mes: a.mes,
+      etiqueta: etiquetaDeMes(clave),
+      periodo: periodoDelPrograma(
+        a.anio,
+        a.mes,
+        normalizarRango(a.anio, a.mes, {
+          desde: a.primerDia,
+          hasta: a.ultimoDia,
+        }),
+      ),
+      salidas: a.salidas,
+      territorios: a.territorios.size,
+      deGrupo: a.deGrupo,
+      sinTerritorio: a.sinTerritorio,
+    }));
+}
+
 /** Los territorios que aparecen en el programa, sin repetir y en orden. */
 export function territoriosDelPrograma(
   salidas: Salida[],

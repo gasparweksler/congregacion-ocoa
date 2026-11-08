@@ -53,6 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           congregationName: user.congregation?.name ?? null,
           mustChangePassword: user.mustChangePassword,
           alsoConfirmador: user.alsoConfirmador,
+          alsoTerritorios: user.alsoTerritorios,
         };
       },
     }),
@@ -69,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.username = user.username;
         token.mustChangePassword = user.mustChangePassword ?? false;
         token.alsoConfirmador = user.alsoConfirmador ?? false;
+        token.alsoTerritorios = user.alsoTerritorios ?? false;
       }
       return token;
     },
@@ -85,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.username = token.username as string;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
         session.user.alsoConfirmador = Boolean(token.alsoConfirmador);
+        session.user.alsoTerritorios = Boolean(token.alsoTerritorios);
       }
       return session;
     },

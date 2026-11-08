@@ -7,7 +7,7 @@
 // ============================================================================
 
 import Link from "next/link";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { nombreCompleto, tamanoLegible } from "@/lib/territorios";
 import { formatDate } from "@/lib/dates";
@@ -27,7 +27,7 @@ import {
 import { MapasPdf } from "@/components/forms/MapasPdf";
 
 export default async function MapasPage() {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const filas = await prisma.territory.findMany({

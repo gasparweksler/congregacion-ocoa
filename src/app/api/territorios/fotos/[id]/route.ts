@@ -9,7 +9,7 @@
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import { tamanoLegible } from "@/lib/territorios";
 
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 type Contexto = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: Contexto) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const { id } = await params;
 
   const foto = await prisma.programPhoto.findFirst({
@@ -44,7 +44,7 @@ export async function GET(request: Request, { params }: Contexto) {
 }
 
 export async function DELETE(_request: Request, { params }: Contexto) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const { id } = await params;
   const cong = congregationId(user);
 

@@ -44,6 +44,8 @@ export default async function AppLayout({
     user.role === ROLES.RESPONSABLE_CONFIRMACIONES;
   // Super/Aux que además tiene la capacidad de confirmaciones.
   const alsoConfirmador = Boolean(user.alsoConfirmador);
+  // Super/Aux (o Confirmaciones) que además lleva los territorios.
+  const alsoTerritorios = Boolean(user.alsoTerritorios);
   const groupName = dbUser.group?.name ?? null;
 
   // Menú según rol.
@@ -90,6 +92,14 @@ export default async function AppLayout({
       icon: "🗓️",
       group: "Superintendente de Servicio",
     },
+    // El historial de programas y las estadísticas de los territorios, que
+    // antes solo se alcanzaban desde dentro de Territorios.
+    {
+      href: "/territorios/estadisticas",
+      label: "Estadísticas de Predicación",
+      icon: "📊",
+      group: "Superintendente de Servicio",
+    },
   ];
   const secretaryItems: NavItem[] = [
     {
@@ -134,8 +144,12 @@ export default async function AppLayout({
     // Superadmin sin congregación propia: solo administra la plataforma.
     navItems = [...platformItems, ...accountItems];
   } else if (isPureConfirmador) {
-    // Solo la sección Reuniones.
-    navItems = [...meetingsItems, ...accountItems];
+    // Solo la sección Reuniones (y Servicio, si lleva los territorios).
+    navItems = [
+      ...meetingsItems,
+      ...(alsoTerritorios ? serviceItems : []),
+      ...accountItems,
+    ];
   } else if (isSecretary) {
     // Acceso completo: Informes + Reuniones + Servicio + administración.
     navItems = [
@@ -152,6 +166,7 @@ export default async function AppLayout({
     navItems = [
       ...reportsItems,
       ...(alsoConfirmador ? meetingsItems : []),
+      ...(alsoTerritorios ? serviceItems : []),
       ...accountItems,
     ];
   }

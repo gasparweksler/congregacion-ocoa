@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { notFound } from "next/navigation";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatDate, toInputDate } from "@/lib/dates";
 import {
@@ -39,7 +39,7 @@ export default async function TerritorioDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const { id } = await params;
 

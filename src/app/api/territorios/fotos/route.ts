@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { logAudit } from "@/lib/audit";
 import {
   MAX_BYTES_FOTO,
@@ -20,7 +20,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const cuantas = await prisma.programPhoto.count({

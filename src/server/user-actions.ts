@@ -50,6 +50,7 @@ export async function createUserAction(
     groupId: formData.get("groupId") || null,
     mustChangePassword: formData.get("mustChangePassword") === "on",
     alsoConfirmador: formData.get("alsoConfirmador") === "on",
+    alsoTerritorios: formData.get("alsoTerritorios") === "on",
     groupRoleLabel: formData.get("groupRoleLabel") || null,
   });
   if (!parsed.success) {
@@ -77,6 +78,10 @@ export async function createUserAction(
   // La capacidad "también Confirmaciones" solo aplica a Super/Aux.
   const alsoConfirmador =
     GROUP_ROLES.includes(data.role as Role) && !!data.alsoConfirmador;
+  // La capacidad "territorios" también es solo para Super/Aux: el
+  // Administrador ya entra a esa sección por su rol.
+  const alsoTerritorios =
+    GROUP_ROLES.includes(data.role as Role) && !!data.alsoTerritorios;
   const groupRoleLabel = resolveGroupRoleLabel(
     data.role,
     groupId,
@@ -99,6 +104,7 @@ export async function createUserAction(
           congregationId: cong,
           mustChangePassword: data.mustChangePassword ?? false,
           alsoConfirmador,
+          alsoTerritorios,
           groupRoleLabel,
         },
       }),
@@ -135,6 +141,7 @@ export async function updateUserAction(
     active: formData.get("active") === "on",
     newPassword: formData.get("newPassword") || "",
     alsoConfirmador: formData.get("alsoConfirmador") === "on",
+    alsoTerritorios: formData.get("alsoTerritorios") === "on",
     groupRoleLabel: formData.get("groupRoleLabel") || null,
   });
   if (!parsed.success) {
@@ -168,6 +175,10 @@ export async function updateUserAction(
 
   const alsoConfirmador =
     GROUP_ROLES.includes(data.role as Role) && !!data.alsoConfirmador;
+  // La capacidad "territorios" también es solo para Super/Aux: el
+  // Administrador ya entra a esa sección por su rol.
+  const alsoTerritorios =
+    GROUP_ROLES.includes(data.role as Role) && !!data.alsoTerritorios;
   const groupRoleLabel = resolveGroupRoleLabel(
     data.role,
     groupId,
@@ -195,6 +206,7 @@ export async function updateUserAction(
           groupId,
           active,
           alsoConfirmador,
+          alsoTerritorios,
           groupRoleLabel,
           // Si se ingresó una nueva contraseña, se restablece y se obliga a cambiarla.
           ...nuevaClave,

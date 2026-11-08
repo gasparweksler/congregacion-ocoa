@@ -7,7 +7,7 @@
 //  misma página se puede guardar como el mapa del territorio.
 // ============================================================================
 
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/PageHeader";
 import { BackButton } from "@/components/BackButton";
@@ -15,7 +15,7 @@ import { Card, CardHeader, CardBody, StatTile } from "@/components/ui";
 import { ImportarTarjetasPdf } from "@/components/forms/ImportarTarjetasPdf";
 
 export default async function ImportarTerritoriosPage() {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
 
   const filas = await prisma.territory.findMany({

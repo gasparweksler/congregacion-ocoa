@@ -8,7 +8,7 @@
 //  los mapas.
 // ============================================================================
 
-import { requireSecretary, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { parsePeriod } from "@/lib/period";
 import { congregationLabelOf } from "@/lib/congregation-label";
@@ -42,7 +42,7 @@ export default async function ProgramaPredicacionPage({
 }: {
   searchParams: Promise<{ anio?: string; mes?: string }>;
 }) {
-  const user = await requireSecretary();
+  const user = await requireServiceAccess();
   const cong = congregationId(user);
   const { anio: anioParam, mes: mesParam } = await searchParams;
   const { year: anio, month: mes } = parsePeriod(anioParam, mesParam);

@@ -22,6 +22,7 @@ export type SessionUser = {
   congregationName: string | null;
   mustChangePassword: boolean;
   alsoConfirmador: boolean;
+  alsoTerritorios: boolean;
 };
 
 /** Devuelve el usuario de la sesión o null si no hay sesión. */
@@ -71,6 +72,27 @@ export function canAccessMeetings(user: SessionUser): boolean {
 /** ¿Puede acceder a la sección Informes? (Administrador, Superintendente, Auxiliar). */
 export function canAccessReports(user: SessionUser): boolean {
   return user.role !== ROLES.RESPONSABLE_CONFIRMACIONES;
+}
+
+/**
+ * ¿Puede acceder a la sección Superintendente de Servicio? (territorios, sus
+ * mapas, el programa de predicación y sus estadísticas).
+ *
+ * El Administrador siempre; cualquier otro usuario, si tiene la casilla
+ * "Sup. de Servicio - Territorios". Todos trabajan sobre los mismos datos:
+ * el acceso se acota por congregación, nunca por usuario.
+ */
+export function canAccessService(user: SessionUser): boolean {
+  return isSecretary(user) || Boolean(user.alsoTerritorios);
+}
+
+/** Exige acceso a la sección Superintendente de Servicio. */
+export async function requireServiceAccess(): Promise<
+  SessionUser & { congregationId: string }
+> {
+  const user = await requireCongregation();
+  if (!canAccessService(user)) redirect(landingFor(user));
+  return user;
 }
 
 /**
