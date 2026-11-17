@@ -603,6 +603,70 @@ export async function deleteAllMeetingsAction(formData: FormData): Promise<void>
   redirect(dia ? `/reuniones?dia=${dia}` : "/reuniones?dia=TODAS");
 }
 
+/**
+ * Borra SOLO las reuniones marcadas con la casilla de la izquierda.
+ *
+ * Alcanza exactamente lo que se eligió, ni una más: las que no están marcadas
+ * no se tocan, y las de otra congregación no se tocan NUNCA (el filtro por
+ * congregación va en la misma consulta de borrado, no solo en la comprobación
+ * previa). Quien puede eliminar una reunión puede eliminar varias: es lo mismo
+ * que hacerlo una por una, pero sin repetir la confirmación.
+ */
+export async function deleteSelectedMeetingsAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const conservar = guardarHistorial(formData);
+
+  const ids = String(formData.get("ids") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (ids.length === 0) return;
+
+  const { borradas, archivadas } = await prisma.$transaction(async (tx) => {
+    // De lo marcado, solo lo que de verdad es de esta congregación.
+    const propias = (
+      await tx.meeting.findMany({
+        where: { id: { in: ids }, congregationId: cong },
+        select: { id: true },
+      })
+    ).map((m) => m.id);
+    if (propias.length === 0) return { borradas: 0, archivadas: 0 };
+
+    const archivadas = conservar
+      ? await archivarAsignaciones(tx, propias, cong, user.id)
+      : 0;
+    const res = await tx.meeting.deleteMany({
+      where: { id: { in: propias }, congregationId: cong },
+    });
+    return { borradas: res.count, archivadas };
+  });
+
+  if (borradas === 0) return;
+  await logAudit({
+    userId: user.id,
+    action: "ELIMINAR",
+    entity: "Reunion",
+    details:
+      `Se eliminaron ${borradas} reunión(es) elegidas a mano. ` +
+      (conservar
+        ? `Historial conservado: ${archivadas} asignación(es).`
+        : "Historial descartado a petición de quien eliminó."),
+  });
+  revalidatePath("/reuniones");
+  revalidatePath("/reuniones/estadisticas");
+
+  // Se vuelve a la misma vista desde la que se eligieron.
+  const dia = String(formData.get("dia") ?? "");
+  redirect(
+    dia === MEETING_DAYS.JUEVES || dia === MEETING_DAYS.SABADO
+      ? `/reuniones?dia=${dia}`
+      : "/reuniones?dia=TODAS",
+  );
+}
+
 export async function deleteMeetingAction(formData: FormData): Promise<void> {
   const user = await requireMeetingsAccess();
   const id = String(formData.get("id") ?? "");

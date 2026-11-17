@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cn } from "@/lib/cn";
 import {
   requireMeetingsAccess,
   congregationId,
@@ -20,7 +19,6 @@ import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
   CardHeader,
-  CardBody,
   CollapsibleCard,
   EmptyState,
   Badge,
@@ -32,11 +30,17 @@ import { ProgramaPdfDownload } from "@/components/forms/ProgramaPdfDownload";
 import { MeetingDaysForm } from "@/components/forms/MeetingDaysForm";
 import { getMeetingDays } from "@/lib/meeting-days";
 import { DeleteMeetingButton } from "@/components/DeleteMeetingButton";
+import { MeetingViewTabs } from "@/components/forms/MeetingViewTabs";
+import {
+  SeleccionReuniones,
+  ReunionSeleccionable,
+} from "@/components/forms/SeleccionReuniones";
 import { EnterMeetingButton } from "@/components/EnterMeetingButton";
 import { LoadingLinkButton } from "@/components/LoadingLinkButton";
 import {
   deleteMeetingAction,
   deleteAllMeetingsAction,
+  deleteSelectedMeetingsAction,
 } from "@/server/meeting-actions";
 
 export default async function ReunionesPage({
@@ -180,12 +184,15 @@ export default async function ReunionesPage({
             <MeetingDaysForm days={meetingDays} canEdit={isSecretary(user)} />
           </CollapsibleCard>
 
-          <Card>
-            <CardHeader title="Nueva reunión" />
-            <CardBody>
-              <MeetingCreateForm days={meetingDays} />
-            </CardBody>
-          </Card>
+          {/* Cerrada de entrada: crear reuniones a mano es lo que menos se
+              hace (casi todas entran por la Guía o el Excel), y abierta se
+              comía la pantalla antes de llegar a la lista. */}
+          <CollapsibleCard
+            title="Nueva reunión"
+            description="Para crear una reunión a mano, sin planilla."
+          >
+            <MeetingCreateForm days={meetingDays} />
+          </CollapsibleCard>
 
           <CollapsibleCard
             title="Gestión de Archivos"
@@ -253,9 +260,11 @@ export default async function ReunionesPage({
             />
 
             {/* Los tres botones. Pulsar el que ya está activo lo desactiva y
-                se vuelve a la pantalla sin elegir. */}
-            <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-5">
-              {[
+                se vuelve a la pantalla sin elegir. Avisan mientras traen la
+                lista y no admiten otro clic hasta terminar. */}
+            <MeetingViewTabs
+              actual={vista}
+              vistas={[
                 {
                   key: MEETING_DAYS.JUEVES,
                   label: "Reunión de Entre Semana",
@@ -271,32 +280,8 @@ export default async function ReunionesPage({
                   label: "Ver Todas las Reuniones",
                   n: todas.length,
                 },
-              ].map((b) => {
-                const activo = vista === b.key;
-                return (
-                  <Link
-                    key={b.key}
-                    href={activo ? "/reuniones" : `/reuniones?dia=${b.key}`}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors",
-                      activo
-                        ? "border-primary bg-primary text-white"
-                        : "border-border bg-surface text-foreground hover:bg-slate-50",
-                    )}
-                  >
-                    {b.label}
-                    <span
-                      className={cn(
-                        "tabular-nums",
-                        activo ? "text-white/80" : "text-muted",
-                      )}
-                    >
-                      {b.n}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
+              ]}
+            />
             {vista === null ? (
               <EmptyState
                 title="Elige qué reuniones ver"
@@ -318,6 +303,11 @@ export default async function ReunionesPage({
                 }
               />
             ) : (
+              <SeleccionReuniones
+                ids={meetings.map((m) => m.id)}
+                dia={vista ?? ""}
+                action={deleteSelectedMeetingsAction}
+              >
               <div className="divide-y divide-border">
                 {meetings.map((m) => {
                   let confirmed = 0,
@@ -362,9 +352,13 @@ export default async function ReunionesPage({
                     }
                   }
                   return (
-                    <div
+                    <ReunionSeleccionable
                       key={m.id}
-                      className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center"
+                      id={m.id}
+                      etiqueta={m.weekLabel ?? formatDate(m.date)}
+                    >
+                    <div
+                      className="flex flex-col gap-3 py-4 pr-5 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center"
                     >
                       <div className="min-w-0 flex-1">
                         <Link
@@ -424,9 +418,11 @@ export default async function ReunionesPage({
                         </DeleteMeetingButton>
                       </div>
                     </div>
+                    </ReunionSeleccionable>
                   );
                 })}
               </div>
+              </SeleccionReuniones>
             )}
           </Card>
         </div>

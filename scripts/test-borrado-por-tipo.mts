@@ -142,8 +142,66 @@ try {
         "B conserva 2 de cada tipo",
       );
 
+      // --- Casillas: "Eliminar reuniones seleccionadas" -----------------
+      //
+      // El mismo `where` que arma deleteSelectedMeetingsAction con los ids
+      // marcados: lo que decide el alcance es ese `in` junto al filtro de
+      // congregación, así que es lo que se prueba.
+      console.log("\n5) «Eliminar reuniones seleccionadas»");
+      const nuevas: string[] = [];
+      for (let i = 0; i < 4; i++) {
+        const m = await crearReunion(
+          tx,
+          congA.id,
+          i % 2 === 0 ? MEETING_DAYS.JUEVES : MEETING_DAYS.SABADO,
+          `Elegible ${i + 1}`,
+          f(5 + i * 3),
+        );
+        nuevas.push(m.id);
+      }
+      const deB = (
+        await tx.meeting.findMany({
+          where: { congregationId: congB.id },
+          select: { id: true },
+        })
+      ).map((m) => m.id);
+
+      // Se marcan dos de A... y, por si acaso, se cuelan dos de B: aunque
+      // llegaran en el formulario, el filtro por congregación las ignora.
+      const marcadas = [nuevas[0], nuevas[1], ...deB];
+      const r4 = await tx.meeting.deleteMany({
+        where: { id: { in: marcadas }, congregationId: congA.id },
+      });
+      check(r4.count === 2, `borra solo las 2 marcadas de A (${r4.count})`);
+      check(
+        (await cuenta(congA.id)) === 2,
+        `quedan las otras 2 de A (${await cuenta(congA.id)})`,
+      );
+      const quedan = (
+        await tx.meeting.findMany({
+          where: { congregationId: congA.id },
+          select: { id: true },
+        })
+      ).map((m) => m.id);
+      check(
+        quedan.includes(nuevas[2]) && quedan.includes(nuevas[3]),
+        "y son justo las que NO se marcaron",
+      );
+      check(
+        (await cuenta(congB.id)) === 4,
+        `la congregación B sigue con sus 4 aunque sus ids iban en la lista (${await cuenta(congB.id)})`,
+      );
+      // Y de los dos tipos: la selección no entiende de entre semana ni de
+      // fin de semana, borra lo que se marcó y ya está.
+      check(
+        (await cuenta(congA.id, MEETING_DAYS.JUEVES)) === 1 &&
+          (await cuenta(congA.id, MEETING_DAYS.SABADO)) === 1,
+        "en A queda una de cada tipo",
+      );
+      await tx.meeting.deleteMany({ where: { congregationId: congA.id } });
+
       // --- Las asignaciones se van con su reunión ----------------------
-      console.log("\n5) Las asignaciones de B no se tocaron");
+      console.log("\n6) Las asignaciones de B no se tocaron");
       const asigB = await tx.meetingAssignment.count({
         where: { meeting: { congregationId: congB.id } },
       });
@@ -157,7 +215,7 @@ try {
   if (!(e instanceof Rollback)) throw e;
 }
 
-console.log("\n6) No quedó nada en la base");
+console.log("\n7) No quedó nada en la base");
 const sobrantes = await p.congregation.count({
   where: { name: { startsWith: "Prueba Borrado " } },
 });
