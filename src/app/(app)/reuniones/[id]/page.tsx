@@ -97,7 +97,12 @@ export default async function ReunionDetallePage({
     songStart: meeting.songStart ?? "",
     songMiddle: meeting.songMiddle ?? "",
     songEnd: meeting.songEnd ?? "",
+    speakerName: meeting.speakerName ?? "",
+    talkNumber: meeting.talkNumber ?? "",
+    talkTitle: meeting.talkTitle ?? "",
+    hospitalityGroup: meeting.hospitalityGroup ?? "",
   };
+  const esFinde = meeting.day === MEETING_DAYS.SABADO;
 
   return (
     <>
@@ -117,11 +122,19 @@ export default async function ReunionDetallePage({
           planilla al importar y se usan también para el PDF del programa. */}
       <Card className="mb-6">
         <CardHeader
-          title="Programa de la semana"
-          description="Canciones y lectura semanal. Llegan de la planilla al importarla, y se pueden corregir aquí."
+          title={esFinde ? "Programa del fin de semana" : "Programa de la semana"}
+          description={
+            esFinde
+              ? "Orador del discurso público, su tema, la hospitalidad y las canciones. Es lo que se imprime en el programa de fin de semana."
+              : "Canciones y lectura semanal. Llegan de la planilla al importarla, y se pueden corregir aquí."
+          }
         />
         <CardBody>
-          <ProgramDataForm meetingId={meeting.id} data={datosPrograma} />
+          <ProgramDataForm
+            meetingId={meeting.id}
+            day={meeting.day}
+            data={datosPrograma}
+          />
         </CardBody>
       </Card>
 

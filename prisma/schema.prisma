@@ -262,6 +262,18 @@ model Meeting {
   songMiddle    String?
   songEnd       String?
 
+  // Datos propios de la reunión de FIN DE SEMANA, para su programa impreso.
+  // Tampoco son asignación de nadie (el orador suele venir de otra
+  // congregación, y el tema y el grupo de hospitalidad no son personas).
+  //   speakerName:      "Raúl Aguilera - Cabildo"
+  //   talkNumber:       "10"
+  //   talkTitle:        "Seamos honrados en todo"
+  //   hospitalityGroup: "Grupo Nro 04" o "Congregación"
+  speakerName      String?
+  talkNumber       String?
+  talkTitle        String?
+  hospitalityGroup String?
+
   createdById String?
   createdBy   User?   @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 

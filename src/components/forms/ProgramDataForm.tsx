@@ -1,52 +1,88 @@
 "use client";
 
-// Canciones y lectura semanal de la reunión. Normalmente llegan de la planilla
-// al importarla; aquí se pueden corregir o escribir a mano sin volver a subir
-// el Excel. Se muestran como texto hasta que se pulsa "Editar", para que no
-// parezca un formulario que hay que rellenar.
+// Datos del programa de la reunión que NO son asignación de nadie.
+//
+// En la de entre semana son las canciones y la lectura semanal; en la de fin
+// de semana, el orador del discurso público, su tema y el grupo que atiende la
+// hospitalidad (el orador suele venir de otra congregación, así que no es una
+// asignación de la congregación ni entra en las estadísticas).
+//
+// Normalmente llegan de la planilla al importarla; aquí se pueden corregir o
+// escribir a mano sin volver a subir el Excel. Se muestran como texto hasta
+// que se pulsa "Editar", para que no parezca un formulario que hay que
+// rellenar.
 
 import { useActionState, useState } from "react";
 import { setProgramDataAction } from "@/server/meeting-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
 import { Label, Input, Alert, Button } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
+import { MEETING_DAYS } from "@/lib/constants";
 
 export type ProgramData = {
   weeklyReading: string;
   songStart: string;
   songMiddle: string;
   songEnd: string;
+  /** Solo fin de semana. */
+  speakerName: string;
+  talkNumber: string;
+  talkTitle: string;
+  hospitalityGroup: string;
 };
 
 export function ProgramDataForm({
   meetingId,
+  day,
   data,
 }: {
   meetingId: string;
+  /** JUEVES | SABADO: decide qué datos se piden. */
+  day: string;
   data: ProgramData;
 }) {
   const [state, action] = useActionState(setProgramDataAction, EMPTY_FORM_STATE);
   const [editing, setEditing] = useState(false);
+  const esFinde = day === MEETING_DAYS.SABADO;
 
   // Tras guardar se vuelve a la vista de lectura (ajuste en render, no en
   // efecto: así no hay un parpadeo con el formulario todavía abierto).
   if (state.success && editing) setEditing(false);
 
-  const vista = [
-    { label: "Lectura semanal de la Biblia", valor: data.weeklyReading },
-    {
-      label: "Canción de inicio",
-      valor: data.songStart ? `Canción ${data.songStart}` : "",
-    },
-    {
-      label: "Canción de Nuestra Vida Cristiana",
-      valor: data.songMiddle ? `Canción ${data.songMiddle}` : "",
-    },
-    {
-      label: "Canción final",
-      valor: data.songEnd ? `Canción ${data.songEnd}` : "",
-    },
-  ];
+  const vista = esFinde
+    ? [
+        { label: "Orador", valor: data.speakerName },
+        {
+          label: "Tema",
+          valor: [data.talkNumber && `Nº ${data.talkNumber}`, data.talkTitle]
+            .filter(Boolean)
+            .join(" · "),
+        },
+        { label: "Hospitalidad", valor: data.hospitalityGroup },
+        {
+          label: "Canción de inicio",
+          valor: data.songStart ? `Canción ${data.songStart}` : "",
+        },
+        {
+          label: "Canción final",
+          valor: data.songEnd ? `Canción ${data.songEnd}` : "",
+        },
+      ]
+    : [
+        { label: "Lectura semanal de la Biblia", valor: data.weeklyReading },
+        {
+          label: "Canción de inicio",
+          valor: data.songStart ? `Canción ${data.songStart}` : "",
+        },
+        {
+          label: "Canción de Nuestra Vida Cristiana",
+          valor: data.songMiddle ? `Canción ${data.songMiddle}` : "",
+        },
+        {
+          label: "Canción final",
+          valor: data.songEnd ? `Canción ${data.songEnd}` : "",
+        },
+      ];
   const hayAlgo = vista.some((v) => v.valor);
 
   if (!editing) {
@@ -70,8 +106,9 @@ export function ProgramDataForm({
           </dl>
         ) : (
           <p className="text-sm text-muted">
-            Esta reunión no tiene canciones ni lectura semanal guardadas. Se
-            toman del Excel al importarlo, o puedes escribirlas aquí con{" "}
+            {esFinde
+              ? "Esta reunión no tiene todavía orador, tema ni hospitalidad guardados. Escríbelos aquí con "
+              : "Esta reunión no tiene canciones ni lectura semanal guardadas. Se toman del Excel al importarlo, o puedes escribirlas aquí con "}
             <strong>Editar</strong>.
           </p>
         )}
@@ -86,48 +123,127 @@ export function ProgramDataForm({
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="meetingId" value={meetingId} />
+      {/* El día viaja con el formulario para que la acción sepa qué campos
+          esperar: así editar una reunión de fin de semana no borra la lectura
+          semanal de otra, ni al revés. */}
+      <input type="hidden" name="day" value={day} />
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
 
-      <div>
-        <Label htmlFor="weeklyReading">Lectura semanal de la Biblia</Label>
-        <Input
-          id="weeklyReading"
-          name="weeklyReading"
-          defaultValue={data.weeklyReading}
-          placeholder="Ej.: JEREMÍAS 40, 41"
-          maxLength={120}
-        />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          { name: "songStart", label: "Canción de inicio", valor: data.songStart },
-          {
-            name: "songMiddle",
-            label: "Canción de Nuestra Vida Cristiana",
-            valor: data.songMiddle,
-          },
-          { name: "songEnd", label: "Canción final", valor: data.songEnd },
-        ].map((c) => (
-          <div key={c.name}>
-            <Label htmlFor={c.name}>{c.label}</Label>
+      {esFinde ? (
+        <>
+          <div>
+            <Label htmlFor="speakerName">Orador del discurso público</Label>
             <Input
-              id={c.name}
-              name={c.name}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={999}
-              defaultValue={c.valor}
-              placeholder="Nº"
+              id="speakerName"
+              name="speakerName"
+              defaultValue={data.speakerName}
+              placeholder="Ej.: Raúl Aguilera - Cabildo"
+              maxLength={120}
             />
           </div>
-        ))}
-      </div>
+
+          <div className="grid gap-3 sm:grid-cols-[7rem_1fr]">
+            <div>
+              <Label htmlFor="talkNumber">Nº del tema</Label>
+              <Input
+                id="talkNumber"
+                name="talkNumber"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={999}
+                defaultValue={data.talkNumber}
+                placeholder="Nº"
+              />
+            </div>
+            <div>
+              <Label htmlFor="talkTitle">Tema</Label>
+              <Input
+                id="talkTitle"
+                name="talkTitle"
+                defaultValue={data.talkTitle}
+                placeholder="Ej.: Seamos honrados en todo"
+                maxLength={160}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="hospitalityGroup">Hospitalidad (grupo)</Label>
+            <Input
+              id="hospitalityGroup"
+              name="hospitalityGroup"
+              defaultValue={data.hospitalityGroup}
+              placeholder="Ej.: Grupo Nro 04, o Congregación"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { name: "songStart", label: "Canción de inicio", valor: data.songStart },
+              { name: "songEnd", label: "Canción final", valor: data.songEnd },
+            ].map((c) => (
+              <div key={c.name}>
+                <Label htmlFor={c.name}>{c.label}</Label>
+                <Input
+                  id={c.name}
+                  name={c.name}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={999}
+                  defaultValue={c.valor}
+                  placeholder="Nº"
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <Label htmlFor="weeklyReading">Lectura semanal de la Biblia</Label>
+            <Input
+              id="weeklyReading"
+              name="weeklyReading"
+              defaultValue={data.weeklyReading}
+              placeholder="Ej.: JEREMÍAS 40, 41"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { name: "songStart", label: "Canción de inicio", valor: data.songStart },
+              {
+                name: "songMiddle",
+                label: "Canción de Nuestra Vida Cristiana",
+                valor: data.songMiddle,
+              },
+              { name: "songEnd", label: "Canción final", valor: data.songEnd },
+            ].map((c) => (
+              <div key={c.name}>
+                <Label htmlFor={c.name}>{c.label}</Label>
+                <Input
+                  id={c.name}
+                  name={c.name}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={999}
+                  defaultValue={c.valor}
+                  placeholder="Nº"
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <p className="text-xs text-muted">
         Deja un campo vacío para borrarlo: queda sin dato y no se imprime, en vez
-        de aparecer con un número inventado.
+        de aparecer con un número o un nombre inventado.
       </p>
 
       <div className="flex flex-wrap gap-2">

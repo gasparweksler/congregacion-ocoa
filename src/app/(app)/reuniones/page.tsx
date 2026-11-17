@@ -124,18 +124,22 @@ export default async function ReunionesPage({
     new Set(confirmadoresUsers.map((u) => u.name).filter(Boolean)),
   );
 
-  // Meses con programa de Jueves cargado, para ofrecer solo esos en el PDF
-  // (el más cercano a hoy primero, igual que el listado de reuniones).
-  const conteoPorMes = new Map<string, number>();
+  // Meses con reuniones cargadas, para ofrecer solo esos en los PDF (el más
+  // cercano a hoy primero, igual que el listado de reuniones). Se cuentan los
+  // dos tipos por separado: el mismo selector sirve para los dos programas,
+  // y cada botón dice cuántas reuniones hay de lo suyo.
+  const conteoPorMes = new Map<string, { count: number; countFinde: number }>();
   for (const m of meetingsRaw) {
-    if (m.day !== MEETING_DAYS.JUEVES) continue;
     const k = `${m.date.getFullYear()}-${m.date.getMonth() + 1}`;
-    conteoPorMes.set(k, (conteoPorMes.get(k) ?? 0) + 1);
+    const n = conteoPorMes.get(k) ?? { count: 0, countFinde: 0 };
+    if (m.day === MEETING_DAYS.JUEVES) n.count++;
+    else n.countFinde++;
+    conteoPorMes.set(k, n);
   }
   const programaPeriods = [...conteoPorMes.entries()]
-    .map(([k, count]) => {
+    .map(([k, n]) => {
       const [year, month] = k.split("-").map(Number);
-      return { year, month, count };
+      return { year, month, ...n };
     })
     .sort(
       (a, b) =>
@@ -184,16 +188,20 @@ export default async function ReunionesPage({
           </Card>
 
           <CollapsibleCard
-            title="Carga masiva (Excel)"
-            description="Crea varias reuniones de una vez desde una plantilla."
+            title="Gestión de Archivos"
+            description="Planillas, PDF de la Guía de actividades y descarga de los programas del mes."
             bodyClassName="space-y-4"
           >
             {/* La planilla: en blanco, o ya escrita con el programa del PDF de
                 la Guía de actividades si se sube uno. */}
             <GuiaPdfPlanilla />
 
-            {/* El programa ya cargado, en PDF para imprimir y repartir. */}
+            {/* Los programas ya cargados, en PDF para imprimir y repartir:
+                el de entre semana y el de fin de semana, con un mismo mes. */}
             <div className="border-t border-border pt-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                Descargar PDF
+              </p>
               <ProgramaPdfDownload periods={programaPeriods} />
             </div>
 

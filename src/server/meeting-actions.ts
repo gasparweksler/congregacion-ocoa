@@ -436,13 +436,44 @@ export async function setProgramDataAction(
     };
   }
 
-  const weeklyReading = parseWeeklyReading(
-    String(formData.get("weeklyReading") ?? ""),
-  );
+  // El formulario de fin de semana no enseña la lectura semanal ni la canción
+  // del medio, así que tampoco se tocan: solo se guarda lo que se editó.
+  const esFinde = String(formData.get("day") ?? "") === MEETING_DAYS.SABADO;
+
+  /** Texto libre: recortado, con tope, y vacío = borrar el dato. */
+  const texto = (campo: string, max: number): string | null => {
+    const v = String(formData.get(campo) ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, max);
+    return v.length > 0 ? v : null;
+  };
+
+  const datos = esFinde
+    ? {
+        songStart,
+        songEnd,
+        speakerName: texto("speakerName", 120),
+        talkNumber: parseSongNumber(String(formData.get("talkNumber") ?? "")),
+        talkTitle: texto("talkTitle", 160),
+        hospitalityGroup: texto("hospitalityGroup", 120),
+      }
+    : {
+        weeklyReading: parseWeeklyReading(
+          String(formData.get("weeklyReading") ?? ""),
+        ),
+        songStart,
+        songMiddle,
+        songEnd,
+      };
+
+  if (esFinde && datos.talkNumber === undefined) {
+    return { error: "El número del tema debe ser un número entre 1 y 999, o quedar vacío." };
+  }
 
   const actualizada = await prisma.meeting.updateMany({
     where: { id: meetingId, congregationId: congregationId(user) },
-    data: { weeklyReading, songStart, songMiddle, songEnd },
+    data: datos,
   });
   if (actualizada.count === 0) return { error: "No se encontró la reunión." };
 
@@ -451,9 +482,12 @@ export async function setProgramDataAction(
     action: "EDITAR",
     entity: "Reunion",
     entityId: meetingId,
-    details:
-      `Programa de la semana: lectura "${weeklyReading ?? "(vacía)"}", ` +
-      `canciones ${songStart ?? "-"}/${songMiddle ?? "-"}/${songEnd ?? "-"}.`,
+    details: esFinde
+      ? `Programa de fin de semana: orador "${datos.speakerName ?? "(vacío)"}", ` +
+        `tema ${datos.talkNumber ?? "-"} "${datos.talkTitle ?? "(vacío)"}", ` +
+        `hospitalidad "${datos.hospitalityGroup ?? "(vacía)"}".`
+      : `Programa de la semana: lectura "${datos.weeklyReading ?? "(vacía)"}", ` +
+        `canciones ${songStart ?? "-"}/${songMiddle ?? "-"}/${songEnd ?? "-"}.`,
   });
 
   revalidatePath(`/reuniones/${meetingId}`);
