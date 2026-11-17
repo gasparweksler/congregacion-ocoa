@@ -45,7 +45,12 @@ export default async function ResponsabilidadesMensualPage({
     getVolunteersByCategory(cong),
     prisma.congregation.findUnique({
       where: { id: cong },
-      select: { videoSameAsAudio: true, micCount: true, audioAlsoVideo: true },
+      select: {
+        videoSameAsAudio: true,
+        micCount: true,
+        audioAlsoVideo: true,
+        ushersMerged: true,
+      },
     }),
   ]);
 

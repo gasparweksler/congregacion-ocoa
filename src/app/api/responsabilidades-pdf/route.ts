@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   const ajustes = respSettingsFrom(
     await prisma.congregation.findUnique({
       where: { id: cong },
-      select: { micCount: true, audioAlsoVideo: true },
+      select: { micCount: true, audioAlsoVideo: true, ushersMerged: true },
     }),
   );
 
@@ -62,6 +62,7 @@ export async function GET(request: Request) {
       .filter((n) => n && n.trim())
       .join(" / "),
     plataforma: r.values.r_acom_plataforma?.name || "",
+    // Con un solo acomodador, este es el nombre que cubre las dos puertas.
     entrada: r.values.r_acom_entrada?.name || "",
     auditorio: r.values.r_acom_auditorio?.name || "",
     limpieza: r.values.r_limpieza?.name || "",
@@ -74,6 +75,7 @@ export async function GET(request: Request) {
     filas,
     paleta: searchParams.get("paleta"),
     columnaVideo: !ajustes.audioAlsoVideo,
+    columnaAuditorio: !ajustes.ushersMerged,
   });
 
   const buffer = doc.output("arraybuffer");

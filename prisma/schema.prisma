@@ -54,6 +54,12 @@ model Congregation {
   // de hermanos disponibles.
   audioAlsoVideo Boolean @default(false)
 
+  // "Un solo hermano como acomodador de entrada y de auditorio": el que está
+  // en Acomodador de Entrada cubre las dos puertas, así que no se reparte ni
+  // se imprime una casilla de Auditorio aparte, y la que queda pasa a
+  // llamarse "Acomodador de Auditorio y de Entrada".
+  ushersMerged Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

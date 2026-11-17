@@ -87,7 +87,12 @@ function slotsARepartir(ajustes: RespSettings) {
 async function ajustesDe(cong: string): Promise<RespSettings & { videoSameAsAudio: boolean }> {
   const row = await prisma.congregation.findUnique({
     where: { id: cong },
-    select: { videoSameAsAudio: true, micCount: true, audioAlsoVideo: true },
+    select: {
+      videoSameAsAudio: true,
+      micCount: true,
+      audioAlsoVideo: true,
+      ushersMerged: true,
+    },
   });
   return { ...respSettingsFrom(row), videoSameAsAudio: row?.videoSameAsAudio ?? false };
 }

@@ -69,7 +69,9 @@
     "db:migrate-presencia": "tsx scripts/migrate-presencia.mts",
     "test:presencia": "tsx scripts/test-presencia.mts",
     "test:serie": "tsx scripts/test-serie-asignaciones.mts",
-    "verificar:pdfs": "tsx scripts/verificar-pdfs-reunion.mts"
+    "verificar:pdfs": "tsx scripts/verificar-pdfs-reunion.mts",
+    "db:migrate-acomodadores": "tsx scripts/migrate-acomodadores.mts",
+    "test:acomodadores": "tsx scripts/test-acomodadores.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -12,6 +12,7 @@ import {
   setVideoSameAsAudioAction,
   setMicCountAction,
   setAudioAlsoVideoAction,
+  setUshersMergedAction,
 } from "@/server/resp-volunteers-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
 import { Alert, Input, Button } from "@/components/ui";
@@ -214,6 +215,22 @@ function AudioHaceVideo({ activo }: { activo: boolean }) {
 }
 
 /**
+ * "Un solo hermano como acomodador de entrada y de auditorio": no se reparte
+ * una casilla de Auditorio aparte, ni se imprime. La de Entrada pasa a
+ * llamarse "Acomodador de Auditorio y de Entrada".
+ */
+function AcomodadorUnico({ activo }: { activo: boolean }) {
+  return (
+    <form action={setUshersMergedAction}>
+      <input type="hidden" name="value" value={activo ? "no" : "si"} />
+      <SwitchResp activo={activo}>
+        Un solo hermano como acomodador de entrada y de auditorio
+      </SwitchResp>
+    </form>
+  );
+}
+
+/**
  * "Usamos 1 / 2 Pasa Micrófono": cuántos hermanos pasan el micrófono en cada
  * reunión. Con uno, la casilla "Pasa Micrófono 2" deja de repartirse y de
  * imprimirse; lo que ya estuviera escrito en ella no se borra.
@@ -375,6 +392,8 @@ export function RespVolunteers({
                     <AudioHaceVideo activo={ajustes.audioAlsoVideo} />
                   ) : c.key === "MICROFONO" ? (
                     <Micros valor={ajustes.micCount} />
+                  ) : c.key === "ACOMODADORES" ? (
+                    <AcomodadorUnico activo={ajustes.ushersMerged} />
                   ) : undefined
                 }
                 ayuda={
@@ -382,7 +401,9 @@ export function RespVolunteers({
                     ? "No recibirá ninguna responsabilidad en la reunión de fin de semana."
                     : c.key === "MICROFONO" && ajustes.micCount === 1
                       ? "Se reparte una sola casilla por reunión."
-                      : undefined
+                      : c.key === "ACOMODADORES" && ajustes.ushersMerged
+                        ? "Se reparte una sola casilla por reunión: el mismo hermano cubre la entrada y el auditorio."
+                        : undefined
                 }
               />
             );

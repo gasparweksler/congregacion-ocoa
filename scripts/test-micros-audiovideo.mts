@@ -50,10 +50,10 @@ const check = (cond: boolean, texto: string, detalle = "") => {
   }
 };
 
-const DOS: RespSettings = { micCount: 2, audioAlsoVideo: false };
-const UNO: RespSettings = { micCount: 1, audioAlsoVideo: false };
-const JUNTO: RespSettings = { micCount: 2, audioAlsoVideo: true };
-const UNO_JUNTO: RespSettings = { micCount: 1, audioAlsoVideo: true };
+const DOS: RespSettings = { micCount: 2, audioAlsoVideo: false, ushersMerged: false };
+const UNO: RespSettings = { micCount: 1, audioAlsoVideo: false, ushersMerged: false };
+const JUNTO: RespSettings = { micCount: 2, audioAlsoVideo: true, ushersMerged: false };
+const UNO_JUNTO: RespSettings = { micCount: 1, audioAlsoVideo: true, ushersMerged: false };
 
 const claves = (s: RespSettings) => activeResponsibilities(s).map((r) => r.key);
 

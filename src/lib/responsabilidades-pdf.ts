@@ -46,6 +46,13 @@ export type DatosResponsabilidades = {
    * imprime, que es como salía hasta ahora.
    */
   columnaVideo?: boolean;
+  /**
+   * false cuando un solo hermano hace de acomodador de entrada y de
+   * auditorio: en vez de dos columnas se imprime una sola, "ACOMODADOR
+   * AUDITORIO Y DE ENTRADA", con ese único nombre. Por defecto se imprimen
+   * las dos, que es como salía hasta ahora.
+   */
+  columnaAuditorio?: boolean;
 };
 
 // Colores suaves rotativos para los grupos de limpieza (como la referencia).
@@ -70,12 +77,12 @@ function cabecera1(columnaVideo: boolean): string[] {
     ? ["DIA/MES", "AUDIO", "VIDEO", "MICROFONO", "PLATAFORMA"]
     : ["DIA/MES", "AUDIO Y VIDEO", "MICROFONO", "PLATAFORMA"];
 }
-const CABECERA_2 = [
-  "DIA/MES",
-  "ACOMODADOR ENTRADA",
-  "ACOMODADOR AUDITORIO",
-  "LIMPIEZA POR GRUPOS",
-];
+/** Los títulos de la segunda tabla según se impriman uno o dos acomodadores. */
+function cabecera2(columnaAuditorio: boolean): string[] {
+  return columnaAuditorio
+    ? ["DIA/MES", "ACOMODADOR ENTRADA", "ACOMODADOR AUDITORIO", "LIMPIEZA POR GRUPOS"]
+    : ["DIA/MES", "ACOMODADOR AUDITORIO Y DE ENTRADA", "LIMPIEZA POR GRUPOS"];
+}
 
 /** Lo alto que ocupa, como poco, el título de la segunda tabla con su inicio. */
 const ALTO_MINIMO_SEGUNDA = 130;
@@ -102,6 +109,12 @@ export function dibujarResponsabilidades(
   // nombre de Audio cubre las dos cosas.
   const columnaVideo = datos.columnaVideo !== false;
   const CABECERA_1 = cabecera1(columnaVideo);
+  // Con "un solo acomodador" no hay columna de Auditorio: el nombre de la
+  // entrada cubre las dos puertas.
+  const columnaAuditorio = datos.columnaAuditorio !== false;
+  const CABECERA_2 = cabecera2(columnaAuditorio);
+  // En qué columna va la limpieza, que es la última de la segunda tabla.
+  const COL_LIMPIEZA = CABECERA_2.length - 1;
 
   /** El título de una tabla, centrado. */
   const titulo = (texto: string, y: number): void => {
@@ -195,12 +208,13 @@ export function dibujarResponsabilidades(
       [{ content: datos.periodo, colSpan: CABECERA_2.length }],
       CABECERA_2.map((c) => ({ content: c })),
     ],
-    body: cuerpoDeLimpieza(filas, columnaFecha),
+    body: cuerpoDeLimpieza(filas, columnaFecha, columnaAuditorio),
     styles: estilos,
     headStyles: estilosCabecera,
     columnStyles: {
       0: { fontStyle: "bold", fillColor: paleta.columnaDia, cellWidth: 90 },
-      3: { cellWidth: 150 }, // Limpieza más ancha (celda grande).
+      // Limpieza más ancha (celda grande), esté en la columna que esté.
+      [COL_LIMPIEZA]: { cellWidth: 150 },
     },
     didParseCell: estilarCabecera,
   });
@@ -216,24 +230,27 @@ export function dibujarResponsabilidades(
 function cuerpoDeLimpieza(
   filas: FilaResponsabilidad[],
   columnaFecha: (f: FilaResponsabilidad) => string,
+  /** false: una sola columna de acomodador, con el nombre de la entrada. */
+  columnaAuditorio = true,
 ): (string | CeldaCombinada)[][] {
   const colorDelGrupo = new Map<string, number>();
   const cuerpo: (string | CeldaCombinada)[][] = [];
+  // La limpieza es siempre la última columna: la 3 con dos acomodadores, la 2
+  // cuando uno solo cubre las dos puertas.
+  const colLimpieza = columnaAuditorio ? 3 : 2;
 
   for (let i = 0; i < filas.length; i++) {
     const f = filas[i];
     const grupo = f.limpieza || "";
-    const fila: (string | CeldaCombinada)[] = [
-      columnaFecha(f),
-      f.entrada,
-      f.auditorio,
-    ];
+    const fila: (string | CeldaCombinada)[] = columnaAuditorio
+      ? [columnaFecha(f), f.entrada, f.auditorio]
+      : [columnaFecha(f), f.entrada];
     const anterior = i > 0 ? filas[i - 1].limpieza || "" : null;
 
     if (grupo && grupo === anterior) {
       // La misma semana de limpieza: se agranda la celda de arriba.
       for (let j = cuerpo.length - 1; j >= 0; j--) {
-        const ultima = cuerpo[j][3];
+        const ultima = cuerpo[j][colLimpieza];
         if (ultima && typeof ultima === "object") {
           ultima.rowSpan = (ultima.rowSpan ?? 1) + 1;
           break;

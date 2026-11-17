@@ -85,8 +85,35 @@ const COLUMN_KEYWORDS: { word: string; slotKey: string }[] = [
 const PERIOD_RE =
   /^(?:ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)?\s*\d{4}$/;
 
+/**
+ * El encabezado de la columna combinada de acomodadores ("ACOMODADOR
+ * AUDITORIO Y DE ENTRADA"), cuando la congregación usa un solo hermano para
+ * las dos puertas. Es más largo que el tope que descarta los títulos, así que
+ * se reconoce aparte.
+ */
+const CABECERA_ACOMODADOR_UNICO =
+  /ACOMODADOR.*(AUDITORIO.*ENTRADA|ENTRADA.*AUDITORIO)/;
+
+/**
+ * Cuando dos casillas comparten una sola columna, cuál es la que de verdad se
+ * reparte y, por tanto, la que lleva el nombre impreso.
+ */
+const CASILLA_QUE_MANDA: Record<string, string> = {
+  // "AUDIO Y VIDEO": el nombre es el del hermano de Audio.
+  "r_audio|r_video": "r_audio",
+  // "ACOMODADOR AUDITORIO Y DE ENTRADA": el nombre es el de la entrada.
+  "r_acom_auditorio|r_acom_entrada": "r_acom_entrada",
+};
+
+function mandaEntre(a: string, b: string): string | null {
+  return CASILLA_QUE_MANDA[[a, b].sort().join("|")] ?? null;
+}
+
 function keywordOf(text: string): string | null {
   const t = norm(text);
+  // Primero la columna combinada: contiene dos palabras de columna y hay que
+  // quedarse con la que lleva el nombre.
+  if (CABECERA_ACOMODADOR_UNICO.test(t)) return "r_acom_entrada";
   for (const k of COLUMN_KEYWORDS) if (t.includes(k.word)) return k.slotKey;
   return null;
 }
@@ -169,7 +196,8 @@ function findTables(lines: Line[]): Table[] {
     for (const it of line.items) {
       // Los títulos ("ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO") también
       // contienen palabras de columna: se descartan por su longitud.
-      if (norm(it.text).length > 24) continue;
+      const texto = norm(it.text);
+      if (texto.length > 24 && !CABECERA_ACOMODADOR_UNICO.test(texto)) continue;
       const slotKey = keywordOf(it.text);
       if (slotKey) hits.push({ slotKey, x: centerX(it) });
     }
@@ -196,7 +224,14 @@ function findTables(lines: Line[]): Table[] {
         // parte en dos renglones. Gana la primera, AUDIO, que es la casilla
         // que de verdad se reparte.
         const pegada = prev.cols.find((c) => Math.abs(c.x - h.x) < 20);
-        if (pegada) continue;
+        if (pegada) {
+          // Si las dos palabras son de un encabezado combinado, manda la
+          // casilla que lleva el nombre ("AUDITORIO Y DE ENTRADA" -> entrada),
+          // no la que se encontró primero.
+          const manda = mandaEntre(pegada.slotKey, h.slotKey);
+          if (manda) pegada.slotKey = manda;
+          continue;
+        }
         prev.cols.push(h);
       }
     } else {

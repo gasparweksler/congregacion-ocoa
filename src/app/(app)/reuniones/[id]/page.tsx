@@ -31,12 +31,13 @@ export default async function ReunionDetallePage({
   const { id } = await params;
 
   const meetingDays = await getMeetingDays(cong);
-  // Cuántos micrófonos usa la congregación y si el de Audio hace también
-  // Video: lo que no se reparte no se pide confirmar.
+  // Los ajustes de responsabilidades de la congregación (cuántos micrófonos,
+  // si el de Audio hace también Video, si un solo acomodador cubre las dos
+  // puertas): lo que no se reparte no se pide confirmar.
   const respSettings = respSettingsFrom(
     await prisma.congregation.findUnique({
       where: { id: cong },
-      select: { micCount: true, audioAlsoVideo: true },
+      select: { micCount: true, audioAlsoVideo: true, ushersMerged: true },
     }),
   );
 

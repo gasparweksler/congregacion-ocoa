@@ -158,6 +158,32 @@ export async function setMicCountAction(formData: FormData): Promise<void> {
 }
 
 /**
+ * Interruptor "Un solo hermano como acomodador de entrada y de auditorio": la
+ * casilla de Auditorio deja de repartirse (la cubre quien está en la entrada)
+ * y no se imprime aparte. Lo que ya estuviera escrito en Auditorio se
+ * conserva.
+ */
+export async function setUshersMergedAction(formData: FormData): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const activo = String(formData.get("value") ?? "") === "si";
+
+  await prisma.congregation.update({
+    where: { id: cong },
+    data: { ushersMerged: activo },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Responsabilidades",
+    details: `Un solo acomodador para entrada y auditorio: ${activo ? "activado" : "desactivado"}.`,
+  });
+
+  revalidatePath("/reuniones/responsabilidades");
+}
+
+/**
  * Interruptor "El mismo hermano hace Audio y Video": la casilla de Video deja
  * de repartirse (la cubre quien está en Audio) y no se imprime aparte. Lo que
  * ya estuviera escrito en Video se conserva.
