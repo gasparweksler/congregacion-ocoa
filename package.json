@@ -60,7 +60,8 @@
     "test:guia-real": "tsx scripts/test-guia-pdf-real.mts",
     "test:territorios": "tsx scripts/test-territorios.mts",
     "test:tarjetas": "tsx scripts/test-importar-tarjetas.mts",
-    "test:estados": "tsx scripts/test-estados-publicador.mts"
+    "test:estados": "tsx scripts/test-estados-publicador.mts",
+    "test:borrado-tipo": "tsx scripts/test-borrado-por-tipo.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

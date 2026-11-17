@@ -47,11 +47,21 @@ export default async function ReunionesPage({
   const user = await requireMeetingsAccess();
   const cong = congregationId(user);
 
-  // Filtro por tipo de reunión, para no verlas mezcladas. Va por la URL para
-  // que sobreviva al refresco automático de la pantalla.
+  // Qué se está mirando. Va por la URL para que sobreviva al refresco
+  // automático de la pantalla.
+  //
+  // Sin elegir (null) no se enseña ninguna reunión: con los años son cientos,
+  // y abrir la pantalla con todas mezcladas no ayudaba a nadie. Hay que pulsar
+  // uno de los tres botones.
   const { dia } = await searchParams;
-  const filtro =
-    dia === MEETING_DAYS.JUEVES || dia === MEETING_DAYS.SABADO ? dia : null;
+  const vista: "JUEVES" | "SABADO" | "TODAS" | null =
+    dia === MEETING_DAYS.JUEVES || dia === MEETING_DAYS.SABADO
+      ? dia
+      : dia === "TODAS"
+        ? "TODAS"
+        : null;
+  /** El día concreto, cuando la vista es de un solo tipo. */
+  const filtro = vista === "TODAS" || vista === null ? null : vista;
 
   // Días de reunión de esta congregación (antes estaban fijos: jueves/sábado).
   const meetingDays = await getMeetingDays(cong);
@@ -72,7 +82,29 @@ export default async function ReunionesPage({
     (m) => m.day === MEETING_DAYS.JUEVES,
   ).length;
   const totalFinDeSemana = todas.length - totalEntreSemana;
-  const meetings = filtro ? todas.filter((m) => m.day === filtro) : todas;
+  // Nada elegido, nada que enseñar.
+  const meetings =
+    vista === null ? [] : filtro ? todas.filter((m) => m.day === filtro) : todas;
+
+  // Cómo se llama y qué alcanza el botón de borrado masivo, según la vista.
+  const borrado =
+    vista === MEETING_DAYS.JUEVES
+      ? {
+          etiqueta: "Eliminar todas las de entre semana",
+          cuantas: totalEntreSemana,
+          queSon: "reuniones de entre semana",
+        }
+      : vista === MEETING_DAYS.SABADO
+        ? {
+            etiqueta: "Eliminar todas las de fin de semana",
+            cuantas: totalFinDeSemana,
+            queSon: "reuniones de fin de semana",
+          }
+        : {
+            etiqueta: "Eliminar todas las reuniones registradas",
+            cuantas: todas.length,
+            queSon: "reuniones de la congregación, de entre semana y de fin de semana",
+          };
 
   // Responsables de Confirmación disponibles para el desplegable de cada reunión.
   const confirmadoresUsers = await prisma.user.findMany({
@@ -174,80 +206,106 @@ export default async function ReunionesPage({
             <CardHeader
               title="Reuniones"
               description={
-                filtro
-                  ? `${meetings.length} de ${todas.length} reunión(es): solo ${
-                      filtro === MEETING_DAYS.JUEVES
-                        ? "las de entre semana"
-                        : "las de fin de semana"
-                    }.`
-                  : `${todas.length} reunión(es) registradas.`
+                vista === null
+                  ? `${todas.length} reunión(es) registradas. Elige abajo cuáles quieres ver.`
+                  : filtro
+                    ? `${meetings.length} de ${todas.length} reunión(es): solo ${
+                        filtro === MEETING_DAYS.JUEVES
+                          ? "las de entre semana"
+                          : "las de fin de semana"
+                      }.`
+                    : `Las ${todas.length} reunión(es) registradas, de los dos tipos.`
               }
               action={
-                // Borrar TODAS las reuniones de la congregación lo hace solo el
-                // Administrador: antes podía también un Responsable de
-                // Confirmaciones.
-                todas.length > 0 && isSecretary(user) ? (
+                // Borrar reuniones en bloque lo hace solo el Administrador:
+                // antes podía también un Responsable de Confirmaciones.
+                //
+                // El botón solo sale con una vista elegida, y borra ÚNICAMENTE
+                // lo que esa vista enseña: así nadie borra de un tirón algo
+                // que no está viendo.
+                vista !== null && borrado.cuantas > 0 && isSecretary(user) ? (
                   <DeleteMeetingButton
                     action={deleteAllMeetingsAction}
-                    title="Eliminar TODAS las reuniones"
-                    description={`Se eliminarán las ${todas.length} reuniones de la congregación con sus asignaciones y sus enlaces de confirmación, incluidas las que ahora no se ven por el filtro. Las reuniones no se pueden recuperar.`}
+                    hidden={{ dia: filtro ?? "" }}
+                    title={`${borrado.etiqueta} (${borrado.cuantas})`}
+                    description={`Se eliminarán las ${borrado.cuantas} ${borrado.queSon}, con sus asignaciones y sus enlaces de confirmación.${
+                      filtro
+                        ? ` Las del otro tipo no se tocan: seguirán ahí las ${
+                            filtro === MEETING_DAYS.JUEVES
+                              ? `${totalFinDeSemana} de fin de semana`
+                              : `${totalEntreSemana} de entre semana`
+                          }.`
+                        : ""
+                    } Las reuniones no se pueden recuperar.`}
                   >
-                    Eliminar todas
+                    🗑️ {borrado.etiqueta}
                   </DeleteMeetingButton>
                 ) : undefined
               }
             />
 
-            {/* Separa las reuniones por tipo: pulsar el filtro activo lo quita
-                y vuelven a verse todas. */}
-            {todas.length > 0 ? (
-              <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-5">
-                {[
-                  {
-                    key: MEETING_DAYS.JUEVES,
-                    label: "Reunión de Entre semana",
-                    n: totalEntreSemana,
-                  },
-                  {
-                    key: MEETING_DAYS.SABADO,
-                    label: "Reunión de Fin de Semana",
-                    n: totalFinDeSemana,
-                  },
-                ].map((b) => {
-                  const activo = filtro === b.key;
-                  return (
-                    <Link
-                      key={b.key}
-                      href={activo ? "/reuniones" : `/reuniones?dia=${b.key}`}
+            {/* Los tres botones. Pulsar el que ya está activo lo desactiva y
+                se vuelve a la pantalla sin elegir. */}
+            <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-5">
+              {[
+                {
+                  key: MEETING_DAYS.JUEVES,
+                  label: "Reunión de Entre Semana",
+                  n: totalEntreSemana,
+                },
+                {
+                  key: MEETING_DAYS.SABADO,
+                  label: "Reunión de Fin de Semana",
+                  n: totalFinDeSemana,
+                },
+                {
+                  key: "TODAS",
+                  label: "Ver Todas las Reuniones",
+                  n: todas.length,
+                },
+              ].map((b) => {
+                const activo = vista === b.key;
+                return (
+                  <Link
+                    key={b.key}
+                    href={activo ? "/reuniones" : `/reuniones?dia=${b.key}`}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors",
+                      activo
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-surface text-foreground hover:bg-slate-50",
+                    )}
+                  >
+                    {b.label}
+                    <span
                       className={cn(
-                        "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors",
-                        activo
-                          ? "border-primary bg-primary text-white"
-                          : "border-border bg-surface text-foreground hover:bg-slate-50",
+                        "tabular-nums",
+                        activo ? "text-white/80" : "text-muted",
                       )}
                     >
-                      {b.label}
-                      <span
-                        className={cn(
-                          "tabular-nums",
-                          activo ? "text-white/80" : "text-muted",
-                        )}
-                      >
-                        {b.n}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : null}
-            {meetings.length === 0 ? (
+                      {b.n}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+            {vista === null ? (
+              <EmptyState
+                title="Elige qué reuniones ver"
+                description={
+                  todas.length === 0
+                    ? "Todavía no hay ninguna reunión registrada. Crea la primera con el formulario de la izquierda."
+                    : "Pulsa uno de los tres botones de arriba: las de entre semana, las de fin de semana, o todas juntas."
+                }
+              />
+            ) : meetings.length === 0 ? (
               <EmptyState
                 title={
                   filtro ? "Ninguna reunión de este tipo" : "Aún no hay reuniones"
                 }
                 description={
                   filtro
-                    ? "No hay reuniones de este tipo registradas. Pulsa otra vez el filtro para ver todas."
+                    ? "No hay reuniones de este tipo registradas. Prueba con otro botón."
                     : "Crea la primera reunión con el formulario de la izquierda."
                 }
               />

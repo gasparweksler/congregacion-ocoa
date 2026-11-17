@@ -527,17 +527,28 @@ export async function deleteAllMeetingsAction(formData: FormData): Promise<void>
   const cong = congregationId(user);
   const conservar = guardarHistorial(formData);
 
+  // Qué vista se estaba mirando al pulsar. El borrado alcanza SOLO a ese tipo
+  // de reunión: lo que no se ve no se borra. Sin día, todas.
+  const diaCrudo = String(formData.get("dia") ?? "");
+  const dia =
+    diaCrudo === MEETING_DAYS.JUEVES || diaCrudo === MEETING_DAYS.SABADO
+      ? diaCrudo
+      : null;
+  const donde = { congregationId: cong, ...(dia ? { day: dia } : {}) };
+  const queEran = dia
+    ? dia === MEETING_DAYS.JUEVES
+      ? "de entre semana"
+      : "de fin de semana"
+    : "de la congregación";
+
   const { borradas, archivadas } = await prisma.$transaction(async (tx) => {
     const ids = (
-      await tx.meeting.findMany({
-        where: { congregationId: cong },
-        select: { id: true },
-      })
+      await tx.meeting.findMany({ where: donde, select: { id: true } })
     ).map((m) => m.id);
     const archivadas = conservar
       ? await archivarAsignaciones(tx, ids, cong, user.id)
       : 0;
-    const res = await tx.meeting.deleteMany({ where: { congregationId: cong } });
+    const res = await tx.meeting.deleteMany({ where: donde });
     return { borradas: res.count, archivadas };
   });
 
@@ -546,14 +557,16 @@ export async function deleteAllMeetingsAction(formData: FormData): Promise<void>
     action: "ELIMINAR",
     entity: "Reunion",
     details:
-      `Se eliminaron TODAS las reuniones (${borradas}). ` +
+      `Se eliminaron TODAS las reuniones ${queEran} (${borradas}). ` +
       (conservar
         ? `Historial conservado: ${archivadas} asignación(es).`
         : "Historial descartado a petición de quien eliminó."),
   });
   revalidatePath("/reuniones");
   revalidatePath("/reuniones/estadisticas");
-  redirect("/reuniones");
+  // Se vuelve a la misma vista: si se borraron las de entre semana, se
+  // enseña esa lista (ya vacía) y no una pantalla sin elegir.
+  redirect(dia ? `/reuniones?dia=${dia}` : "/reuniones?dia=TODAS");
 }
 
 export async function deleteMeetingAction(formData: FormData): Promise<void> {
