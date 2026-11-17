@@ -67,7 +67,9 @@
     "test:micros": "tsx scripts/test-micros-audiovideo.mts",
     "test:guia-reuniones": "tsx scripts/test-reuniones-desde-guia.mts",
     "db:migrate-presencia": "tsx scripts/migrate-presencia.mts",
-    "test:presencia": "tsx scripts/test-presencia.mts"
+    "test:presencia": "tsx scripts/test-presencia.mts",
+    "test:serie": "tsx scripts/test-serie-asignaciones.mts",
+    "verificar:pdfs": "tsx scripts/verificar-pdfs-reunion.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

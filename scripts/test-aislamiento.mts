@@ -17,6 +17,13 @@ const check = (ok: boolean, msg: string) => {
 
 const ocoa = await p.congregation.findFirstOrThrow({ where: { slug: "ocoa" } });
 const congregacionesAntes = await p.congregation.count();
+// Totales de TODA la plataforma, para comprobar al final que la transacción
+// no dejó nada. (Los de Ocoa, más abajo, son otra cosa: sirven para ver que
+// la congregación de prueba no se le mezcla.)
+const totalAntes = {
+  publicadores: await p.publisher.count(),
+  informes: await p.monthlyReport.count(),
+};
 const antes = {
   grupos: await p.group.count({ where: { congregationId: ocoa.id } }),
   publicadores: await p.publisher.count({ where: { congregationId: ocoa.id } }),
@@ -131,7 +138,19 @@ check(
   final.congregaciones === congregacionesAntes,
   `siguen existiendo las mismas congregaciones (${congregacionesAntes})`,
 );
-check(final.publicadores === antes.publicadores, "no quedó ningún publicador de prueba");
+check(
+  final.publicadores === totalAntes.publicadores,
+  `no quedó ningún publicador de prueba (${totalAntes.publicadores} en toda la plataforma)`,
+);
+check(
+  final.informes === totalAntes.informes,
+  `ni ningún informe de prueba (${totalAntes.informes})`,
+);
+check(
+  (await p.publisher.count({ where: { congregationId: ocoa.id } })) ===
+    antes.publicadores,
+  `Ocoa conserva sus ${antes.publicadores} publicadores, ni uno más`,
+);
 
 console.log(fallos === 0 ? "\nTodo correcto." : `\n${fallos} comprobación(es) fallaron.`);
 await p.$disconnect();
