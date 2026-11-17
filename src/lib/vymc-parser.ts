@@ -109,7 +109,14 @@ function readingAt(ws: ExcelJS.Worksheet, r: number): string {
   return "";
 }
 
-function parseWeek(
+/**
+ * Fecha y etiqueta de una semana a partir de su encabezado.
+ *
+ * Se exporta porque la generación de reuniones desde el PDF de la Guía usa
+ * exactamente la misma lectura: así una semana escrita igual produce la misma
+ * fecha por los dos caminos, el Excel y el PDF.
+ */
+export function parseWeek(
   c1: string,
   year: number,
 ): { date: Date; label: string } | null {
@@ -228,9 +235,14 @@ export function parseVymc(
       if (!cur) continue;
 
       const u = c1.toUpperCase();
-      if (u.includes("TESOROS DE LA BIBLIA")) { section = "T"; continue; }
-      if (u.includes("SEAMOS MEJORES MAESTROS")) { section = "S"; continue; }
-      if (u.includes("NUESTRA VIDA CRISTIANA")) { section = "V"; continue; }
+      // Un encabezado de sección NO lleva número delante. La comprobación
+      // importa: una parte puede llamarse como su sección ("5. Nuestra vida
+      // cristiana: …") y antes desaparecía, tragada como si fuera el título
+      // de la sección.
+      const esEncabezado = !/^\d+\.\s/.test(c1);
+      if (esEncabezado && u.includes("TESOROS DE LA BIBLIA")) { section = "T"; continue; }
+      if (esEncabezado && u.includes("SEAMOS MEJORES MAESTROS")) { section = "S"; continue; }
+      if (esEncabezado && u.includes("NUESTRA VIDA CRISTIANA")) { section = "V"; continue; }
 
       if (/^\d+\.\s/.test(c1)) {
         // Se excluye `c1` porque el título puede venir combinado hasta la col. 8.

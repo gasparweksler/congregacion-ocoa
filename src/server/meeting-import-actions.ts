@@ -7,29 +7,19 @@
 //   - Nombre del hermano detectado (editable después).
 //   - Etiqueta de la semana por rango de días (ej. "20-26 de Julio").
 //  Acceso: Administrador o Responsable de Confirmaciones.
+//
+//  Aquí solo se lee el archivo: crear las reuniones lo hace
+//  src/lib/crear-reuniones.ts, el mismo código que usa el PDF de la Guía, para
+//  que los dos caminos dejen la reunión igual.
 // ============================================================================
 
 import { loadWorkbook } from "@/lib/xlsx-load";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
-import {
-  slotsForDay,
-  MEETING_DAYS,
-  CONFIRM_STATUS,
-  sectionAllowsSecondary,
-} from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
-import { type FormState, isUniqueViolation } from "@/server/actions-shared";
-import {
-  parseVymc,
-  buildSlotData,
-  programFieldsToFill,
-} from "@/lib/vymc-parser";
-
-function newToken(): string {
-  return crypto.randomUUID().replace(/-/g, "");
-}
+import { type FormState } from "@/server/actions-shared";
+import { parseVymc } from "@/lib/vymc-parser";
+import { crearReunionesDesdeSemanas } from "@/lib/crear-reuniones";
 
 export async function importMeetingsAction(
   _prev: FormState,
@@ -68,123 +58,17 @@ export async function importMeetingsAction(
     };
   }
 
-  const cong = congregationId(user);
-  const juevesSlots = slotsForDay(MEETING_DAYS.JUEVES);
-  let created = 0;
-  let skipped = 0;
-  let completed = 0;
-
-  for (const w of weeks) {
-    const existing = await prisma.meeting.findFirst({
-      where: { congregationId: cong, day: MEETING_DAYS.JUEVES, date: w.date },
-    });
-    if (existing) {
-      // La reunión ya está: NO se tocan sus asignaciones ni sus nombres. Solo
-      // se rellenan los datos del programa impreso (lectura semanal y
-      // canciones) que todavía estén vacíos, nunca los que ya tengan valor.
-      const faltantes = programFieldsToFill(existing, w);
-      if (Object.keys(faltantes).length > 0) {
-        await prisma.meeting.update({
-          where: { id: existing.id },
-          data: faltantes,
-        });
-        completed++;
-      }
-      skipped++;
-      continue;
-    }
-
-    const data = buildSlotData(w);
-    const assignments = juevesSlots
-      .map((s, i) => {
-        const d = data[s.key] ?? {};
-        const primaryName = d.p || null;
-        // "Nuestra Vida Cristiana" nunca crea Auxiliar. En el resto, si el
-        // Excel trae Auxiliar se respeta aunque la casilla por defecto sea de
-        // un solo hermano (así no se pierde ningún nombre del programa).
-        const sectionOk = sectionAllowsSecondary(s.section);
-        const secondaryName = sectionOk ? d.s || null : null;
-        const allowsSecondary = sectionOk && (s.allowTwo || !!secondaryName);
-        // Solo se crean las asignaciones con datos del Excel (título o nombre);
-        // las que quedarían vacías no se crean.
-        if (!d.label && !primaryName && !secondaryName) return null;
-        return {
-          slotKey: s.key,
-          section: s.section,
-          label: d.label ?? s.label,
-          order: i,
-          allowTwo: allowsSecondary,
-          equalPair: !!s.equalPair,
-          primaryName,
-          primaryToken: primaryName ? newToken() : null,
-          primaryStatus: CONFIRM_STATUS.PENDIENTE,
-          secondaryName,
-          secondaryToken: secondaryName ? newToken() : null,
-          secondaryStatus: CONFIRM_STATUS.PENDIENTE,
-        };
-      })
-      .filter((a): a is NonNullable<typeof a> => a !== null);
-
-    // Partes que no caben en las casillas fijas: el número de asignaciones de
-    // "Seamos Mejores Maestros" y "Nuestra Vida Cristiana" cambia cada semana,
-    // así que las que sobran se añaden como casillas nuevas en vez de perderse.
-    const extras = Object.entries(data)
-      .filter(([, d]) => d.extra)
-      .map(([key, d], i) => {
-        const sectionOk = sectionAllowsSecondary(d.extra!.section);
-        const secondaryName = sectionOk ? d.s || null : null;
-        const primaryName = d.p || null;
-        return {
-          slotKey: key,
-          section: d.extra!.section,
-          label: d.label ?? "Asignación",
-          // Después de las fijas, conservando el orden del programa.
-          order: juevesSlots.length + i,
-          allowTwo: sectionOk && (d.extra!.allowTwo || !!secondaryName),
-          equalPair: false,
-          primaryName,
-          primaryToken: primaryName ? newToken() : null,
-          primaryStatus: CONFIRM_STATUS.PENDIENTE,
-          secondaryName,
-          secondaryToken: secondaryName ? newToken() : null,
-          secondaryStatus: CONFIRM_STATUS.PENDIENTE,
-        };
-      });
-    assignments.push(...extras);
-
-    try {
-      await prisma.meeting.create({
-        data: {
-          date: w.date,
-          day: MEETING_DAYS.JUEVES,
-          congregationId: cong,
-          weekLabel: w.label,
-          // Datos del programa impreso (no son asignaciones de nadie).
-          weeklyReading: w.reading || null,
-          songStart: w.songStart || null,
-          songMiddle: w.songMiddle || null,
-          songEnd: w.songEnd || null,
-          createdById: user.id,
-          confirmadorName: user.name ?? null,
-          assignments: { create: assignments },
-        },
-      });
-      created++;
-    } catch (error) {
-      // Otra persona la creó mientras se importaba: se cuenta como omitida.
-      if (isUniqueViolation(error)) {
-        skipped++;
-        continue;
-      }
-      throw error;
-    }
-  }
+  const resumen = await crearReunionesDesdeSemanas(weeks, {
+    userId: user.id,
+    userName: user.name ?? null,
+    congregationId: congregationId(user),
+  });
 
   await logAudit({
     userId: user.id,
     action: "CREAR",
     entity: "Reunion",
-    details: `Importación VyMC: ${created} creada(s), ${skipped} omitida(s), ${completed} completada(s) con canciones/lectura.`,
+    details: `Importación VyMC: ${resumen.creadas} creada(s), ${resumen.omitidas} omitida(s), ${resumen.completadas} completada(s) con canciones/lectura.`,
   });
 
   revalidatePath("/reuniones");
@@ -193,11 +77,14 @@ export async function importMeetingsAction(
   const años = [...new Set(weeks.map((w) => w.date.getFullYear()))].sort();
   return {
     success:
-      `Se crearon ${created} reunión(es) de Jueves con títulos y nombres ` +
+      `Se crearon ${resumen.creadas} reunión(es) de Jueves con títulos y nombres ` +
       `(${weeks[0]?.label} … ${weeks[weeks.length - 1]?.label}, año ${años.join(" y ")}).` +
-      (skipped ? ` ${skipped} ya existían y se omitieron.` : "") +
-      (completed
-        ? ` En ${completed} de ellas se completaron las canciones y la lectura semanal que faltaban (las asignaciones no se tocaron).`
+      (resumen.omitidas ? ` ${resumen.omitidas} ya existían y se omitieron.` : "") +
+      (resumen.completadas
+        ? ` En ${resumen.completadas} de ellas se completaron las canciones y la lectura semanal que faltaban (las asignaciones no se tocaron).`
+        : "") +
+      (resumen.conOraciones
+        ? ` A ${resumen.conOraciones} se les añadió la casilla de oración que faltaba, vacía.`
         : ""),
   };
 }

@@ -7,13 +7,16 @@
 //  Los títulos salen TAL CUAL están guardados (incluido el número de parte, la
 //  duración y la cita bíblica), no se reescriben aquí.
 //
-//  Limitación conocida: el número de canción y la "Lectura semanal de la
-//  Biblia" NO se guardan en la base de datos (la carga masiva solo toma los
-//  títulos y los nombres del Excel), así que no aparecen en vez de inventarse.
+//  Se imprime TODA la reunión: las secciones del programa en su orden, las
+//  asignaciones añadidas a mano (que no tienen sección propia) antes de la
+//  oración final, y la canción con su oración aunque nadie las tenga
+//  asignadas todavía —el papel las lleva igual—. Lo que no hay no se
+//  inventa: una casilla sin hermano sale sin nombre.
 // ============================================================================
 
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { MONTHLY_RESP_KEYS } from "@/lib/constants";
 
 type Assignment = {
   slotKey: string;
@@ -57,6 +60,26 @@ const BARRA: Record<string, { titulo: string; color: [number, number, number] }>
 
 type Celda = { content: string; colSpan?: number; styles?: Record<string, unknown> };
 type Fila = (string | Celda)[];
+
+const SECCIONES_CONOCIDAS = new Set<string>(ORDEN);
+
+/**
+ * Las responsabilidades del mes (micrófono, acomodadores, audio…) no son
+ * parte de este programa: tienen su propio papel.
+ */
+const esResponsabilidad = (a: Assignment): boolean =>
+  a.section.includes("RESPONSABILIDADES") || MONTHLY_RESP_KEYS.includes(a.slotKey);
+
+/**
+ * Asignaciones que no caen en ninguna sección del programa impreso: las que
+ * se añaden a mano en la reunión ("Otro", sin color). Antes no se imprimían y
+ * el papel salía incompleto. Van juntas, en el orden de la reunión, justo
+ * antes de la oración final.
+ */
+const otrasAsignaciones = (m: ProgramMeeting): Assignment[] =>
+  m.assignments
+    .filter((a) => !SECCIONES_CONOCIDAS.has(a.section) && !esResponsabilidad(a))
+    .sort((a, b) => a.order - b.order);
 
 /** Responsable y Auxiliar, uno debajo del otro. */
 const nombres = (a: Assignment): string =>
@@ -145,10 +168,38 @@ export function buildProgramaPdf(
     ]);
 
     for (const sec of ORDEN) {
+      // Lo añadido a mano cierra el programa, justo antes de la oración final.
+      if (sec === "ORACION_FINAL") {
+        for (const a of otrasAsignaciones(m)) {
+          body.push([{ content: `• ${a.label}` }, nombres(a)]);
+        }
+      }
+
       const partes = m.assignments
         .filter((a) => a.section === sec)
         .sort((a, b) => a.order - b.order);
-      if (partes.length === 0) continue;
+
+      if (partes.length === 0) {
+        // Sin casilla de oración, pero con canción: el programa impreso la
+        // lleva igual ("Canción 33 y oración"), sin nombre. Así no se pierden
+        // la canción final ni la oración en las reuniones cargadas antes de
+        // que las casillas de oración se crearan siempre.
+        const cancion =
+          sec === "ORACION_INICIO"
+            ? m.songStart?.trim()
+            : sec === "ORACION_FINAL"
+              ? m.songEnd?.trim()
+              : "";
+        if (cancion) body.push([{ content: `• Canción ${cancion} y oración` }, ""]);
+        // Lo mismo con la canción de "Nuestra Vida Cristiana": si esa semana
+        // no tiene partes (una asamblea, por ejemplo), la canción se imprime
+        // igual en vez de perderse.
+        const cancionMedioSola = sec === "VC" ? m.songMiddle?.trim() : "";
+        if (cancionMedioSola) {
+          body.push([{ content: `• Canción ${cancionMedioSola}` }, ""]);
+        }
+        continue;
+      }
 
       const barra = BARRA[sec];
       if (barra) {

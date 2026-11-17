@@ -13,10 +13,13 @@
 //  cosa de la carga masiva) y no se ocupa espacio con datos de paso.
 // ============================================================================
 
-import { requireMeetingsAccess } from "@/lib/access";
+import { revalidatePath } from "next/cache";
+import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import { extractPdfItems } from "@/lib/pdf-text";
 import { lineasDePdf } from "@/lib/pdf-lines";
-import { leerGuia, type GuiaLeida } from "@/lib/vymc-pdf";
+import { leerGuia, normalizarGuia, type GuiaLeida } from "@/lib/vymc-pdf";
+import { semanasDeLaGuia } from "@/lib/guia-a-semanas";
+import { crearReunionesDesdeSemanas } from "@/lib/crear-reuniones";
 import { logAudit } from "@/lib/audit";
 
 export type GuiaPdfState = {
@@ -81,5 +84,82 @@ export async function leerGuiaPdfAction(
     success: `Se leyeron ${guia.semanas.length} semana(s) y ${partes} parte(s) de ${guia.titulo}.`,
     guia,
     archivo: file.name,
+  };
+}
+
+// ---------------------------------------------------------------------------
+//  Generar las reuniones directamente desde la Guía, sin pasar por el Excel.
+// ---------------------------------------------------------------------------
+
+export type GenerarReunionesState = {
+  error?: string;
+  success?: string;
+  /** Semanas que no se pudieron crear, con el motivo. */
+  avisos?: string[];
+};
+
+/**
+ * Crea las reuniones de entre semana con el programa revisado en pantalla.
+ *
+ * Lo que llega del navegador no se cree: pasa por normalizarGuia (recorta,
+ * descarta lo que no encaje) y de ahí a la MISMA función que usa la carga del
+ * Excel, así que las reuniones salen idénticas por los dos caminos. Si una
+ * semana ya existe, no se toca.
+ */
+export async function crearReunionesDesdeGuiaAction(
+  entrada: unknown,
+): Promise<GenerarReunionesState> {
+  const user = await requireMeetingsAccess();
+
+  const guia = normalizarGuia(entrada);
+  if (!guia) {
+    return {
+      error:
+        "No hay ningún programa que generar. Sube el PDF de la Guía de actividades y revísalo antes.",
+    };
+  }
+
+  const { semanas, descartadas } = semanasDeLaGuia(guia);
+  const avisos = descartadas.map((d) => `${d.etiqueta}: ${d.motivo}.`);
+
+  if (semanas.length === 0) {
+    return {
+      error:
+        "Ninguna semana del programa se pudo convertir en reunión. Revisa las fechas y que cada semana tenga sus partes.",
+      avisos,
+    };
+  }
+
+  const resumen = await crearReunionesDesdeSemanas(semanas, {
+    userId: user.id,
+    userName: user.name ?? null,
+    congregationId: congregationId(user),
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "CREAR",
+    entity: "Reunion",
+    details:
+      `Reuniones generadas desde la Guía (${guia.titulo}): ${resumen.creadas} creada(s), ` +
+      `${resumen.omitidas} omitida(s), ${resumen.completadas} completada(s) con canciones/lectura.`,
+  });
+
+  revalidatePath("/reuniones");
+
+  const rango = `${semanas[0].label} … ${semanas[semanas.length - 1].label}`;
+  return {
+    success:
+      (resumen.creadas > 0
+        ? `Se crearon ${resumen.creadas} reunión(es) de entre semana (${rango}), con los títulos del programa y sus canciones. Para verlas, pulsa «Reunión de Entre Semana» en la lista; los hermanos se ponen dentro de cada reunión.`
+        : "No se creó ninguna reunión nueva: todas las semanas del programa ya estaban cargadas.") +
+      (resumen.omitidas ? ` ${resumen.omitidas} ya existían y no se tocaron.` : "") +
+      (resumen.completadas
+        ? ` En ${resumen.completadas} se completaron las canciones y la lectura semanal que faltaban.`
+        : "") +
+      (resumen.conOraciones
+        ? ` A ${resumen.conOraciones} se les añadió la casilla de oración que faltaba, vacía.`
+        : ""),
+    avisos,
   };
 }
