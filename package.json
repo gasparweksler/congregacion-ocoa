@@ -65,7 +65,9 @@
     "db:migrate-finde": "tsx scripts/migrate-fin-de-semana.mts",
     "db:migrate-micros": "tsx scripts/migrate-micros-audiovideo.mts",
     "test:micros": "tsx scripts/test-micros-audiovideo.mts",
-    "test:guia-reuniones": "tsx scripts/test-reuniones-desde-guia.mts"
+    "test:guia-reuniones": "tsx scripts/test-reuniones-desde-guia.mts",
+    "db:migrate-presencia": "tsx scripts/migrate-presencia.mts",
+    "test:presencia": "tsx scripts/test-presencia.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

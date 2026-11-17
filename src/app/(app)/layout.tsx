@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { ROLES, roleLabel } from "@/lib/constants";
 import { AppShell, type NavItem } from "@/components/AppShell";
+import { Presencia } from "@/components/Presencia";
 
 // Layout común a todas las páginas protegidas.
 export default async function AppLayout({
@@ -185,6 +186,9 @@ export default async function AppLayout({
       }}
       navItems={navItems}
     >
+      {/* Avisa de que esta persona está conectada mientras tenga la
+          aplicación abierta. No pinta nada en la pantalla. */}
+      <Presencia />
       {children}
     </AppShell>
   );

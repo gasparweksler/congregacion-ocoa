@@ -10,7 +10,7 @@
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/access";
+import { getSessionUser, requireUser } from "@/lib/access";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { loginSchema, changePasswordSchema } from "@/lib/validations";
 import { logAudit } from "@/lib/audit";
@@ -46,6 +46,18 @@ export async function loginAction(
 }
 
 export async function logoutAction(): Promise<void> {
+  // Al salir se borra la señal de vida, para figurar como desconectado en el
+  // momento y no esperar a que caduque el último latido. El último acceso
+  // (lastActiveAt) se conserva.
+  const user = await getSessionUser();
+  if (user) {
+    try {
+      await prisma.$executeRaw`UPDATE "User" SET "lastSeenAt" = NULL WHERE "id" = ${user.id}`;
+    } catch (error) {
+      // Si esto falla, cerrar sesión igual: la señal caduca sola.
+      console.error("presencia: no se pudo limpiar al cerrar sesión", error);
+    }
+  }
   await signOut({ redirectTo: "/login" });
 }
 
