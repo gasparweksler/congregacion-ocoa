@@ -62,7 +62,9 @@
     "test:tarjetas": "tsx scripts/test-importar-tarjetas.mts",
     "test:estados": "tsx scripts/test-estados-publicador.mts",
     "test:borrado-tipo": "tsx scripts/test-borrado-por-tipo.mts",
-    "db:migrate-finde": "tsx scripts/migrate-fin-de-semana.mts"
+    "db:migrate-finde": "tsx scripts/migrate-fin-de-semana.mts",
+    "db:migrate-micros": "tsx scripts/migrate-micros-audiovideo.mts",
+    "test:micros": "tsx scripts/test-micros-audiovideo.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

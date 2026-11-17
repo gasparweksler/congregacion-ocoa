@@ -40,6 +40,12 @@ export type DatosResponsabilidades = {
   congregacion?: string;
   filas: FilaResponsabilidad[];
   paleta?: PaletaId | string | null;
+  /**
+   * false cuando el mismo hermano hace Audio y Video: no se imprime la columna
+   * de Video, y la de Audio pasa a llamarse "AUDIO Y VIDEO". Por defecto se
+   * imprime, que es como salía hasta ahora.
+   */
+  columnaVideo?: boolean;
 };
 
 // Colores suaves rotativos para los grupos de limpieza (como la referencia).
@@ -58,7 +64,12 @@ const GROUP_FILLS: Rgb[] = [
 const TITULO_1 = "ASIGNACIONES PARA LAS REUNIONES AUDIO Y VIDEO";
 const TITULO_2 = "ASIGNACIONES PARA LAS REUNIONES ACOMODACIÓN Y LIMPIEZA";
 
-const CABECERA_1 = ["DIA/MES", "AUDIO", "VIDEO", "MICROFONO", "PLATAFORMA"];
+/** Los títulos de la primera tabla según se imprima Video aparte o no. */
+function cabecera1(columnaVideo: boolean): string[] {
+  return columnaVideo
+    ? ["DIA/MES", "AUDIO", "VIDEO", "MICROFONO", "PLATAFORMA"]
+    : ["DIA/MES", "AUDIO Y VIDEO", "MICROFONO", "PLATAFORMA"];
+}
 const CABECERA_2 = [
   "DIA/MES",
   "ACOMODADOR ENTRADA",
@@ -87,6 +98,10 @@ export function dibujarResponsabilidades(
   const paleta = paletaDe(datos.paleta ?? "azules");
   const nombre = (datos.congregacion ?? "").trim();
   const filas = datos.filas;
+  // Con "el mismo hermano hace Audio y Video" no hay columna de Video: el
+  // nombre de Audio cubre las dos cosas.
+  const columnaVideo = datos.columnaVideo !== false;
+  const CABECERA_1 = cabecera1(columnaVideo);
 
   /** El título de una tabla, centrado. */
   const titulo = (texto: string, y: number): void => {
@@ -149,13 +164,11 @@ export function dibujarResponsabilidades(
       [{ content: datos.periodo, colSpan: CABECERA_1.length }],
       CABECERA_1.map((c) => ({ content: c })),
     ],
-    body: filas.map((f) => [
-      columnaFecha(f),
-      f.audio,
-      f.video,
-      f.microfono,
-      f.plataforma,
-    ]),
+    body: filas.map((f) =>
+      columnaVideo
+        ? [columnaFecha(f), f.audio, f.video, f.microfono, f.plataforma]
+        : [columnaFecha(f), f.audio, f.microfono, f.plataforma],
+    ),
     styles: estilos,
     headStyles: estilosCabecera,
     columnStyles: { 0: { fontStyle: "bold", fillColor: paleta.columnaDia } },

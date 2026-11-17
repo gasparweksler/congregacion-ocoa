@@ -130,3 +130,56 @@ export async function setVideoSameAsAudioAction(
 
   revalidatePath("/reuniones/responsabilidades");
 }
+
+/**
+ * Selector "Usamos 1 / 2 Pasa Micrófono".
+ *
+ * No borra nada: si se baja a uno, lo que estuviera escrito en "Pasa Micrófono
+ * 2" sigue guardado, solo deja de repartirse y de imprimirse.
+ */
+export async function setMicCountAction(formData: FormData): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const micCount = String(formData.get("value") ?? "") === "1" ? 1 : 2;
+
+  await prisma.congregation.update({
+    where: { id: cong },
+    data: { micCount },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Responsabilidades",
+    details: `Pasa Micrófono: la congregación usa ${micCount}.`,
+  });
+
+  revalidatePath("/reuniones/responsabilidades");
+}
+
+/**
+ * Interruptor "El mismo hermano hace Audio y Video": la casilla de Video deja
+ * de repartirse (la cubre quien está en Audio) y no se imprime aparte. Lo que
+ * ya estuviera escrito en Video se conserva.
+ */
+export async function setAudioAlsoVideoAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const activo = String(formData.get("value") ?? "") === "si";
+
+  await prisma.congregation.update({
+    where: { id: cong },
+    data: { audioAlsoVideo: activo },
+  });
+
+  await logAudit({
+    userId: user.id,
+    action: "EDITAR",
+    entity: "Responsabilidades",
+    details: `El mismo hermano hace Audio y Video: ${activo ? "activado" : "desactivado"}.`,
+  });
+
+  revalidatePath("/reuniones/responsabilidades");
+}

@@ -186,8 +186,18 @@ function findTables(lines: Line[]): Table[] {
         const same = prev.cols.find(
           (c) => c.slotKey === h.slotKey && Math.abs(c.x - h.x) < 40,
         );
-        if (same) same.x = (same.x + h.x) / 2;
-        else prev.cols.push(h);
+        if (same) {
+          same.x = (same.x + h.x) / 2;
+          continue;
+        }
+        // Dos palabras DISTINTAS casi en la misma vertical son un mismo
+        // encabezado, no dos columnas: pasa con "AUDIO Y VIDEO", cuando la
+        // congregación junta las dos cosas en un solo hermano y el título se
+        // parte en dos renglones. Gana la primera, AUDIO, que es la casilla
+        // que de verdad se reparte.
+        const pegada = prev.cols.find((c) => Math.abs(c.x - h.x) < 20);
+        if (pegada) continue;
+        prev.cols.push(h);
       }
     } else {
       bands.push({ page: line.page, topY: line.y, bottomY: line.y, cols: hits });

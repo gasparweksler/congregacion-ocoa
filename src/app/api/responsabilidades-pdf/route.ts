@@ -13,6 +13,8 @@ import autoTable from "jspdf-autotable";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import { congregationLabelOf } from "@/lib/congregation-label";
+import { prisma } from "@/lib/prisma";
+import { respSettingsFrom } from "@/lib/resp-settings";
 import { parsePeriod } from "@/lib/period";
 import { monthName } from "@/lib/constants";
 import {
@@ -35,15 +37,28 @@ export async function GET(request: Request) {
     searchParams.get("mes") ?? undefined,
   );
 
+  const cong = congregationId(user);
   const rows = await getMonthlyResponsibilities(year, month);
-  const congregacion = await congregationLabelOf(congregationId(user));
+  const congregacion = await congregationLabelOf(cong);
+  // Cuántos micrófonos usa la congregación y si el de Audio hace también
+  // Video: lo que no se usa no se imprime.
+  const ajustes = respSettingsFrom(
+    await prisma.congregation.findUnique({
+      where: { id: cong },
+      select: { micCount: true, audioAlsoVideo: true },
+    }),
+  );
 
   const filas: FilaResponsabilidad[] = rows.map((r) => ({
     dateISO: r.dateISO,
     audio: r.values.r_audio?.name || "",
     video: r.values.r_video?.name || "",
-    // Dos "Pasa Micrófono" combinados (nombre1 / nombre2), como el impreso.
-    microfono: [r.values.r_microfono?.name, r.values.r_microfono_2?.name]
+    // Los "Pasa Micrófono" combinados (nombre1 / nombre2), como el impreso.
+    // Con un solo micrófono se imprime únicamente el primero.
+    microfono: [
+      r.values.r_microfono?.name,
+      ajustes.micCount >= 2 ? r.values.r_microfono_2?.name : "",
+    ]
       .filter((n) => n && n.trim())
       .join(" / "),
     plataforma: r.values.r_acom_plataforma?.name || "",
@@ -58,6 +73,7 @@ export async function GET(request: Request) {
     congregacion,
     filas,
     paleta: searchParams.get("paleta"),
+    columnaVideo: !ajustes.audioAlsoVideo,
   });
 
   const buffer = doc.output("arraybuffer");

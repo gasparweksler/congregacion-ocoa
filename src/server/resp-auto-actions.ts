@@ -41,6 +41,11 @@ import {
   type Uncovered,
 } from "@/lib/resp-auto-assign";
 import { setMonthlyResponsibilities } from "@/server/monthly-resp-actions";
+import {
+  respSettingsFrom,
+  activeResponsibilities,
+  type RespSettings,
+} from "@/lib/resp-settings";
 import { logAudit } from "@/lib/audit";
 
 export type AutoAssignPreview = {
@@ -69,6 +74,24 @@ const SLOTS_PUBLICADOR = MONTHLY_RESPONSIBILITIES.filter(
   (r) => r.kind === "publisher",
 );
 
+/**
+ * Las casillas que ESTA congregación reparte: sin "Pasa Micrófono 2" si usa
+ * uno solo, y sin "Video" si lo hace el hermano de Audio (que entonces se
+ * llama "Audio y Video").
+ */
+function slotsARepartir(ajustes: RespSettings) {
+  return activeResponsibilities(ajustes).filter((r) => r.kind === "publisher");
+}
+
+/** Los dos ajustes de la congregación (cuántos micrófonos, audio hace video). */
+async function ajustesDe(cong: string): Promise<RespSettings & { videoSameAsAudio: boolean }> {
+  const row = await prisma.congregation.findUnique({
+    where: { id: cong },
+    select: { videoSameAsAudio: true, micCount: true, audioAlsoVideo: true },
+  });
+  return { ...respSettingsFrom(row), videoSameAsAudio: row?.videoSameAsAudio ?? false };
+}
+
 export async function proposeAutoAssignAction(
   year: number,
   month: number,
@@ -82,6 +105,11 @@ export async function proposeAutoAssignAction(
   if (fechas.length === 0) {
     return { ...VACIO, periodo, error: "El mes seleccionado no tiene fechas de reunión." };
   }
+
+  // Cuántos micrófonos usa la congregación, si el de Audio hace también Video
+  // y si Video repite la lista de Audio.
+  const ajustes = await ajustesDe(cong);
+  const aRepartir = slotsARepartir(ajustes);
 
   // Reuniones de la ventana del mes (±8 días: una reunión de semana guarda como
   // fecha el lunes de su rango, que puede caer en el mes anterior).
@@ -153,8 +181,9 @@ export async function proposeAutoAssignAction(
       partLabelByName,
     });
 
-    // Solo las casillas VACÍAS entran en el reparto.
-    for (const slot of SLOTS_PUBLICADOR) {
+    // Solo las casillas VACÍAS entran en el reparto, y solo las que la
+    // congregación usa.
+    for (const slot of aRepartir) {
       const cat = categoryOfSlot(slot.key);
       if (!cat) continue;
       const actual = reunion?.assignments.find((a) => a.slotKey === slot.key);
@@ -188,10 +217,10 @@ export async function proposeAutoAssignAction(
       .map((v) => v.publisherId),
   );
 
-  // "Repetir los de Audio": los de Video son exactamente los de Audio.
-  const repetirAudio = await prisma.congregation
-    .findUnique({ where: { id: cong }, select: { videoSameAsAudio: true } })
-    .then((c) => c?.videoSameAsAudio ?? false);
+  // "Repetir los de Audio": los de Video son exactamente los de Audio. Con
+  // "el mismo hermano hace Audio y Video" no hay casillas de Video que
+  // repartir, así que da igual de dónde saliera su lista.
+  const repetirAudio = ajustes.videoSameAsAudio;
 
   // Candidatos: un hermano por publicador, con todas sus categorías.
   const porPublicador = new Map<string, Candidate>();
@@ -346,13 +375,21 @@ export async function applyAutoAssignAction(
       })
     ).map((p) => normalizeName(p.fullName)),
   );
+  // Las casillas que la congregación reparte AHORA: si alguien cambió el
+  // ajuste mientras se miraba la propuesta, no se guarda una casilla que ya
+  // no se usa.
+  const aRepartir = slotsARepartir(await ajustesDe(cong));
 
   for (const p of proposals) {
     if (fechasValidas.get(p.dateISO) !== p.day) {
       return { ok: false, message: "La propuesta tiene una fecha que no es del mes." };
     }
-    if (!SLOTS_PUBLICADOR.some((r) => r.key === p.slotKey)) {
-      return { ok: false, message: "La propuesta tiene una responsabilidad desconocida." };
+    if (!aRepartir.some((r) => r.key === p.slotKey)) {
+      return {
+        ok: false,
+        message:
+          "La propuesta tiene una responsabilidad que la congregación ya no usa. Vuelve a calcularla.",
+      };
     }
     if (!publicadores.has(normalizeName(p.name))) {
       return {

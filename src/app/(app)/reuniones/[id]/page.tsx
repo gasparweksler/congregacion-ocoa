@@ -9,7 +9,6 @@ import {
   SABADO_SECTION_ORDER,
   MEETING_SECTION_LABELS,
   MEETING_DAYS,
-  MONTHLY_RESPONSIBILITIES,
   MONTHLY_RESP_KEYS,
 } from "@/lib/constants";
 import { formatDate, toInputDate } from "@/lib/dates";
@@ -17,6 +16,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody } from "@/components/ui";
 import { MeetingEditor } from "@/components/forms/MeetingEditor";
 import { getMeetingDays } from "@/lib/meeting-days";
+import { respSettingsFrom, responsibilitiesToShow } from "@/lib/resp-settings";
 import { ProgramDataForm } from "@/components/forms/ProgramDataForm";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BackButton } from "@/components/BackButton";
@@ -31,6 +31,14 @@ export default async function ReunionDetallePage({
   const { id } = await params;
 
   const meetingDays = await getMeetingDays(cong);
+  // Cuántos micrófonos usa la congregación y si el de Audio hace también
+  // Video: lo que no se reparte no se pide confirmar.
+  const respSettings = respSettingsFrom(
+    await prisma.congregation.findUnique({
+      where: { id: cong },
+      select: { micCount: true, audioAlsoVideo: true },
+    }),
+  );
 
   const meeting = await prisma.meeting.findFirst({
     where: { id, congregationId: cong },
@@ -76,12 +84,19 @@ export default async function ReunionDetallePage({
       secondaryStatus: a.secondaryStatus,
     }));
 
-  // Responsabilidades canónicas (leídas de la planificación mensual).
-  const responsibilities = MONTHLY_RESPONSIBILITIES.map((r) => {
+  // Responsabilidades canónicas (leídas de la planificación mensual), solo las
+  // que la congregación usa. Una que ya no se reparte sigue a la vista si tiene
+  // un nombre guardado, para no hacer creer que se borró.
+  const nombreDeSlot = (slotKey: string) =>
+    (meeting.assignments.find((x) => x.slotKey === slotKey)?.primaryName ?? "").trim();
+  const responsibilities = responsibilitiesToShow(
+    respSettings,
+    (slotKey) => nombreDeSlot(slotKey) !== "",
+  ).map((r) => {
     const a = meeting.assignments.find((x) => x.slotKey === r.key);
     return {
       key: r.key,
-      label: r.label,
+      label: r.inactiva ? `${r.label} (ya no se reparte)` : r.label,
       kind: r.kind,
       assignmentId: a?.id ?? null,
       name: a?.primaryName ?? "",

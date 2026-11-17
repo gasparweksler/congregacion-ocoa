@@ -10,12 +10,15 @@ import {
   addVolunteerAction,
   removeVolunteerAction,
   setVideoSameAsAudioAction,
+  setMicCountAction,
+  setAudioAlsoVideoAction,
 } from "@/server/resp-volunteers-actions";
 import { EMPTY_FORM_STATE } from "@/server/actions-shared";
 import { Alert, Input, Button } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { WATCHTOWER_CATEGORY, type RespCategory } from "@/lib/constants";
 import type { VolunteerEntry } from "@/lib/resp-volunteers";
+import type { RespSettings } from "@/lib/resp-settings";
 
 function Categoria({
   cat,
@@ -23,6 +26,7 @@ function Categoria({
   publishers,
   ayuda,
   espejo,
+  apagada,
   extra,
 }: {
   cat: RespCategory;
@@ -32,6 +36,12 @@ function Categoria({
   ayuda?: string;
   /** La lista la manda otra categoría (Video repitiendo Audio). */
   espejo?: boolean;
+  /**
+   * La congregación no usa esta responsabilidad (Video cuando lo hace el
+   * hermano de Audio): se ve en gris y no se puede editar. La lista guardada
+   * no se borra.
+   */
+  apagada?: string;
   /** Controles propios de la categoría (el interruptor de Video). */
   extra?: React.ReactNode;
 }) {
@@ -40,7 +50,12 @@ function Categoria({
   const libres = publishers.filter((p) => !yaEstan.has(p.id));
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-3">
+    <div
+      className={
+        "rounded-xl border border-border bg-surface p-3 " +
+        (apagada ? "opacity-60" : "")
+      }
+    >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="min-w-0 text-sm font-semibold text-foreground">
           {cat.label}
@@ -51,8 +66,16 @@ function Categoria({
       </div>
       {ayuda ? <p className="mt-0.5 text-xs text-muted">{ayuda}</p> : null}
 
+      {/* La congregación no usa esta responsabilidad. */}
+      {apagada ? (
+        <p className="mt-2 rounded-lg border border-border bg-slate-50 px-2.5 py-2 text-xs text-muted">
+          {apagada} Quita el interruptor de <strong>Audio</strong> para volver a
+          llevar una lista propia. Lo registrado no se borra.
+        </p>
+      ) : null}
+
       {/* Video con "Repetir los de Audio": la lista la manda Audio. */}
-      {espejo ? (
+      {espejo && !apagada ? (
         <p className="mt-2 rounded-lg border border-border bg-slate-50 px-2.5 py-2 text-xs text-muted">
           Se usan los mismos hermanos que en <strong>Audio</strong>. Quita el
           interruptor para llevar una lista propia.
@@ -72,11 +95,17 @@ function Categoria({
           {entries.map((e) => (
             <li key={e.publisherId}>
               {/* Cada nombre es su propio formulario: quitarlo no afecta al resto. */}
-              <form action={removeVolunteerAction} className="inline">
-                <input type="hidden" name="category" value={cat.key} />
-                <input type="hidden" name="publisherId" value={e.publisherId} />
-                <QuitarBoton name={e.name} catLabel={cat.label} />
-              </form>
+              {apagada ? (
+                <span className="inline-flex items-center rounded-lg border border-border bg-slate-50 px-2 py-1 text-sm text-muted">
+                  {e.name}
+                </span>
+              ) : (
+                <form action={removeVolunteerAction} className="inline">
+                  <input type="hidden" name="category" value={cat.key} />
+                  <input type="hidden" name="publisherId" value={e.publisherId} />
+                  <QuitarBoton name={e.name} catLabel={cat.label} />
+                </form>
+              )}
             </li>
           ))}
         </ul>
@@ -95,7 +124,7 @@ function Categoria({
 
       <form
         action={action}
-        className={`mt-2 flex flex-wrap items-end gap-2 ${espejo ? "hidden" : ""}`}
+        className={`mt-2 flex flex-wrap items-end gap-2 ${espejo || apagada ? "hidden" : ""}`}
       >
         <input type="hidden" name="category" value={cat.key} />
         <div className="min-w-0 flex-1">
@@ -117,12 +146,12 @@ function Categoria({
 }
 
 /**
- * Interruptor "Repetir los de Audio" de la categoría Video.
+ * Un interruptor de los ajustes de la categoría (la palanca de toda la vida).
  *
  * Mientras se guarda, la palanca ya se mueve al estado nuevo y aparece
  * "Guardando…": antes no había ningún aviso y parecía que no respondía.
  */
-function SwitchEspejo({ activo }: { activo: boolean }) {
+function SwitchResp({ activo, children }: { activo: boolean; children: React.ReactNode }) {
   const { pending } = useFormStatus();
   // Al pulsar, se muestra el estado al que va, no el que tenía.
   const visual = pending ? !activo : activo;
@@ -148,7 +177,7 @@ function SwitchEspejo({ activo }: { activo: boolean }) {
         />
       </span>
       <span className="min-w-0 flex-1 font-medium text-foreground">
-        Repetir los de Audio
+        {children}
       </span>
       {pending ? (
         <span className="shrink-0 text-xs text-muted">Guardando…</span>
@@ -157,12 +186,78 @@ function SwitchEspejo({ activo }: { activo: boolean }) {
   );
 }
 
+/** "Repetir los de Audio": la LISTA de Video es la de Audio. */
 function EspejoAudio({ activo }: { activo: boolean }) {
   return (
     <form action={setVideoSameAsAudioAction}>
       {/* Se envía el valor contrario: el botón alterna. */}
       <input type="hidden" name="value" value={activo ? "no" : "si"} />
-      <SwitchEspejo activo={activo} />
+      <SwitchResp activo={activo}>Repetir los de Audio</SwitchResp>
+    </form>
+  );
+}
+
+/**
+ * "El mismo hermano hace Audio y Video": no se reparte una casilla de Video
+ * aparte, ni se imprime. Es otra cosa que "Repetir los de Audio", que solo
+ * comparte la lista de disponibles.
+ */
+function AudioHaceVideo({ activo }: { activo: boolean }) {
+  return (
+    <form action={setAudioAlsoVideoAction}>
+      <input type="hidden" name="value" value={activo ? "no" : "si"} />
+      <SwitchResp activo={activo}>
+        El mismo hermano hace Audio y Video
+      </SwitchResp>
+    </form>
+  );
+}
+
+/**
+ * "Usamos 1 / 2 Pasa Micrófono": cuántos hermanos pasan el micrófono en cada
+ * reunión. Con uno, la casilla "Pasa Micrófono 2" deja de repartirse y de
+ * imprimirse; lo que ya estuviera escrito en ella no se borra.
+ */
+function SelectorMicros({ valor }: { valor: number }) {
+  const { pending } = useFormStatus();
+  return (
+    <div
+      role="group"
+      aria-label="Cuántos Pasa Micrófono usa la congregación"
+      className="grid gap-1.5 sm:grid-cols-2"
+    >
+      {[1, 2].map((n) => {
+        const elegido = valor === n;
+        return (
+          <button
+            key={n}
+            type="submit"
+            name="value"
+            value={String(n)}
+            aria-pressed={elegido}
+            disabled={pending || elegido}
+            className={
+              "rounded-lg border px-2.5 py-2 text-sm font-medium transition-colors disabled:cursor-default " +
+              (elegido
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-surface text-foreground hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60")
+            }
+          >
+            {elegido ? "✓ " : ""}Usamos {n} Pasa Micrófono
+          </button>
+        );
+      })}
+      {pending ? (
+        <span className="text-xs text-muted sm:col-span-2">Guardando…</span>
+      ) : null}
+    </div>
+  );
+}
+
+function Micros({ valor }: { valor: number }) {
+  return (
+    <form action={setMicCountAction}>
+      <SelectorMicros valor={valor} />
     </form>
   );
 }
@@ -190,19 +285,27 @@ export function RespVolunteers({
   byCategory,
   publishers,
   videoSameAsAudio,
+  ajustes,
 }: {
   categories: RespCategory[];
   byCategory: Record<string, VolunteerEntry[]>;
   publishers: { id: string; name: string }[];
   /** Video repite la lista de Audio. */
   videoSameAsAudio: boolean;
+  /** Cuántos micrófonos usa la congregación y si Audio hace también Video. */
+  ajustes: RespSettings;
 }) {
+  // Con "el mismo hermano hace Audio y Video" no hay casilla de Video que
+  // repartir: su lista queda en gris, sin borrarse.
+  const videoApagado = ajustes.audioAlsoVideo;
   // Qué categorías de reparto están todavía sin nadie. La Atalaya no cuenta:
   // es opcional, no un puesto que haya que cubrir.
   const sinNadie = categories
     .filter((c) => c.key !== WATCHTOWER_CATEGORY.key)
     .filter((c) => {
       const propios = byCategory[c.key]?.length ?? 0;
+      // Video, cuando lo hace el hermano de Audio, no es un puesto que cubrir.
+      if (c.key === "VIDEO" && videoApagado) return false;
       // Video con el interruptor puesto se nutre de Audio.
       if (c.key === "VIDEO" && videoSameAsAudio) {
         return (byCategory.AUDIO?.length ?? 0) === 0;
@@ -260,11 +363,26 @@ export function RespVolunteers({
                 entries={espejo ? (byCategory.AUDIO ?? []) : (byCategory[c.key] ?? [])}
                 publishers={publishers}
                 espejo={espejo}
-                extra={esVideo ? <EspejoAudio activo={videoSameAsAudio} /> : undefined}
+                apagada={
+                  esVideo && videoApagado
+                    ? "Esta responsabilidad no se reparte: la hace el hermano de Audio."
+                    : undefined
+                }
+                extra={
+                  esVideo && !videoApagado ? (
+                    <EspejoAudio activo={videoSameAsAudio} />
+                  ) : c.key === "AUDIO" ? (
+                    <AudioHaceVideo activo={ajustes.audioAlsoVideo} />
+                  ) : c.key === "MICROFONO" ? (
+                    <Micros valor={ajustes.micCount} />
+                  ) : undefined
+                }
                 ayuda={
                   c.key === WATCHTOWER_CATEGORY.key
                     ? "No recibirá ninguna responsabilidad en la reunión de fin de semana."
-                    : undefined
+                    : c.key === "MICROFONO" && ajustes.micCount === 1
+                      ? "Se reparte una sola casilla por reunión."
+                      : undefined
                 }
               />
             );

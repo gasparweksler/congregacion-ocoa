@@ -8,6 +8,7 @@ import {
   RESP_MANAGED_CATEGORIES,
 } from "@/lib/constants";
 import { getVolunteersByCategory } from "@/lib/resp-volunteers";
+import { respSettingsFrom, respActiva } from "@/lib/resp-settings";
 import { parsePeriod } from "@/lib/period";
 import { getMonthlyResponsibilities } from "@/server/monthly-resp-actions";
 import { PageHeader } from "@/components/PageHeader";
@@ -44,7 +45,7 @@ export default async function ResponsabilidadesMensualPage({
     getVolunteersByCategory(cong),
     prisma.congregation.findUnique({
       where: { id: cong },
-      select: { videoSameAsAudio: true },
+      select: { videoSameAsAudio: true, micCount: true, audioAlsoVideo: true },
     }),
   ]);
 
@@ -53,12 +54,13 @@ export default async function ResponsabilidadesMensualPage({
   const publisherOptions = publishersRaw.map((p) => ({ id: p.id, name: p.fullName }));
   const groups = groupsRaw.map((g) => g.name);
   const videoSameAsAudio = ajustes?.videoSameAsAudio ?? false;
+  // Cuántos micrófonos usa la congregación y si Audio hace también Video.
+  const respSettings = respSettingsFrom(ajustes);
   // Cuántos hermanos hay apuntados en total (sin contar la Atalaya, que no es
-  // una responsabilidad que se reparta).
-  const totalDisponibles = RESP_CATEGORIES.reduce(
-    (n, c) => n + (volunteers[c.key]?.length ?? 0),
-    0,
-  );
+  // una responsabilidad que se reparta, ni Video cuando lo hace el de Audio).
+  const totalDisponibles = RESP_CATEGORIES.filter((c) =>
+    c.slots.some((s) => respActiva(s, respSettings)),
+  ).reduce((n, c) => n + (volunteers[c.key]?.length ?? 0), 0);
 
   return (
     <>
@@ -84,6 +86,7 @@ export default async function ResponsabilidadesMensualPage({
           <RespVolunteers
             categories={RESP_MANAGED_CATEGORIES}
             videoSameAsAudio={videoSameAsAudio}
+            ajustes={respSettings}
             byCategory={volunteers}
             publishers={publisherOptions}
           />
@@ -107,6 +110,7 @@ export default async function ResponsabilidadesMensualPage({
             rows={rows}
             publishers={publishers}
             groups={groups}
+            ajustes={respSettings}
           />
         </CardBody>
       </Card>

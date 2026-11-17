@@ -42,6 +42,18 @@ model Congregation {
   // son exactamente los de Audio, sin tener que escribirlos otra vez.
   videoSameAsAudio Boolean @default(false)
 
+  // Cuántos hermanos pasan el micrófono en cada reunión: 1 o 2. Hay
+  // congregaciones que solo usan uno, y entonces la casilla "Pasa Micrófono 2"
+  // quedaba siempre vacía. Por defecto 2, que es lo que hacía el sistema
+  // cuando el número estaba fijo en el código.
+  micCount Int @default(2)
+
+  // "El mismo hermano hace Audio y Video": quien está en Audio se encarga
+  // también del Video, así que no se reparte ni se imprime una casilla de
+  // Video aparte. Es distinto de videoSameAsAudio, que solo comparte la LISTA
+  // de hermanos disponibles.
+  audioAlsoVideo Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

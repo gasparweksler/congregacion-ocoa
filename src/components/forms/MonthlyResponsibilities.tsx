@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { setMonthlyResponsibility } from "@/server/monthly-resp-actions";
-import { MONTHLY_RESPONSIBILITIES } from "@/lib/constants";
+import {
+  responsibilitiesToShow,
+  type RespSettings,
+} from "@/lib/resp-settings";
 import { weekdayNameOfISO } from "@/lib/dates";
 import type { MonthlyMeetingRow } from "@/server/monthly-resp-actions";
 
@@ -19,18 +22,29 @@ export function MonthlyResponsibilities({
   rows,
   publishers,
   groups,
+  ajustes,
 }: {
   rows: MonthlyMeetingRow[];
   publishers: string[];
   groups: string[];
+  /** Cuántos micrófonos usa la congregación y si Audio hace también Video. */
+  ajustes: RespSettings;
 }) {
   const [pending, startTransition] = useTransition();
+  // Las casillas que la congregación usa, con su etiqueta ya ajustada ("Audio
+  // y Video"). Una casilla apagada solo sigue a la vista si ya tenía un nombre
+  // guardado: se enseña en gris para que no parezca que se borró.
+  const RESPONSABILIDADES = responsibilitiesToShow(ajustes, (slotKey) =>
+    rows.some((r) => (r.values[slotKey]?.name ?? "").trim() !== ""),
+  );
+  // Para contar "3 de 7" solo cuentan las que de verdad hay que rellenar.
+  const AREPARTIR = RESPONSABILIDADES.filter((r) => !r.inactiva);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   // Fechas plegadas. Arrancan plegadas las que ya están completas.
   const [plegadas, setPlegadas] = useState<Set<string>>(() => {
     const s = new Set<string>();
     for (const r of rows) {
-      const todas = MONTHLY_RESPONSIBILITIES.every((x) =>
+      const todas = AREPARTIR.every((x) =>
         (r.values[x.key]?.name ?? "").trim(),
       );
       if (todas) s.add(r.dateISO);
@@ -41,7 +55,7 @@ export function MonthlyResponsibilities({
   const initialValues = () => {
     const o: Record<string, string> = {};
     for (const r of rows)
-      for (const resp of MONTHLY_RESPONSIBILITIES)
+      for (const resp of RESPONSABILIDADES)
         o[`${r.dateISO}_${resp.key}`] = r.values[resp.key]?.name ?? "";
     return o;
   };
@@ -57,7 +71,7 @@ export function MonthlyResponsibilities({
   const firma = rows
     .map(
       (r) =>
-        `${r.dateISO}:${MONTHLY_RESPONSIBILITIES.map((x) => r.values[x.key]?.name ?? "").join("|")}`,
+        `${r.dateISO}:${RESPONSABILIDADES.map((x) => r.values[x.key]?.name ?? "").join("|")}`,
     )
     .join("//");
   const [firmaPrevia, setFirmaPrevia] = useState(firma);
@@ -103,10 +117,10 @@ export function MonthlyResponsibilities({
       </datalist>
 
       {rows.map((row) => {
-        const puestas = MONTHLY_RESPONSIBILITIES.filter((r) =>
+        const puestas = AREPARTIR.filter((r) =>
           (local[`${row.dateISO}_${r.key}`] ?? "").trim(),
         ).length;
-        const completa = puestas === MONTHLY_RESPONSIBILITIES.length;
+        const completa = puestas === AREPARTIR.length;
         return (
         <details
           key={row.dateISO}
@@ -137,7 +151,7 @@ export function MonthlyResponsibilities({
                   completa ? "font-semibold text-emerald-700" : "text-muted"
                 }
               >
-                {puestas} de {MONTHLY_RESPONSIBILITIES.length}
+                {puestas} de {AREPARTIR.length}
               </span>
               <span aria-hidden className="text-muted">
                 {plegadas.has(row.dateISO) ? "▸" : "▾"}
@@ -146,7 +160,7 @@ export function MonthlyResponsibilities({
           </summary>
           <table className="w-full border-collapse text-sm">
             <tbody>
-              {MONTHLY_RESPONSIBILITIES.map((resp) => {
+              {RESPONSABILIDADES.map((resp) => {
                 const cellKey = `${row.dateISO}_${resp.key}`;
                 const value = local[cellKey] ?? "";
                 const setVal = (v: string) =>
@@ -157,17 +171,32 @@ export function MonthlyResponsibilities({
                       <span
                         className={
                           "font-medium " +
-                          (resp.kind === "group"
-                            ? "text-emerald-700"
-                            : "text-foreground")
+                          (resp.inactiva
+                            ? "text-muted"
+                            : resp.kind === "group"
+                              ? "text-emerald-700"
+                              : "text-foreground")
                         }
                       >
                         {resp.label}
                       </span>
+                      {resp.inactiva ? (
+                        <span className="block text-xs text-muted">
+                          {resp.inactiva}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
-                        {resp.kind === "group" ? (
+                        {resp.inactiva ? (
+                          // La congregación ya no usa esta casilla, pero lo que
+                          // había escrito sigue guardado: se enseña en gris y
+                          // sin poder editarse, para no hacer creer que se
+                          // borró.
+                          <span className="min-w-0 flex-1 rounded-lg border border-dashed border-border bg-slate-50 px-2 py-1.5 text-sm text-muted">
+                            {value || "—"}
+                          </span>
+                        ) : resp.kind === "group" ? (
                           // Limpieza: desplegable con los grupos registrados.
                           <select
                             value={value}
