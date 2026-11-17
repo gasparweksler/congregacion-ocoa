@@ -11,7 +11,8 @@
 //     respuesta", nunca como un sí.
 // ============================================================================
 
-import { requireMeetingsAccess } from "@/lib/access";
+import { requireMeetingsAccess, congregationId } from "@/lib/access";
+import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CollapsibleCard, Alert } from "@/components/ui";
@@ -25,6 +26,11 @@ import { WithoutAssignmentTile } from "@/components/WithoutAssignmentTile";
 import { AsignacionesLineChart } from "@/components/charts/AsignacionesLineChart";
 import { serieMensual } from "@/lib/assignment-series";
 import { getAssignmentStats } from "@/server/assignment-stats-actions";
+import { NombresSinEmparejar } from "@/components/NombresSinEmparejar";
+import {
+  deleteUnmatchedNameAction,
+  mergeUnmatchedNameAction,
+} from "@/server/assignment-names-actions";
 
 export default async function EstadisticasAsignacionesPage({
   searchParams,
@@ -38,7 +44,8 @@ export default async function EstadisticasAsignacionesPage({
     resp?: string;
   }>;
 }) {
-  await requireMeetingsAccess();
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
   const sp = await searchParams;
 
   const dias = Math.min(3650, Math.max(1, Number(sp.dias) || 90));
@@ -57,6 +64,27 @@ export default async function EstadisticasAsignacionesPage({
     hasta: sp.hasta,
     incluirResponsabilidades,
   });
+
+  // Para poder fusionar un nombre suelto con el hermano que de verdad es:
+  // la lista de hermanos inscritos, que es la que se ofrece en el selector.
+  const hermanosInscritos =
+    unmatched.length > 0
+      ? (
+          await prisma.publisher.findMany({
+            where: { congregationId: cong },
+            orderBy: { fullName: "asc" },
+            select: {
+              id: true,
+              fullName: true,
+              group: { select: { name: true } },
+            },
+          })
+        ).map((p) => ({
+          id: p.id,
+          fullName: p.fullName,
+          groupName: p.group?.name ?? null,
+        }))
+      : [];
 
   // Las fechas viajan como texto al componente de cliente.
   const rows: BrotherRow[] = brothers.map((b) => ({
@@ -170,20 +198,20 @@ export default async function EstadisticasAsignacionesPage({
       </CollapsibleCard>
 
       {unmatched.length > 0 ? (
-        <div className="mb-6">
-          <Alert tone="info">
-            ℹ️ {unmatched.length} nombre(s) de las asignaciones no coinciden con
-            ningún publicador registrado, así que aparecen aparte en vez de
-            atribuirse a alguien por parecido:{" "}
-            <strong>
-              {unmatched
-                .slice(0, 8)
-                .map((u) => `${u.name} (${u.count})`)
-                .join(" · ")}
-            </strong>
-            {unmatched.length > 8 ? " …" : ""}
-          </Alert>
-        </div>
+        <CollapsibleCard
+          className="mb-6"
+          defaultOpen
+          title={`Nombres que no coinciden (${unmatched.length})`}
+          description="Están escritos en alguna asignación pero no son ningún hermano inscrito, así que cuentan aparte en vez de atribuirse a alguien por parecido. Aquí se pueden quitar del historial o fusionar con el hermano que de verdad son."
+          bodyClassName="px-0 py-0"
+        >
+          <NombresSinEmparejar
+            nombres={unmatched}
+            hermanos={hermanosInscritos}
+            eliminarAction={deleteUnmatchedNameAction}
+            fusionarAction={mergeUnmatchedNameAction}
+          />
+        </CollapsibleCard>
       ) : null}
 
       {/* --- El gráfico ------------------------------------------------
