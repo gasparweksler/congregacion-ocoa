@@ -1095,11 +1095,17 @@ export function ProgramaPredicacion({
                   Capitán
                 </th>
                 {gruposDisponibles.length > 0 ? (
-                  <th className="border-b border-border px-2 py-2 text-left font-semibold text-muted">
+                  <th className="min-w-[8.5rem] border-b border-border px-2 py-2 text-left font-semibold text-muted">
                     Grupos
                   </th>
                 ) : null}
-                <th className="border-b border-border px-2 py-2" />
+                {/* Pegada a la derecha: la tabla es más ancha que la pantalla
+                    en un teléfono o una tablet, y antes había que arrastrarla
+                    hasta el final para encontrar "Quitar" —y se veía cortado
+                    contra el borde—. Así la columna viaja con el scroll. */}
+                <th className="sticky right-0 z-10 w-20 border-b border-border bg-surface px-2 py-2 text-right font-semibold text-muted shadow-[-8px_0_8px_-8px_rgba(15,22,21,0.18)]">
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1187,12 +1193,12 @@ export function ProgramaPredicacion({
                       />
                     </td>
                     {gruposDisponibles.length > 0 ? (
-                      <td className="border-b border-border px-2 py-2">
+                      <td className="min-w-[8.5rem] border-b border-border px-2 py-2">
                         <div className="flex flex-col gap-0.5">
                           {gruposDisponibles.map((g) => (
                             <label
                               key={g}
-                              className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-foreground"
+                              className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-foreground"
                             >
                               <input
                                 type="checkbox"
@@ -1213,11 +1219,12 @@ export function ProgramaPredicacion({
                         </div>
                       </td>
                     ) : null}
-                    <td className="border-b border-border px-2 py-2 text-right">
+                    <td className="sticky right-0 z-10 w-20 border-b border-border bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_rgba(15,22,21,0.18)]">
                       <button
                         type="button"
                         onClick={() => quitar(s.key)}
-                        className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                        aria-label={`Quitar la salida del ${s.iso}`}
+                        className="rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap text-red-600 hover:bg-red-50"
                       >
                         Quitar
                       </button>

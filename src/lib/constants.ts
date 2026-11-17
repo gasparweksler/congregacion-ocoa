@@ -53,6 +53,8 @@ export const PUBLISHER_STATUS = {
   PRECURSOR_REGULAR: "PRECURSOR_REGULAR",
   PRECURSOR_AUXILIAR: "PRECURSOR_AUXILIAR",
   PRECURSOR_AUXILIAR_INDEFINIDO: "PRECURSOR_AUXILIAR_INDEFINIDO",
+  PRECURSOR_ESPECIAL: "PRECURSOR_ESPECIAL",
+  MISIONERO_CAMPO: "MISIONERO_CAMPO",
 } as const;
 
 export type PublisherStatus =
@@ -69,6 +71,8 @@ export const PUBLISHER_STATUS_LABELS: Record<PublisherStatus, string> = {
   PRECURSOR_REGULAR: "Precursor Regular",
   PRECURSOR_AUXILIAR: "Precursor Auxiliar",
   PRECURSOR_AUXILIAR_INDEFINIDO: "Precursor Auxiliar Indefinido",
+  PRECURSOR_ESPECIAL: "Precursor Especial",
+  MISIONERO_CAMPO: "Misionero que sirve en el campo",
 };
 
 /**
@@ -79,6 +83,10 @@ export const PIONEER_STATUSES: PublisherStatus[] = [
   PUBLISHER_STATUS.PRECURSOR_REGULAR,
   PUBLISHER_STATUS.PRECURSOR_AUXILIAR,
   PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO,
+  // El precursor especial y el misionero que sirve en el campo también
+  // informan horas, igual que el precursor regular.
+  PUBLISHER_STATUS.PRECURSOR_ESPECIAL,
+  PUBLISHER_STATUS.MISIONERO_CAMPO,
 ];
 
 /** Indica si un estado debe registrar horas de predicación. */

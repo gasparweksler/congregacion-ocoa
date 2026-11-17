@@ -141,7 +141,16 @@ export async function buildPublisherCard(
     "900_10",
     publisher.status === PUBLISHER_STATUS.PRECURSOR_REGULAR,
   );
-  // "Precursor especial" y "Misionero" no existen en el sistema: quedan vacías.
+  setCheck(
+    form,
+    "900_11",
+    publisher.status === PUBLISHER_STATUS.PRECURSOR_ESPECIAL,
+  );
+  setCheck(
+    form,
+    "900_12",
+    publisher.status === PUBLISHER_STATUS.MISIONERO_CAMPO,
+  );
   setText(form, "900_13", String(serviceYear));
 
   // --- Filas de meses ---

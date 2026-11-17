@@ -10,6 +10,10 @@ const STATUS_TONES: Record<PublisherStatus, Tone> = {
   [PUBLISHER_STATUS.PRECURSOR_REGULAR]: "violet",
   [PUBLISHER_STATUS.PRECURSOR_AUXILIAR]: "amber",
   [PUBLISHER_STATUS.PRECURSOR_AUXILIAR_INDEFINIDO]: "amber",
+  // Los dos nombramientos: violeta, como el precursor regular, porque son
+  // de la misma familia (informan horas y son de dedicación permanente).
+  [PUBLISHER_STATUS.PRECURSOR_ESPECIAL]: "violet",
+  [PUBLISHER_STATUS.MISIONERO_CAMPO]: "violet",
 };
 
 export function statusTone(status: string): Tone {

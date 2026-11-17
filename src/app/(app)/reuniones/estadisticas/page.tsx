@@ -22,6 +22,8 @@ import {
   type BrotherRow,
 } from "@/components/AssignmentHistory";
 import { WithoutAssignmentTile } from "@/components/WithoutAssignmentTile";
+import { AsignacionesLineChart } from "@/components/charts/AsignacionesLineChart";
+import { serieMensual } from "@/lib/assignment-series";
 import { getAssignmentStats } from "@/server/assignment-stats-actions";
 
 export default async function EstadisticasAsignacionesPage({
@@ -96,6 +98,10 @@ export default async function EstadisticasAsignacionesPage({
         a.name.localeCompare(b.name, "es"),
     );
   const sinNinguna = rows.filter((b) => b.lastDone === null).length;
+
+  // La serie del gráfico sale de `rows`, que ya pasó por todos los filtros:
+  // el gráfico y el detalle de abajo cuentan exactamente lo mismo.
+  const serie = serieMensual(rows);
 
   return (
     <>
@@ -179,6 +185,29 @@ export default async function EstadisticasAsignacionesPage({
           </Alert>
         </div>
       ) : null}
+
+      {/* --- El gráfico ------------------------------------------------
+          Va antes del detalle a propósito: primero la forma del año, y
+          después los nombres. Sale de las mismas participaciones ya
+          filtradas que la lista de abajo, así que los dos cuentan lo
+          mismo y cambian juntos al tocar un filtro. */}
+      <Card className="mb-6 p-5">
+        <h2 className="text-base font-semibold text-foreground">
+          Asignaciones mes a mes
+        </h2>
+        <p className="mt-0.5 mb-4 text-sm text-muted">
+          {serie.length > 0
+            ? `Lo que dejan ver los filtros puestos: ${serie.length} mes(es), de ${serie[0].etiquetaLarga} a ${serie[serie.length - 1].etiquetaLarga}. Pasa el dedo o el ratón por un mes para ver sus cifras.`
+            : "Cuando haya asignaciones en reuniones ya pasadas, aquí se verá cómo se reparten mes a mes."}
+        </p>
+        {serie.length > 0 ? (
+          <AsignacionesLineChart data={serie} />
+        ) : (
+          <p className="py-8 text-center text-sm text-muted">
+            No hay ninguna asignación que coincida con los filtros.
+          </p>
+        )}
+      </Card>
 
       {/* Plegada de entrada: son muchos nombres y, abiertos siempre, tapaban
           los recuadros de arriba, que es lo que se mira primero. */}
