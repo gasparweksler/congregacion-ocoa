@@ -3,6 +3,12 @@
 // ============================================================================
 //  Historial y estadísticas de asignaciones de reuniones.
 //  Solo lectura. Acotado siempre a la congregación de la sesión.
+//
+//  Solo cuentan las reuniones de ENTRE SEMANA. Las de fin de semana tienen
+//  otro reparto (el orador suele venir de otra congregación, y el presidente
+//  y el lector se designan aparte), así que mezclarlas falseaba los números
+//  de quién lleva más tiempo sin asignación. Sus registros NO se borran: se
+//  siguen viendo en cada reunión, solo que no entran en estos cálculos.
 // ============================================================================
 
 import { prisma } from "@/lib/prisma";
@@ -13,6 +19,7 @@ import { weekdayOfMeetingDay } from "@/lib/constants";
 import {
   meetingDayLabel,
   MONTHLY_RESP_KEYS,
+  MEETING_DAYS,
   CONFIRM_STATUS,
   PUBLISHER_STATUS,
 } from "@/lib/constants";
@@ -115,7 +122,11 @@ export async function getAssignmentStats(
   const [assignments, historial, publishers, todasLasReuniones] = await Promise.all([
     prisma.meetingAssignment.findMany({
       where: {
-        meeting: { congregationId: cong, date: rangoFechas },
+        meeting: {
+          congregationId: cong,
+          date: rangoFechas,
+          day: { not: MEETING_DAYS.SABADO },
+        },
         ...(filters.section ? { section: filters.section } : {}),
         // Al menos uno de los dos puestos tiene hermano asignado.
         OR: [{ NOT: { primaryName: null } }, { NOT: { secondaryName: null } }],
@@ -139,6 +150,7 @@ export async function getAssignmentStats(
       where: {
         congregationId: cong,
         meetingDate: rangoFechas,
+        day: { not: MEETING_DAYS.SABADO },
         ...(filters.section ? { section: filters.section } : {}),
         OR: [{ NOT: { primaryName: null } }, { NOT: { secondaryName: null } }],
       },
@@ -159,7 +171,11 @@ export async function getAssignmentStats(
     // guardada puede ser el lunes del rango: hay que corregirla antes de
     // decidir si la reunión ya pasó y cuál fue la primera y la última.
     prisma.meeting.findMany({
-      where: { congregationId: cong, date: { lt: topeConsulta } },
+      where: {
+        congregationId: cong,
+        date: { lt: topeConsulta },
+        day: { not: MEETING_DAYS.SABADO },
+      },
       select: { date: true, day: true, weekLabel: true },
     }),
   ]);
@@ -307,6 +323,9 @@ export async function getAssignmentStats(
   for (const a of filas) {
     // El tope de "solo lo ya pasado", ahora sobre el día real de la reunión.
     if (a.date >= hoyInicio) continue;
+    // Fin de semana: no cuenta en las estadísticas (ya se descarta en la
+    // consulta; aquí se vuelve a comprobar por si llega de otra fuente).
+    if (a.day === MEETING_DAYS.SABADO) continue;
     const esResponsabilidad =
       a.section === "RESPONSABILIDADES" ||
       a.section === "SAB_RESPONSABILIDADES" ||

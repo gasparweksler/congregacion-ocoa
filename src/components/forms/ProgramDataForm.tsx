@@ -3,9 +3,12 @@
 // Datos del programa de la reunión que NO son asignación de nadie.
 //
 // En la de entre semana son las canciones y la lectura semanal; en la de fin
-// de semana, el orador del discurso público, su tema y el grupo que atiende la
-// hospitalidad (el orador suele venir de otra congregación, así que no es una
-// asignación de la congregación ni entra en las estadísticas).
+// de semana, las canciones.
+//
+// El orador del discurso público, su tema y quién atiende la hospitalidad se
+// muestran aquí para tener el programa de un vistazo, pero se escriben en sus
+// asignaciones ("Discurso Público" y "Hospitalidad"), que es donde la
+// congregación los busca. El dato vive en un solo sitio: la reunión.
 //
 // Normalmente llegan de la planilla al importarla; aquí se pueden corregir o
 // escribir a mano sin volver a subir el Excel. Se muestran como texto hasta
@@ -107,7 +110,7 @@ export function ProgramDataForm({
         ) : (
           <p className="text-sm text-muted">
             {esFinde
-              ? "Esta reunión no tiene todavía orador, tema ni hospitalidad guardados. Escríbelos aquí con "
+              ? "Esta reunión no tiene todavía canciones guardadas. Escríbelas aquí con "
               : "Esta reunión no tiene canciones ni lectura semanal guardadas. Se toman del Excel al importarlo, o puedes escribirlas aquí con "}
             <strong>Editar</strong>.
           </p>
@@ -131,53 +134,12 @@ export function ProgramDataForm({
 
       {esFinde ? (
         <>
-          <div>
-            <Label htmlFor="speakerName">Orador del discurso público</Label>
-            <Input
-              id="speakerName"
-              name="speakerName"
-              defaultValue={data.speakerName}
-              placeholder="Ej.: Raúl Aguilera - Cabildo"
-              maxLength={120}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-[7rem_1fr]">
-            <div>
-              <Label htmlFor="talkNumber">Nº del tema</Label>
-              <Input
-                id="talkNumber"
-                name="talkNumber"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={999}
-                defaultValue={data.talkNumber}
-                placeholder="Nº"
-              />
-            </div>
-            <div>
-              <Label htmlFor="talkTitle">Tema</Label>
-              <Input
-                id="talkTitle"
-                name="talkTitle"
-                defaultValue={data.talkTitle}
-                placeholder="Ej.: Seamos honrados en todo"
-                maxLength={160}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="hospitalityGroup">Hospitalidad (grupo)</Label>
-            <Input
-              id="hospitalityGroup"
-              name="hospitalityGroup"
-              defaultValue={data.hospitalityGroup}
-              placeholder="Ej.: Grupo Nro 04, o Congregación"
-              maxLength={120}
-            />
-          </div>
+          <p className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-muted">
+            El <strong>orador</strong>, el <strong>tema</strong> y la{" "}
+            <strong>hospitalidad</strong> se escriben más abajo, en las
+            asignaciones «Discurso Público» y «Hospitalidad», y se guardan con
+            el botón <strong>Guardar reunión</strong>.
+          </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             {[

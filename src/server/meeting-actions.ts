@@ -31,6 +31,19 @@ import {
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
+/** Texto libre del programa: espacios colapsados, con tope. Vacío = borrar. */
+function textoPrograma(
+  formData: FormData,
+  campo: string,
+  max: number,
+): string | null {
+  const v = String(formData.get(campo) ?? "")
+    .replace(/s+/g, " ")
+    .trim()
+    .slice(0, max);
+  return v.length > 0 ? v : null;
+}
+
 function newToken(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
@@ -144,6 +157,31 @@ export async function saveMeetingAction(
         "Recarga la página para ver lo que hay ahora y vuelve a aplicar tus cambios.",
     };
   }
+
+  // Reunión de fin de semana: el Discurso Público (orador y tema) y la
+  // Hospitalidad se escriben en sus tarjetas de asignación, pero se guardan
+  // en la propia reunión, que es de donde los lee el PDF. Así hay un solo
+  // sitio donde vive el dato y el papel nunca se desincroniza de la pantalla.
+  const esFinde =
+    meeting.day === MEETING_DAYS.SABADO && formData.has("speakerName");
+  const talkNumber = esFinde
+    ? parseSongNumber(String(formData.get("talkNumber") ?? ""))
+    : null;
+  if (esFinde && talkNumber === undefined) {
+    return {
+      error:
+        "El número del tema del discurso debe ser un número entre 1 y 999, " +
+        "o quedar vacío.",
+    };
+  }
+  const programaFinde = esFinde
+    ? {
+        speakerName: textoPrograma(formData, "speakerName", 120),
+        talkNumber: talkNumber ?? null,
+        talkTitle: textoPrograma(formData, "talkTitle", 160),
+        hospitalityGroup: textoPrograma(formData, "hospitalityGroup", 120),
+      }
+    : {};
 
   const confirmadorName =
     String(formData.get("confirmadorName") ?? "").trim() || null;
@@ -260,6 +298,7 @@ export async function saveMeetingAction(
       confirmadorName,
       weekLabel,
       ...(newDate ? { date: newDate } : {}),
+      ...programaFinde,
     },
   });
 
@@ -449,14 +488,24 @@ export async function setProgramDataAction(
     return v.length > 0 ? v : null;
   };
 
+  // El orador, el tema y la hospitalidad se escriben ahora en sus propias
+  // asignaciones ("Discurso Público" y "Hospitalidad"). Si no vienen en este
+  // formulario, no se tocan: un campo que no está a la vista nunca se borra.
+  const traeDiscurso = esFinde && formData.has("speakerName");
   const datos = esFinde
     ? {
         songStart,
         songEnd,
-        speakerName: texto("speakerName", 120),
-        talkNumber: parseSongNumber(String(formData.get("talkNumber") ?? "")),
-        talkTitle: texto("talkTitle", 160),
-        hospitalityGroup: texto("hospitalityGroup", 120),
+        ...(traeDiscurso
+          ? {
+              speakerName: texto("speakerName", 120),
+              talkNumber: parseSongNumber(
+                String(formData.get("talkNumber") ?? ""),
+              ),
+              talkTitle: texto("talkTitle", 160),
+              hospitalityGroup: texto("hospitalityGroup", 120),
+            }
+          : {}),
       }
     : {
         weeklyReading: parseWeeklyReading(
@@ -467,7 +516,7 @@ export async function setProgramDataAction(
         songEnd,
       };
 
-  if (esFinde && datos.talkNumber === undefined) {
+  if (traeDiscurso && "talkNumber" in datos && datos.talkNumber === undefined) {
     return { error: "El número del tema debe ser un número entre 1 y 999, o quedar vacío." };
   }
 
@@ -483,9 +532,7 @@ export async function setProgramDataAction(
     entity: "Reunion",
     entityId: meetingId,
     details: esFinde
-      ? `Programa de fin de semana: orador "${datos.speakerName ?? "(vacío)"}", ` +
-        `tema ${datos.talkNumber ?? "-"} "${datos.talkTitle ?? "(vacío)"}", ` +
-        `hospitalidad "${datos.hospitalityGroup ?? "(vacía)"}".`
+      ? `Programa de fin de semana: canciones ${songStart ?? "-"}/${songEnd ?? "-"}.`
       : `Programa de la semana: lectura "${datos.weeklyReading ?? "(vacía)"}", ` +
         `canciones ${songStart ?? "-"}/${songMiddle ?? "-"}/${songEnd ?? "-"}.`,
   });

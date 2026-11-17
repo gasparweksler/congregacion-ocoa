@@ -124,8 +124,6 @@ if (finde.length === 0) {
       presidente: m.assignments.find((a) => a.slotKey === "s_presidente")?.primaryName ?? null,
       lectorAtalaya:
         m.assignments.find((a) => a.slotKey === "s_lector_atalaya")?.primaryName ?? null,
-      oracionInicio:
-        m.assignments.find((a) => a.slotKey === "s_oracion_inicio")?.primaryName ?? null,
       speakerName: m.speakerName,
       talkNumber: m.talkNumber,
       talkTitle: m.talkTitle,
@@ -146,6 +144,25 @@ if (finde.length === 0) {
     texto.toUpperCase().includes("PRESIDENTE") || texto.toUpperCase().includes("DISCURSO"),
     "trae las columnas del fin de semana",
   );
+  check(
+    !/Oraci[oó]n de inicio/i.test(texto),
+    "NO imprime la Oración de inicio (se quitó de este programa)",
+  );
+  const conHosp = finde.find((m) => m.hospitalityGroup?.trim());
+  if (conHosp) {
+    check(
+      /Hospitalidad/i.test(texto) &&
+        texto.includes(conHosp.hospitalityGroup!.trim().split(" ")[0]),
+      "aparece la hospitalidad guardada",
+    );
+  }
+  const conTema = finde.find((m) => m.talkTitle?.trim());
+  if (conTema) {
+    check(
+      texto.includes(conTema.talkTitle!.trim().split(" ")[0]),
+      "aparece el tema del discurso público",
+    );
+  }
   const conOrador = finde.find((m) => m.speakerName?.trim());
   if (conOrador) {
     check(

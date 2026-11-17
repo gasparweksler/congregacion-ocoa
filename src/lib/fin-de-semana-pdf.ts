@@ -7,6 +7,10 @@
 //  de la Atalaya, Orador, Tema y Hospitalidad). La fila del tema lleva además
 //  una columna estrecha con el número del discurso.
 //
+//  La "Oración de inicio" NO se imprime: la congregación no la reparte en el
+//  programa de fin de semana. La asignación sigue existiendo en la reunión
+//  (no se borra ningún nombre guardado); simplemente no sale en el papel.
+//
 //  Lo que no esté guardado se deja en blanco. Nunca se rellena con un nombre
 //  o un número inventado: una casilla vacía en el papel se ve enseguida, un
 //  dato falso no.
@@ -21,7 +25,6 @@ export type WeekendMeeting = {
   weekLabel: string | null;
   presidente: string | null;
   lectorAtalaya: string | null;
-  oracionInicio: string | null;
   speakerName: string | null;
   talkNumber: string | null;
   talkTitle: string | null;
@@ -100,7 +103,6 @@ export function buildFinDeSemanaPdf(
     const filas: { etiqueta: string; numero: string; valor: string }[] = [
       { etiqueta: "Presidente", numero: "", valor: limpio(m.presidente) },
       { etiqueta: "Lector Atalaya", numero: "", valor: limpio(m.lectorAtalaya) },
-      { etiqueta: "Oración de inicio", numero: "", valor: limpio(m.oracionInicio) },
       { etiqueta: "Orador", numero: "", valor: limpio(m.speakerName) },
       {
         etiqueta: "Tema",
@@ -108,7 +110,7 @@ export function buildFinDeSemanaPdf(
         valor: limpio(m.talkTitle),
       },
       {
-        etiqueta: "Hospitalidad Grupo Número",
+        etiqueta: "Hospitalidad",
         numero: "",
         valor: limpio(m.hospitalityGroup),
       },

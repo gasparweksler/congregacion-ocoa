@@ -46,6 +46,19 @@ type Row = {
 
 type Item = Row & { key: string; tab: "asig" | "resp" };
 
+/**
+ * Lo que la reunión de FIN DE SEMANA guarda fuera de las asignaciones: el
+ * orador del discurso público, su número y tema, y quién atiende la
+ * hospitalidad. Se editan aquí (en sus tarjetas) pero viven en la reunión,
+ * que es de donde los lee el PDF del programa.
+ */
+export type ProgramaFinde = {
+  speakerName: string;
+  talkNumber: string;
+  talkTitle: string;
+  hospitalityGroup: string;
+};
+
 const RESP_SECTIONS = ["RESPONSABILIDADES", "SAB_RESPONSABILIDADES"];
 
 // Colores por sección, como en el programa impreso (Excel).
@@ -110,6 +123,8 @@ export function MeetingEditor({
   sectionLabels,
   hermanos,
   responsibilities,
+  programa,
+  esFinde,
   loadedAt,
 }: {
   meetingId: string;
@@ -125,6 +140,10 @@ export function MeetingEditor({
   sectionLabels: Record<string, string>;
   hermanos: string[];
   responsibilities: RespItem[];
+  /** Datos del discurso público y la hospitalidad (solo fin de semana). */
+  programa: ProgramaFinde;
+  /** ¿Es una reunión de fin de semana? */
+  esFinde: boolean;
   /** Marca de tiempo de la reunión al abrir la pantalla. Se envía al guardar
    *  para avisar si otra persona guardó mientras tanto. */
   loadedAt: string;
@@ -140,6 +159,10 @@ export function MeetingEditor({
   // Así, si otra persona agrega algo mientras editas, tu guardado no se lo
   // lleva por delante.
   const [removedIds, setRemovedIds] = useState<string[]>([]);
+  // Discurso público y hospitalidad: se guardan con el resto de la reunión.
+  const [prog, setProg] = useState<ProgramaFinde>(programa);
+  const ponProg = (patch: Partial<ProgramaFinde>) =>
+    setProg((p) => ({ ...p, ...patch }));
 
   const [items, setItems] = useState<Item[]>(() =>
     rows.map((r) => {
@@ -483,8 +506,41 @@ export function MeetingEditor({
               name={`eq_${it.key}`}
               value={it.equalPair ? "1" : "0"}
             />
+            {/* La nota no se edita en pantalla: viaja siempre para no perderla. */}
+            <input type="hidden" name={`n_${it.key}`} value={it.note} />
+            {/* Lo de la otra pestaña no está pintado: va oculto con su valor,
+                para que guardar no lo deje en blanco. */}
+            {it.tab !== tab ? (
+              <>
+                <input type="hidden" name={`lbl_${it.key}`} value={it.label} />
+                <input
+                  type="hidden"
+                  name={`p_${it.key}`}
+                  value={it.primaryName}
+                />
+                <input
+                  type="hidden"
+                  name={`s_${it.key}`}
+                  value={it.secondaryName}
+                />
+              </>
+            ) : null}
           </span>
         ))}
+        {/* Fin de semana: si se guarda desde la pestaña de responsabilidades,
+            el discurso público y la hospitalidad viajan igual. */}
+        {esFinde && tab !== "asig" ? (
+          <span>
+            <input type="hidden" name="speakerName" value={prog.speakerName} />
+            <input type="hidden" name="talkNumber" value={prog.talkNumber} />
+            <input type="hidden" name="talkTitle" value={prog.talkTitle} />
+            <input
+              type="hidden"
+              name="hospitalityGroup"
+              value={prog.hospitalityGroup}
+            />
+          </span>
+        ) : null}
         <datalist id="hermanos-lista">
           {hermanos.map((h) => (
             <option key={h} value={h} />
@@ -724,6 +780,102 @@ export function MeetingEditor({
               </div>
             ))
           )}
+
+          {/* --- Fin de semana: discurso público y hospitalidad ---------
+              No son asignaciones de la congregación (el orador suele venir de
+              otra, y la hospitalidad es quien recibe), así que no llevan
+              enlace de confirmación ni cuentan en las estadísticas. Se
+              guardan con el botón "Guardar reunión", como todo lo demás, y
+              salen en el PDF del programa de fin de semana. */}
+          {esFinde ? (
+            <>
+              <div className="rounded-xl border border-border border-l-4 border-l-[#1f3864] bg-[#1f3864]/[0.05] p-3 sm:p-4">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-block rounded-full bg-[#1f3864] px-2.5 py-0.5 text-[0.7rem] font-semibold text-white">
+                    Fin de semana
+                  </span>
+                  <span className="text-sm font-bold text-foreground">
+                    Discurso Público
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="speakerName">Orador</Label>
+                    <Input
+                      id="speakerName"
+                      name="speakerName"
+                      list="hermanos-lista"
+                      value={prog.speakerName}
+                      onChange={(e) => ponProg({ speakerName: e.target.value })}
+                      placeholder="Ej.: Raúl Aguilera - Cabildo"
+                      maxLength={120}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-[5.5rem_1fr]">
+                    <div>
+                      <Label htmlFor="talkNumber">Nº del tema</Label>
+                      <Input
+                        id="talkNumber"
+                        name="talkNumber"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={999}
+                        value={prog.talkNumber}
+                        onChange={(e) => ponProg({ talkNumber: e.target.value })}
+                        placeholder="Nº"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="talkTitle">Tema</Label>
+                      <Input
+                        id="talkTitle"
+                        name="talkTitle"
+                        value={prog.talkTitle}
+                        onChange={(e) => ponProg({ talkTitle: e.target.value })}
+                        placeholder="Ej.: Seamos honrados en todo"
+                        maxLength={160}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  El orador y el tema salen en el PDF del programa de fin de
+                  semana. Deja un campo vacío para borrarlo.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border border-l-4 border-l-[#1f3864] bg-[#1f3864]/[0.05] p-3 sm:p-4">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-block rounded-full bg-[#1f3864] px-2.5 py-0.5 text-[0.7rem] font-semibold text-white">
+                    Fin de semana
+                  </span>
+                  <span className="text-sm font-bold text-foreground">
+                    Hospitalidad
+                  </span>
+                </div>
+                <Label htmlFor="hospitalityGroup">
+                  Hermano (o grupo) encargado
+                </Label>
+                <Input
+                  id="hospitalityGroup"
+                  name="hospitalityGroup"
+                  list="hermanos-lista"
+                  value={prog.hospitalityGroup}
+                  onChange={(e) =>
+                    ponProg({ hospitalityGroup: e.target.value })
+                  }
+                  placeholder="Nombre del hermano, o Grupo Nro 04"
+                  maxLength={120}
+                  autoComplete="off"
+                />
+                <p className="mt-2 text-xs text-muted">
+                  Aparece en el PDF del programa de fin de semana.
+                </p>
+              </div>
+            </>
+          ) : null}
 
           <button
             type="button"

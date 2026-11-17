@@ -10,6 +10,7 @@ import {
   MEETING_SECTION_LABELS,
   MEETING_DAYS,
   MONTHLY_RESP_KEYS,
+  slotsForDay,
 } from "@/lib/constants";
 import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
@@ -67,13 +68,24 @@ export default async function ReunionDetallePage({
     a.section === "SAB_RESPONSABILIDADES" ||
     MONTHLY_RESP_KEYS.includes(a.slotKey);
 
+  // Rescate de títulos en blanco: un fallo ya corregido guardaba algunas
+  // asignaciones con el título genérico "Asignación" (el que pone el servidor
+  // cuando el formulario no trae ninguno). Si la casilla es una de las fijas
+  // de la reunión, se muestra con su nombre de siempre en vez de ese genérico.
+  // No se toca ningún nombre de hermano, y al guardar queda ya bien escrito.
+  const tituloDeSlot = new Map(
+    slotsForDay(meeting.day).map((s) => [s.key, s.label]),
+  );
+  const titulo = (slotKey: string, label: string) =>
+    label === "Asignación" ? (tituloDeSlot.get(slotKey) ?? label) : label;
+
   const rows = meeting.assignments
     .filter((a) => !isResp(a))
     .map((a) => ({
       id: a.id,
       slotKey: a.slotKey,
       section: a.section,
-      label: a.label,
+      label: titulo(a.slotKey, a.label),
       allowTwo: a.allowTwo,
       equalPair: a.equalPair,
       note: a.note ?? "",
@@ -141,7 +153,7 @@ export default async function ReunionDetallePage({
           title={esFinde ? "Programa del fin de semana" : "Programa de la semana"}
           description={
             esFinde
-              ? "Orador del discurso público, su tema, la hospitalidad y las canciones. Es lo que se imprime en el programa de fin de semana."
+              ? "Las canciones del fin de semana. El orador, el tema y la hospitalidad se escriben más abajo, en sus asignaciones."
               : "Canciones y lectura semanal. Llegan de la planilla al importarla, y se pueden corregir aquí."
           }
         />
@@ -171,6 +183,13 @@ export default async function ReunionDetallePage({
         sectionLabels={MEETING_SECTION_LABELS}
         hermanos={hermanos}
         responsibilities={responsibilities}
+        esFinde={esFinde}
+        programa={{
+          speakerName: datosPrograma.speakerName,
+          talkNumber: datosPrograma.talkNumber,
+          talkTitle: datosPrograma.talkTitle,
+          hospitalityGroup: datosPrograma.hospitalityGroup,
+        }}
         loadedAt={meeting.updatedAt.toISOString()}
       />
 

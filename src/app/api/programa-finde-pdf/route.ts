@@ -54,7 +54,8 @@ export async function GET(request: Request) {
       weekLabel: m.weekLabel,
       presidente: nombreDe(m.assignments, "s_presidente"),
       lectorAtalaya: nombreDe(m.assignments, "s_lector_atalaya"),
-      oracionInicio: nombreDe(m.assignments, "s_oracion_inicio"),
+      // La oración de inicio no se imprime en este programa (sigue guardada
+      // en la reunión, solo que no sale en el papel).
       speakerName: m.speakerName,
       talkNumber: m.talkNumber,
       talkTitle: m.talkTitle,
