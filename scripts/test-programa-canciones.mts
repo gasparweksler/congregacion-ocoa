@@ -307,9 +307,8 @@ console.log("\n8. La planilla del proyecto, tal cual se descarga");
 
 console.log("\n9. Lo que se escribe a mano en el editor de la reunión");
 {
-  const { parseSongNumber, parseWeeklyReading } = await import(
-    "../src/lib/meeting-program.js"
-  );
+  const { parseSongNumber, parseWeeklyReading, parseProgramText } =
+    await import("../src/lib/meeting-program.js");
   // Números válidos.
   check(parseSongNumber("33") === "33", "«33» vale");
   check(parseSongNumber("  7 ") === "7", "«  7 » se recorta a «7»");
@@ -332,6 +331,40 @@ console.log("\n9. Lo que se escribe a mano en el editor de la reunión");
   check(
     parseWeeklyReading("x".repeat(200))?.length === 120,
     "una lectura larguísima se recorta a 120 caracteres",
+  );
+
+  // Orador, tema y hospitalidad del fin de semana.
+  //
+  // Lo único que se toca son los ESPACIOS. Esto se comprueba letra a letra
+  // porque una vez una barra perdida en la expresión borró todas las eses:
+  // "Fortalezcamos nuestra amistad con Dios" se guardó como
+  // "Fortalezcamo nue tra ami tad con Dio" y salió así en el PDF.
+  const tema = "Fortalezcamos nuestra amistad con Dios";
+  check(parseProgramText(tema, 160) === tema, "el tema se guarda letra por letra");
+  check(
+    parseProgramText("Francisco Silva - Cabildo", 120) ===
+      "Francisco Silva - Cabildo",
+    "el orador también",
+  );
+  for (const letra of "abcdefghijklmnopqrstuvwxyzáéíóúñü") {
+    const palabra = `${letra}${letra}${letra}`;
+    if (parseProgramText(palabra, 120) !== palabra) {
+      check(false, `la letra «${letra}» se pierde al guardar`);
+    }
+  }
+  check(true, "ninguna letra del abecedario se pierde al guardar");
+  check(
+    parseProgramText("  Grupo   Nro   4  ", 120) === "Grupo Nro 4",
+    "los espacios de sobra sí se juntan",
+  );
+  check(
+    parseProgramText("\n\tCongregación\n", 120) === "Congregación",
+    "los saltos de línea y tabulaciones también",
+  );
+  check(parseProgramText("   ", 120) === null, "solo espacios borra el dato");
+  check(
+    parseProgramText("x".repeat(200), 160)?.length === 160,
+    "un tema larguísimo se recorta al tope",
   );
 }
 

@@ -27,6 +27,7 @@ import {
 import {
   parseSongNumber,
   parseWeeklyReading,
+  parseProgramText,
 } from "@/lib/meeting-program";
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
@@ -37,11 +38,7 @@ function textoPrograma(
   campo: string,
   max: number,
 ): string | null {
-  const v = String(formData.get(campo) ?? "")
-    .replace(/s+/g, " ")
-    .trim()
-    .slice(0, max);
-  return v.length > 0 ? v : null;
+  return parseProgramText(String(formData.get(campo) ?? ""), max);
 }
 
 function newToken(): string {

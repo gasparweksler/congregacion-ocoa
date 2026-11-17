@@ -25,5 +25,18 @@ export function parseSongNumber(raw: string): string | null | undefined {
 
 /** Lectura semanal: espacios colapsados, recortada, y vacío = sin dato. */
 export function parseWeeklyReading(raw: string, max = 120): string | null {
+  return parseProgramText(raw, max);
+}
+
+/**
+ * Texto libre del programa (el orador, el tema, la hospitalidad): se juntan
+ * los espacios de sobra, se recorta al tope y vacío significa borrar el dato.
+ *
+ * Lo único que se toca son los ESPACIOS. Las letras se guardan tal cual: una
+ * vez, por una barra perdida en la expresión, esto borró las eses de un tema
+ * ("Fortalezcamos nuestra amistad" quedó en "Fortalezcamo nue tra ami tad"),
+ * así que ahora vive aquí, donde se puede probar.
+ */
+export function parseProgramText(raw: string, max: number): string | null {
   return raw.replace(/\s+/g, " ").trim().slice(0, max) || null;
 }
