@@ -71,10 +71,38 @@ const BLOQUES = [
 ];
 
 /** Los bordes de las cuatro columnas de una tabla. */
-function bordes(x0: number): number[] {
+export function bordes(x0: number): number[] {
   const out = [x0];
   for (const w of COLS) out.push(out[out.length - 1] + w);
   return out;
+}
+
+/** Dónde empieza la fila del pie, la del promedio del año. */
+export function yDelPie(yFilas: number): number {
+  return yFilas + 12 * FILA;
+}
+
+/**
+ * Las separaciones verticales de una tabla.
+ *
+ * Las dos primeras se cortan al llegar a la fila del pie: ahí el rótulo
+ * "Promedio de asistencia mensual" ocupa las tres primeras columnas de una
+ * pieza, igual que en el formulario original. Si la raya siguiera hasta
+ * abajo, partiría el texto por la mitad.
+ */
+export function segmentosVerticales(
+  x0: number,
+  yCabecera: number,
+  yFilas: number,
+): Array<{ x: number; y0: number; y1: number }> {
+  const b = bordes(x0);
+  const pie = yDelPie(yFilas);
+  const abajo = yFilas + FILA * 13;
+  return [
+    { x: b[1], y0: yCabecera, y1: pie },
+    { x: b[2], y0: yCabecera, y1: pie },
+    { x: b[3], y0: yCabecera, y1: abajo },
+  ];
 }
 
 /** Texto centrado dentro de una columna. */
@@ -127,9 +155,10 @@ function rejilla(doc: jsPDF, x0: number, yCabecera: number, yFilas: number): voi
     const y = yFilas + i * FILA;
     doc.line(x0, y, x0 + ancho, y);
   }
-  // Las columnas, de arriba abajo.
-  for (let i = 1; i < b.length - 1; i++) {
-    doc.line(b[i], yCabecera, b[i], yCabecera + alto);
+  // Las columnas. Las dos primeras no bajan hasta el final: la fila del pie
+  // lleva un solo rótulo a lo ancho de las tres primeras columnas.
+  for (const s of segmentosVerticales(x0, yCabecera, yFilas)) {
+    doc.line(s.x, s.y0, s.x, s.y1);
   }
 }
 

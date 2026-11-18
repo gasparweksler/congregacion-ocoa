@@ -14,6 +14,9 @@ import { createRequire } from "node:module";
 import { jsPDF } from "jspdf";
 import {
   dibujarS88,
+  bordes,
+  yDelPie,
+  segmentosVerticales,
   type ColumnaS88,
   type CeldaS88,
 } from "../src/lib/asistencia-s88-pdf.js";
@@ -211,6 +214,62 @@ titulo("7. La segunda columna (el año siguiente) queda en blanco si no hay dato
   check(
     enCasilla(299, 379, 141) === "Septiembre",
     "pero con sus meses, lista para rellenar a mano",
+  );
+}
+
+titulo("8. El rótulo del pie no lo parte ninguna raya");
+{
+  // "Promedio de asistencia mensual" va centrado a lo ancho de las tres
+  // primeras columnas. Si las separaciones de columna bajaran hasta el
+  // final, cortarían el texto (que es justo lo que pasaba antes).
+  const medidor = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+  medidor.setFont("helvetica", "normal");
+  medidor.setFontSize(9);
+  const anchoRotulo = medidor.getTextWidth("Promedio de asistencia mensual");
+
+  // Las dos tablas de cada bloque (año elegido y año siguiente), en las
+  // mismas posiciones que usa el dibujo.
+  const TABLAS = [18, 299];
+  const BLOQUES = [
+    { yCabecera: 96, yFilas: 127 },
+    { yCabecera: 445, yFilas: 476 },
+  ];
+
+  let bien = true;
+  for (const x0 of TABLAS) {
+    const b = bordes(x0);
+    const anchoCasilla = b[3] - b[0];
+    const centro = (b[0] + b[3]) / 2;
+    const izq = centro - anchoRotulo / 2;
+    const der = centro + anchoRotulo / 2;
+
+    check(
+      anchoRotulo < anchoCasilla - 4,
+      `el rótulo cabe en las tres columnas (${Math.round(anchoRotulo)} de ${anchoCasilla} pt)`,
+    );
+    // El texto SÍ pasa por encima de donde estaban las separaciones: por eso
+    // hace falta cortarlas.
+    check(
+      izq < b[1] && der > b[2],
+      "y ocupa de verdad las tres columnas (por eso la fila va de una pieza)",
+    );
+
+    for (const { yCabecera, yFilas } of BLOQUES) {
+      const pie = yDelPie(yFilas);
+      for (const s of segmentosVerticales(x0, yCabecera, yFilas)) {
+        const cruzaElRotulo = s.y1 > pie + 1 && s.x > izq && s.x < der;
+        if (cruzaElRotulo) bien = false;
+      }
+    }
+  }
+  check(bien, "ninguna separación de columna baja hasta la fila del pie");
+
+  // Y la raya de la última columna sí tiene que llegar abajo: el promedio
+  // del año va en su propia casilla.
+  const ultima = segmentosVerticales(18, 96, 127)[2];
+  check(
+    ultima.y1 === 127 + 20 * 13,
+    "pero la de la casilla del promedio sí llega hasta abajo",
   );
 }
 
