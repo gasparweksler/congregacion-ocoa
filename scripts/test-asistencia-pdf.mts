@@ -55,8 +55,18 @@ const columna: ColumnaS88 = {
   })),
 };
 
+// La hoja lleva dos años de servicio. El segundo, recién empezado: solo
+// septiembre tiene algo anotado.
+const columnaB: ColumnaS88 = {
+  anio: 2028,
+  meses: MESES.map((_, i) => ({
+    entreSemana: i === 0 ? celda(4, 360) : celda(0, 0),
+    finDeSemana: i === 0 ? celda(5, 700) : celda(0, 0),
+  })),
+};
+
 const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-dibujarS88(doc, { columnas: [columna, null] });
+dibujarS88(doc, { columnas: [columna, columnaB] });
 const bytes = new Uint8Array(doc.output("arraybuffer"));
 if (process.env.GUARDAR) {
   writeFileSync(process.env.GUARDAR, bytes);
@@ -118,7 +128,15 @@ for (const [nombre, trozo] of [
 ] as const) {
   check(texto.includes(trozo), `está la columna «${nombre}»`);
 }
-check(texto.includes("2027"), "y el año de servicio elegido");
+// La hoja lleva los dos años de servicio, uno por columna, como el impreso.
+check(
+  enCasilla(18, 98, 121) === "2027",
+  "la columna de la izquierda lleva el año elegido",
+);
+check(
+  enCasilla(299, 379, 121) === "2028",
+  "y la de la derecha, el siguiente",
+);
 
 titulo("3. Los doce meses, en orden, en los dos bloques");
 // Las filas del bloque de entre semana empiezan en y=141; las del fin de
@@ -206,14 +224,26 @@ titulo("6. El promedio del año, al pie de cada bloque");
   );
 }
 
-titulo("7. La segunda columna (el año siguiente) queda en blanco si no hay datos");
+titulo("7. La segunda columna: el año siguiente, en la misma hoja");
 {
-  const sinDatos =
-    enCasilla(379, 447, 141) === "" && enCasilla(379, 447, 490) === "";
-  check(sinDatos, "sin números");
+  // Septiembre del segundo año sí tiene datos.
   check(
-    enCasilla(299, 379, 141) === "Septiembre",
-    "pero con sus meses, lista para rellenar a mano",
+    enCasilla(379, 447, 141) === "4" && enCasilla(447, 511, 141) === "360",
+    "lo anotado del segundo año sale en su columna",
+  );
+  check(
+    enCasilla(379, 447, 490) === "5" && enCasilla(447, 511, 490) === "700",
+    "en los dos bloques",
+  );
+  // Y octubre, que todavía no tiene nada, queda vacío.
+  check(
+    enCasilla(379, 447, 161) === "" && enCasilla(447, 511, 161) === "",
+    "los meses sin anotar quedan en blanco, para rellenarlos a mano",
+  );
+  check(
+    enCasilla(299, 379, 141) === "Septiembre" &&
+      enCasilla(299, 379, 161) === "Octubre",
+    "con sus doce meses igual que la primera",
   );
 }
 

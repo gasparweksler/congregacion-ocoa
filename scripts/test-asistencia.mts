@@ -16,8 +16,9 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
 import {
   anioDeServicio,
-  aniosDeServicioOpciones,
   etiquetaAnioDeServicio,
+  etiquetaHoja,
+  hojasDelS88,
   filasDelMes,
   mesesDelAnioDeServicio,
   parseAsistencia,
@@ -86,10 +87,30 @@ titulo("A1. El año de servicio va de septiembre a agosto");
     "y termina justo antes del 1 de septiembre de 2027",
   );
 
-  const opciones = aniosDeServicioOpciones(new Date(2026, 10, 18));
+  // El selector del S-88: parejas de años, empezando por el año en curso.
+  const hoy = new Date(2026, 10, 18); // 18 de noviembre de 2026 → año 2027
+  const hojas = hojasDelS88({ hoy });
+  check(hojas[0] === 2027, `la primera hoja es la del año en curso (${hojas[0]})`);
   check(
-    opciones[0] === 2028 && opciones.includes(2027),
-    "el selector ofrece el año que viene y el actual",
+    etiquetaHoja(hojas[0]) === "2027 y 2028" &&
+      etiquetaHoja(hojas[1]) === "2028 y 2029",
+    "y van de dos en dos: 2027 y 2028, 2028 y 2029…",
+  );
+  check(
+    hojas.every((a, i) => i === 0 || a === hojas[i - 1] + 1),
+    "la lista va hacia delante, sin saltos",
+  );
+  check(
+    !hojas.includes(2026),
+    "sin años anteriores cuando no hay nada anotado antes",
+  );
+  check(
+    hojasDelS88({ hoy, desde: 2025 }).includes(2025),
+    "pero si hay registros viejos, su hoja sigue estando",
+  );
+  check(
+    hojasDelS88({ hoy, mirando: 2024 }).includes(2024),
+    "y el año que se está mirando nunca se queda fuera",
   );
 }
 

@@ -18,6 +18,7 @@ import { getMeetingDays } from "@/lib/meeting-days";
 import { logAudit } from "@/lib/audit";
 import { MEETING_DAYS, type MeetingDays } from "@/lib/constants";
 import {
+  anioDeServicio,
   etiquetaAnioDeServicio,
   etiquetaDeMes,
   fechaDeISO,
@@ -154,6 +155,23 @@ export async function getHistorialAnioDeServicio(
         })),
     };
   });
+}
+
+/**
+ * El año de servicio del registro más antiguo de la congregación, o nulo si
+ * todavía no hay nada anotado. Sirve para que el selector de hojas del S-88
+ * no deje fuera un año viejo que sí tiene datos.
+ */
+export async function getPrimerAnioConDatos(): Promise<number | null> {
+  const user = await requireSecretary();
+  const cong = congregationId(user);
+  const primera = await prisma.meetingAttendance.findFirst({
+    where: { congregationId: cong },
+    orderBy: { date: "asc" },
+    select: { date: true },
+  });
+  if (!primera) return null;
+  return anioDeServicio(primera.date.getFullYear(), primera.date.getMonth() + 1);
 }
 
 /** Lo que el PDF S-88 necesita de un año de servicio, ya resumido. */

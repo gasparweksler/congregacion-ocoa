@@ -13,10 +13,16 @@
 import { requireSecretary, congregationId } from "@/lib/access";
 import { parsePeriod } from "@/lib/period";
 import { monthName, weekdayName } from "@/lib/constants";
-import { anioDeServicio, etiquetaAnioDeServicio } from "@/lib/asistencia";
+import {
+  anioDeServicio,
+  etiquetaHoja,
+  etiquetaRangoHoja,
+  hojasDelS88,
+} from "@/lib/asistencia";
 import {
   getAsistenciaDelMes,
   getHistorialAnioDeServicio,
+  getPrimerAnioConDatos,
 } from "@/server/asistencia-actions";
 import { getMeetingDays } from "@/lib/meeting-days";
 import { PageHeader } from "@/components/PageHeader";
@@ -29,26 +35,28 @@ import { S88Descarga } from "@/components/forms/S88Descarga";
 export default async function AsistenciaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; mes?: string; servicio?: string }>;
+  searchParams: Promise<{ anio?: string; mes?: string; hoja?: string }>;
 }) {
   const user = await requireSecretary();
   const cong = congregationId(user);
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);
 
-  // El año de servicio: el del mes que se está mirando, salvo que se elija
-  // otro para la descarga y el historial.
-  const pedido = parseInt(sp.servicio ?? "", 10);
-  const servicio =
-    !isNaN(pedido) && pedido >= 2000 && pedido <= 2100
-      ? pedido
-      : anioDeServicio(year, month);
+  // El historial sigue siempre al mes que se está mirando.
+  const servicio = anioDeServicio(year, month);
 
-  const [mes, historial, days] = await Promise.all([
+  const [mes, historial, days, primeroConDatos] = await Promise.all([
     getAsistenciaDelMes(year, month),
     getHistorialAnioDeServicio(servicio),
     getMeetingDays(cong),
+    getPrimerAnioConDatos(),
   ]);
+
+  // La hoja del S-88 lleva dos años de servicio. Se ofrece la del año en
+  // curso en adelante (y hacia atrás solo si ya hay algo anotado antes).
+  const hojas = hojasDelS88({ desde: primeroConDatos, mirando: servicio });
+  const pedida = parseInt(sp.hoja ?? "", 10);
+  const hoja = hojas.includes(pedida) ? pedida : servicio;
 
   return (
     <>
@@ -61,10 +69,10 @@ export default async function AsistenciaPage({
       <Card className="mb-4">
         <CardHeader
           title="Registro de asistencia S-88-S"
-          description={`El año de servicio va de septiembre a agosto. ${etiquetaAnioDeServicio(servicio)}.`}
+          description={`La hoja lleva dos años de servicio, uno en cada columna, como el formulario de papel. Hoja ${etiquetaHoja(hoja)}: ${etiquetaRangoHoja(hoja).toLowerCase()}.`}
         />
         <CardBody>
-          <S88Descarga anio={servicio} />
+          <S88Descarga hoja={hoja} hojas={hojas} />
         </CardBody>
       </Card>
 

@@ -1,11 +1,12 @@
 // ============================================================================
-//  GET /api/asistencia-s88-pdf?servicio=2027
-//  El registro de asistencia a las reuniones (S-88-S) del año de servicio
-//  elegido, con los datos anotados en Ocoa.
+//  GET /api/asistencia-s88-pdf?hoja=2027
+//  El registro de asistencia a las reuniones (S-88-S), con los datos
+//  anotados en Ocoa.
 //
-//  El formulario tiene sitio para dos años de servicio, uno en cada columna:
-//  a la izquierda va el elegido y a la derecha el siguiente, que solo se
-//  rellena si ya tiene algo anotado.
+//  Una hoja del formulario lleva DOS años de servicio, uno en cada columna:
+//  el elegido a la izquierda y el siguiente a la derecha (la hoja "2027 y
+//  2028"). Las dos columnas salen siempre con su año escrito; los meses que
+//  todavía no tienen nada anotado quedan en blanco, para rellenarlos a mano.
 //
 //  El dibujo vive en src/lib/asistencia-s88-pdf.ts: así es el mismo código
 //  que prueba scripts/test-asistencia-pdf.mts, sin copias que se queden atrás.
@@ -20,7 +21,7 @@ import { dibujarS88, type ColumnaS88 } from "@/lib/asistencia-s88-pdf";
 
 export const dynamic = "force-dynamic";
 
-/** El año de servicio pedido, o el de hoy si no se entiende. */
+/** El primer año de servicio de la hoja pedida, o el de hoy si no se entiende. */
 function anioPedido(valor: string | null): number {
   const n = parseInt(valor ?? "", 10);
   if (!isNaN(n) && n >= 2000 && n <= 2100) return n;
@@ -47,33 +48,25 @@ async function columnaDe(anio: number): Promise<ColumnaS88> {
   };
 }
 
-/** ¿Esta columna tiene algo que enseñar? */
-function tieneDatos(c: ColumnaS88): boolean {
-  return c.meses.some(
-    (m) => m.entreSemana.reuniones > 0 || m.finDeSemana.reuniones > 0,
-  );
-}
-
 export async function GET(request: Request) {
   // getResumenS88 ya exige la sesión; aquí se repite para no generar nada
   // antes de saber quién pide el archivo.
   await requireSecretary();
   const { searchParams } = new URL(request.url);
-  const anio = anioPedido(searchParams.get("servicio"));
+  const anio = anioPedido(searchParams.get("hoja"));
 
+  // Las dos columnas de la hoja: el año elegido y el siguiente.
   const izquierda = await columnaDe(anio);
-  const siguiente = await columnaDe(anio + 1);
+  const derecha = await columnaDe(anio + 1);
 
   const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-  dibujarS88(doc, {
-    columnas: [izquierda, tieneDatos(siguiente) ? siguiente : null],
-  });
+  dibujarS88(doc, { columnas: [izquierda, derecha] });
 
   const buffer = doc.output("arraybuffer");
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="S-88-S_asistencia_${anio - 1}-${anio}.pdf"`,
+      "Content-Disposition": `attachment; filename="S-88-S_asistencia_${anio}-${anio + 1}.pdf"`,
     },
   });
 }

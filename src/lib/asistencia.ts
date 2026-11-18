@@ -64,16 +64,45 @@ export function etiquetaAnioDeServicio(anio: number): string {
   return `Septiembre de ${anio - 1} a agosto de ${anio}`;
 }
 
-/** Años de servicio para el selector, del más nuevo al más viejo. */
-export function aniosDeServicioOpciones(
+/**
+ * Las hojas del S-88 que se pueden descargar, de la más vieja a la más nueva.
+ *
+ * Cada hoja lleva DOS años de servicio seguidos, como el formulario de papel:
+ * 2027 y 2028, 2028 y 2029, 2029 y 2030… Cada número de la lista es el
+ * PRIMERO de la pareja.
+ *
+ * La lista empieza en el año de servicio en curso, y solo retrocede si ya hay
+ * algo anotado antes (para que una hoja vieja nunca deje de poder imprimirse).
+ */
+export function hojasDelS88({
   hoy = new Date(),
-  cuantos = 6,
-): number[] {
+  desde = null,
+  mirando = null,
+}: {
+  /** Para poder probarlo sin depender del día de hoy. */
+  hoy?: Date;
+  /** Año de servicio del registro más antiguo, si hay alguno. */
+  desde?: number | null;
+  /** Año de servicio del mes que se está mirando. */
+  mirando?: number | null;
+} = {}): number[] {
   const actual = anioDeServicio(hoy.getFullYear(), hoy.getMonth() + 1);
+  const primero = Math.min(actual, desde ?? actual, mirando ?? actual);
+  // Dos por delante: en agosto ya se prepara la hoja del año que viene.
+  const ultimo = Math.max(actual + 2, mirando ?? actual, desde ?? actual);
   const out: number[] = [];
-  // Uno por delante: en agosto ya se puede preparar el que viene.
-  for (let a = actual + 1; a > actual + 1 - cuantos; a--) out.push(a);
+  for (let a = primero; a <= ultimo; a++) out.push(a);
   return out;
+}
+
+/** "2027 y 2028": los dos años de servicio que caben en una hoja. */
+export function etiquetaHoja(anio: number): string {
+  return `${anio} y ${anio + 1}`;
+}
+
+/** "Septiembre de 2026 a agosto de 2028": lo que abarca una hoja entera. */
+export function etiquetaRangoHoja(anio: number): string {
+  return `Septiembre de ${anio - 1} a agosto de ${anio + 1}`;
 }
 
 /** "noviembre de 2026", para los textos de confirmación. */
