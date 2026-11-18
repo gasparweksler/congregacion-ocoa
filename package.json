@@ -11,6 +11,7 @@
     "test:pdf": "tsx scripts/test-resp-pdf.mts",
     "test:pdf-nocanvas": "tsx scripts/test-pdf-nocanvas.mts",
     "test:card": "tsx scripts/test-card.mts",
+    "test:tarjeta-notas": "tsx scripts/test-tarjeta-notas.mts",
     "test:cards-zip": "tsx scripts/test-cards-zip.mts",
     "audit:congregacion": "tsx scripts/audit-congregacion.mts",
     "test:aislamiento": "tsx scripts/test-aislamiento.mts",
