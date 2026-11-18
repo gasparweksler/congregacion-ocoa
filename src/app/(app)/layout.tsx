@@ -63,6 +63,19 @@ export default async function AppLayout({
       group: "Informes",
     },
     { href: "/historial", label: "Años anteriores", icon: "🕓", group: "Informes" },
+    // El registro de asistencia a las reuniones (el S-88) lo lleva el
+    // Administrador: no entra en el menú del Superintendente ni del Auxiliar,
+    // que solo ven los informes de su grupo.
+    ...(isSecretary
+      ? [
+          {
+            href: "/asistencia",
+            label: "Asistencia a Reuniones",
+            icon: "🧾",
+            group: "Informes",
+          } as NavItem,
+        ]
+      : []),
   ];
   const meetingsItems: NavItem[] = [
     { href: "/reuniones", label: "Reuniones", icon: "📅", group: "Reuniones" },

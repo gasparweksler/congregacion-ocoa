@@ -77,6 +77,7 @@ model Congregation {
   territoryVisits         TerritoryVisit[]
   serviceOutings          ServiceOuting[]
   servicePresets          ServicePreset[]
+  meetingAttendance       MeetingAttendance[]
 }
 
 // ----------------------------------------------------------------------------
@@ -641,4 +642,36 @@ model ServicePreset {
 
   @@unique([congregationId, kind, value])
   @@index([congregationId, kind])
+}
+
+// ----------------------------------------------------------------------------
+//  ASISTENCIA A LAS REUNIONES  (registro S-88)
+// ----------------------------------------------------------------------------
+// Una fila por reunión y fecha. No se apoya en la tabla Meeting a propósito:
+// la asistencia se anota aunque esa reunión no tenga programa cargado, y el
+// historial debe sobrevivir a cualquier cambio en los días de reunión de la
+// congregación.
+model MeetingAttendance {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  date DateTime // a mediodía local, el día de la reunión
+  // El TIPO de reunión, con los mismos valores que el resto de la aplicación:
+  //   JUEVES = entre semana · SABADO = fin de semana
+  day  String
+
+  // ¿Hubo reunión normal? Por defecto sí; se marca No cuando se suspendió.
+  held  Boolean @default(true)
+  // Asistencia contada. Nulo = todavía no se anotó (no cuenta en promedios).
+  count Int?
+  // Observaciones ("Reunión suspendida", "Visita del superintendente"…).
+  note  String  @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([congregationId, date, day])
+  @@index([congregationId, date])
 }
