@@ -1072,8 +1072,156 @@ export function ProgramaPredicacion({
           pulsa “Generar salidas”.
         </Alert>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+        <>
+          {/* ---- Teléfonos y tablets: una tarjeta por salida ----
+              La tabla tiene siete columnas y no cabe en una pantalla estrecha:
+              había que arrastrarla de lado, y la columna de "Quitar" quedaba
+              encima de los grupos y del capitán. Así cada salida se ve entera,
+              una debajo de otra. */}
+          <div className="space-y-3 lg:hidden">
+            {enOrden.map((s) => {
+              const fecha = fechaDeISO(s.iso);
+              return (
+                <div
+                  key={s.key}
+                  className="rounded-2xl border border-border bg-surface p-3 shadow-sm"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2 border-b border-border pb-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {fecha ? etiquetaDeFecha(fecha) : "Salida sin fecha"}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {turnoLabel(s.turno)}
+                        {s.time ? ` · ${s.time}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => quitar(s.key)}
+                      aria-label={`Quitar la salida del ${s.iso}`}
+                      className="shrink-0 rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap text-red-600 hover:bg-red-50"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                      <span className={etiqueta}>Fecha</span>
+                      <input
+                        type="date"
+                        value={s.iso}
+                        onChange={(e) => cambiar(s.key, { iso: e.target.value })}
+                        className={`${campo} w-full`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className={etiqueta}>Turno</span>
+                      <select
+                        value={s.turno}
+                        onChange={(e) =>
+                          cambiar(s.key, { turno: e.target.value as Turno })
+                        }
+                        className={`${campo} w-full`}
+                      >
+                        <option value={TURNOS.MANANA}>
+                          {turnoLabel(TURNOS.MANANA)}
+                        </option>
+                        <option value={TURNOS.TARDE}>
+                          {turnoLabel(TURNOS.TARDE)}
+                        </option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className={etiqueta}>Hora</span>
+                      <input
+                        value={s.time}
+                        onChange={(e) => cambiar(s.key, { time: e.target.value })}
+                        className={`${campo} w-full`}
+                        maxLength={20}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className={etiqueta}>Lugar de encuentro</span>
+                      <input
+                        value={s.place}
+                        onChange={(e) => cambiar(s.key, { place: e.target.value })}
+                        list="lugares-guardados"
+                        className={`${campo} w-full`}
+                        maxLength={120}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className={etiqueta}>Territorio</span>
+                      <select
+                        value={s.territoryId}
+                        onChange={(e) =>
+                          cambiar(s.key, { territoryId: e.target.value })
+                        }
+                        className={`${campo} w-full`}
+                      >
+                        <option value="">— Sin territorio —</option>
+                        {territorios.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {nombreCompleto(t)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className={etiqueta}>Capitán</span>
+                      <input
+                        value={s.captainName}
+                        onChange={(e) =>
+                          cambiar(s.key, { captainName: e.target.value })
+                        }
+                        list="capitanes-guardados"
+                        className={`${campo} w-full`}
+                        maxLength={120}
+                      />
+                    </label>
+                  </div>
+
+                  {gruposDisponibles.length > 0 ? (
+                    <fieldset className="mt-2 border-t border-border pt-2">
+                      <legend className="sr-only">Grupos que salen</legend>
+                      <span className={etiqueta}>
+                        Grupos{" "}
+                        <span className="text-muted">
+                          {s.groups.length === 0
+                            ? "· toda la congregación"
+                            : s.groups.length > 1
+                              ? "· salida compartida"
+                              : ""}
+                        </span>
+                      </span>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                        {gruposDisponibles.map((g) => (
+                          <label
+                            key={g}
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-foreground"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={s.groups.includes(g)}
+                              onChange={() => alternarGrupoDeSalida(s.key, g)}
+                              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/25"
+                            />
+                            {g}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ---- Pantallas anchas: la tabla de siempre ---- */}
+          <div className="hidden overflow-x-auto lg:block">
+          <table className="w-max min-w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className="border-b border-border px-2 py-2 text-left font-semibold text-muted">
@@ -1099,11 +1247,7 @@ export function ProgramaPredicacion({
                     Grupos
                   </th>
                 ) : null}
-                {/* Pegada a la derecha: la tabla es más ancha que la pantalla
-                    en un teléfono o una tablet, y antes había que arrastrarla
-                    hasta el final para encontrar "Quitar" —y se veía cortado
-                    contra el borde—. Así la columna viaja con el scroll. */}
-                <th className="sticky right-0 z-10 w-20 border-b border-border bg-surface px-2 py-2 text-right font-semibold text-muted shadow-[-8px_0_8px_-8px_rgba(15,22,21,0.18)]">
+                <th className="w-20 border-b border-border px-2 py-2 text-right font-semibold text-muted">
                   <span className="sr-only">Acciones</span>
                 </th>
               </tr>
@@ -1219,7 +1363,7 @@ export function ProgramaPredicacion({
                         </div>
                       </td>
                     ) : null}
-                    <td className="sticky right-0 z-10 w-20 border-b border-border bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_rgba(15,22,21,0.18)]">
+                    <td className="w-20 border-b border-border px-2 py-2 text-right">
                       <button
                         type="button"
                         onClick={() => quitar(s.key)}
@@ -1234,7 +1378,8 @@ export function ProgramaPredicacion({
               })}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       <div className="space-y-3">
