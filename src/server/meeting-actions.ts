@@ -29,6 +29,7 @@ import {
   parseWeeklyReading,
   parseProgramText,
 } from "@/lib/meeting-program";
+import { filtroResponsabilidadesDeReunion } from "@/lib/monthly-resp-plan";
 import { logAudit } from "@/lib/audit";
 import { type FormState, isUniqueViolation } from "@/server/actions-shared";
 
@@ -750,3 +751,60 @@ export async function deleteMeetingAction(formData: FormData): Promise<void> {
   redirect("/reuniones");
 }
 
+/**
+ * Borra TODAS las responsabilidades de UNA reunión (Acomodadores, Pasa
+ * Micrófono, Audio, Video, Plataforma y Limpieza por Grupos).
+ *
+ * Qué se borra y qué no:
+ *  - Solo las casillas de responsabilidad de ESA reunión, comprobando antes
+ *    que la reunión es de la congregación de quien lo pide.
+ *  - Las asignaciones del programa (Tesoros, Seamos Mejores Maestros, Nuestra
+ *    Vida Cristiana, Presidente…) no se tocan, ni la reunión, ni ninguna otra
+ *    reunión, ni la planificación de los demás días del mes.
+ *
+ * No se guarda nada en el historial de Estadísticas a propósito: esto no es
+ * borrar una reunión que ya pasó, es dejar sus responsabilidades en blanco
+ * para volver a repartirlas. Si se archivaran, las Estadísticas seguirían
+ * contando a hermanos que ya no tienen esa responsabilidad.
+ */
+export async function deleteMeetingResponsibilitiesAction(
+  meetingId: string,
+): Promise<FormState> {
+  const user = await requireMeetingsAccess();
+  const cong = congregationId(user);
+  const id = String(meetingId ?? "").trim();
+  if (!id) return { error: "Falta la reunión." };
+
+  const meeting = await prisma.meeting.findFirst({
+    where: { id, congregationId: cong },
+    select: { id: true },
+  });
+  if (!meeting) return { error: "Reunión no encontrada." };
+
+  const { count } = await prisma.meetingAssignment.deleteMany({
+    where: filtroResponsabilidadesDeReunion(id),
+  });
+
+  if (count === 0) {
+    return { success: "Esta reunión ya no tenía ninguna responsabilidad." };
+  }
+
+  await logAudit({
+    userId: user.id,
+    action: "ELIMINAR",
+    entity: "Reunion",
+    entityId: id,
+    details: `Se eliminaron las ${count} responsabilidad(es) de la reunión.`,
+  });
+
+  revalidatePath(`/reuniones/${id}`);
+  revalidatePath("/reuniones");
+  revalidatePath("/reuniones/responsabilidades");
+  revalidatePath("/reuniones/estadisticas");
+
+  return {
+    success:
+      `Listo: se eliminaron las ${count} responsabilidad(es) de esta reunión. ` +
+      "Para volver a ponerlas, hazlo desde «Todas las Responsabilidades del mes».",
+  };
+}

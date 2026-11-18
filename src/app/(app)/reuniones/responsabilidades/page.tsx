@@ -105,20 +105,15 @@ export default async function ResponsabilidadesMensualPage({
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader
-          title={`Responsabilidades · ${monthName(month)} ${year}`}
-          description="Cada cambio se guarda automáticamente y se refleja en la reunión."
-        />
-        <CardBody>
-          <MonthlyResponsibilities
-            rows={rows}
-            publishers={publishers}
-            groups={groups}
-            ajustes={respSettings}
-          />
-        </CardBody>
-      </Card>
+      {/* El programa del mes. La tarjeta la dibuja el propio componente: los
+          botones Editar y Guardar van junto al título. */}
+      <MonthlyResponsibilities
+        titulo={`Responsabilidades · ${monthName(month)} ${year}`}
+        rows={rows}
+        publishers={publishers}
+        groups={groups}
+        ajustes={respSettings}
+      />
 
       {/* El selector se repite al final: con un mes entero de fechas, volver
           arriba para cambiar de mes obliga a un scroll largo. */}

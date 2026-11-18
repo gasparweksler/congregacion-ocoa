@@ -123,6 +123,7 @@ export function MeetingEditor({
   sectionLabels,
   hermanos,
   responsibilities,
+  respMonthHref,
   programa,
   esFinde,
   loadedAt,
@@ -140,6 +141,8 @@ export function MeetingEditor({
   sectionLabels: Record<string, string>;
   hermanos: string[];
   responsibilities: RespItem[];
+  /** Atajo a "Todas las Responsabilidades del mes" en el mes de la reunión. */
+  respMonthHref: string;
   /** Datos del discurso público y la hospitalidad (solo fin de semana). */
   programa: ProgramaFinde;
   /** ¿Es una reunión de fin de semana? */
@@ -589,8 +592,10 @@ export function MeetingEditor({
 
         {tab === "resp" ? (
           <MeetingResponsibilities
+            meetingId={meetingId}
             dayLabel={dayLabel}
             dateLabel={dateLabel}
+            respMonthHref={respMonthHref}
             items={responsibilities}
           />
         ) : (

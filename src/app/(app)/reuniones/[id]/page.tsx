@@ -11,7 +11,9 @@ import {
   MEETING_DAYS,
   MONTHLY_RESP_KEYS,
   slotsForDay,
+  weekdayOfMeetingDay,
 } from "@/lib/constants";
+import { realMeetingDate } from "@/lib/meeting-week";
 import { formatDate, toInputDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardBody } from "@/components/ui";
@@ -120,6 +122,16 @@ export default async function ReunionDetallePage({
 
   // Lo que la planilla trae de la semana, sin inventar nada: si un dato no
   // estaba en el Excel, queda vacío y se puede escribir a mano.
+  // Atajo a "Todas las Responsabilidades del mes" desde esta reunión: se abre
+  // ya en SU mes, no en el de hoy. Las reuniones importadas guardan la fecha
+  // del lunes de su semana, así que el mes se toma del día en que de verdad
+  // se reúnen (que puede caer en el mes siguiente).
+  const fechaReal = realMeetingDate(meeting.date, meeting.day, {
+    weekLabel: meeting.weekLabel,
+    weekday: weekdayOfMeetingDay(meeting.day, meetingDays),
+  });
+  const respMonthHref = `/reuniones/responsabilidades?anio=${fechaReal.getFullYear()}&mes=${fechaReal.getMonth() + 1}`;
+
   const datosPrograma = {
     weeklyReading: meeting.weeklyReading ?? "",
     songStart: meeting.songStart ?? "",
@@ -183,6 +195,7 @@ export default async function ReunionDetallePage({
         sectionLabels={MEETING_SECTION_LABELS}
         hermanos={hermanos}
         responsibilities={responsibilities}
+        respMonthHref={respMonthHref}
         esFinde={esFinde}
         programa={{
           speakerName: datosPrograma.speakerName,

@@ -171,9 +171,18 @@ async function createMeetingForDate(
  * vez que su fecha recibe un nombre, un nombre vacío no crea nada, y cambiar
  * de persona renueva el enlace de confirmación.
  */
+export type ResultadoGuardado = {
+  /** Casillas escritas. */
+  guardadas: number;
+  /** Reuniones que recibieron algún cambio. */
+  reunionesTocadas: number;
+  /** Reuniones que no existían en esa fecha y se crearon al guardar. */
+  reunionesCreadas: number;
+};
+
 export async function setMonthlyResponsibilities(
   entries: RespEntry[],
-): Promise<{ guardadas: number }> {
+): Promise<ResultadoGuardado> {
   const user = await requireMeetingsAccess();
   const cong = congregationId(user);
 
@@ -190,7 +199,9 @@ export async function setMonthlyResponsibilities(
       },
     ];
   });
-  if (tareas.length === 0) return { guardadas: 0 };
+  if (tareas.length === 0) {
+    return { guardadas: 0, reunionesTocadas: 0, reunionesCreadas: 0 };
+  }
 
   const fechaDe = (dateISO: string) => {
     const [y, m, d] = dateISO.split("-").map(Number);
@@ -237,6 +248,8 @@ export async function setMonthlyResponsibilities(
   // --- 2. Crear las reuniones que faltan (fechas distintas: van a la vez) ---
   const previas: CasillaPrevia[] = meetings.flatMap((m) => m.assignments);
   const faltan = fechasQueFaltan(tareas, idPorFecha);
+  // Las que de verdad hubo que crear, para poder decirlo al terminar.
+  const creadasAhora = new Set<string>();
   if (faltan.length > 0) {
     const creadas = await Promise.all(
       faltan.map(async (f) => ({
@@ -250,7 +263,10 @@ export async function setMonthlyResponsibilities(
         ),
       })),
     );
-    for (const c of creadas) idPorFecha.set(c.clave, c.id);
+    for (const c of creadas) {
+      idPorFecha.set(c.clave, c.id);
+      creadasAhora.add(c.id);
+    }
 
     // Las recién creadas ya traen sus casillas, pero no conocemos sus id:
     // una consulta más, solo cuando de verdad se creó alguna reunión.
@@ -315,7 +331,11 @@ export async function setMonthlyResponsibilities(
   revalidatePath("/reuniones");
   for (const id of tocadas) revalidatePath(`/reuniones/${id}`);
 
-  return { guardadas: escrituras.length };
+  return {
+    guardadas: escrituras.length,
+    reunionesTocadas: tocadas.size,
+    reunionesCreadas: [...tocadas].filter((id) => creadasAhora.has(id)).length,
+  };
 }
 
 /**

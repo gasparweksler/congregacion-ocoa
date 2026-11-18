@@ -8,7 +8,7 @@
 //  enlace de confirmación de WhatsApp.
 // ============================================================================
 
-import { CONFIRM_STATUS } from "@/lib/constants";
+import { CONFIRM_STATUS, MONTHLY_RESP_KEYS } from "@/lib/constants";
 
 /** Una casilla a guardar: qué fecha, qué responsabilidad y qué nombre. */
 export type RespEntry = {
@@ -122,4 +122,61 @@ export function planearEscrituras(
     });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+//  EDICIÓN MANUAL DEL PROGRAMA DEL MES (botones Editar / Guardar)
+// ---------------------------------------------------------------------------
+
+/** Una casilla de la pantalla mensual: lo que se ve y lo último guardado. */
+export type CasillaEditada = {
+  dateISO: string;
+  day: "JUEVES" | "SABADO";
+  slotKey: string;
+  /** Lo que hay escrito ahora en el recuadro. */
+  valor: string;
+  /** Lo último que se guardó en esa casilla. */
+  guardado: string;
+  /** Las que la congregación ya no reparte no se editan (por defecto, sí). */
+  editable?: boolean;
+};
+
+/**
+ * Qué casillas cambiaron de verdad: lo único que se manda al guardar.
+ * Los espacios de más no cuentan como cambio, y vaciar una casilla sí cuenta
+ * (es la forma de quitar a un hermano de una responsabilidad).
+ */
+export function casillasCambiadas(celdas: CasillaEditada[]): RespEntry[] {
+  const out: RespEntry[] = [];
+  for (const c of celdas) {
+    if (c.editable === false) continue;
+    const valor = c.valor.trim();
+    if (valor === c.guardado.trim()) continue;
+    out.push({
+      dateISO: c.dateISO,
+      day: c.day,
+      slotKey: c.slotKey,
+      value: valor,
+    });
+  }
+  return out;
+}
+
+/**
+ * Qué casillas de una reunión son "responsabilidades del mes" (las que se
+ * reparten desde la pantalla mensual). Se usa para vaciarlas todas de una vez
+ * sin tocar las asignaciones del programa (presidencia, lectura, discursos…).
+ *
+ * Vive aquí, y no escrito a mano en la acción, para que la prueba compruebe
+ * exactamente el mismo filtro que corre en producción.
+ */
+export function filtroResponsabilidadesDeReunion(meetingId: string) {
+  return {
+    meetingId,
+    OR: [
+      { section: "RESPONSABILIDADES" },
+      { section: "SAB_RESPONSABILIDADES" },
+      { slotKey: { in: [...MONTHLY_RESP_KEYS] } },
+    ],
+  };
 }
