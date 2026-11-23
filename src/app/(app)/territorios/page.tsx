@@ -7,7 +7,7 @@
 //  de predicación.
 // ============================================================================
 
-import { requireServiceAccess, congregationId } from "@/lib/access";
+import { requireServiceAccess, congregationId, isSecretary } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import {
   estadisticas,
@@ -146,6 +146,12 @@ export default async function TerritoriosPage() {
         <LinkButton href="/territorios/estadisticas" variant="secondary">
           📈 Estadísticas por mes
         </LinkButton>
+        {/* La encuesta de capitanes la lleva el Administrador. */}
+        {isSecretary(user) ? (
+          <LinkButton href="/territorios/capitanes" variant="secondary">
+            🧭 Capitanes
+          </LinkButton>
+        ) : null}
       </div>
 
       <div className="space-y-6">

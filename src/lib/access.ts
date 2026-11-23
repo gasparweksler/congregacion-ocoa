@@ -23,6 +23,7 @@ export type SessionUser = {
   mustChangePassword: boolean;
   alsoConfirmador: boolean;
   alsoTerritorios: boolean;
+  alsoCapitan: boolean;
 };
 
 /** Devuelve el usuario de la sesión o null si no hay sesión. */
@@ -84,6 +85,26 @@ export function canAccessReports(user: SessionUser): boolean {
  */
 export function canAccessService(user: SessionUser): boolean {
   return isSecretary(user) || Boolean(user.alsoTerritorios);
+}
+
+/**
+ * ¿Puede subir su propia disponibilidad como capitán de predicación?
+ *
+ * La casilla "Capitán" solo abre eso: su propia disponibilidad. No da acceso
+ * a la sección de Capitanes del Administrador ni a lo que contestaron los
+ * demás. El Administrador también puede subir la suya.
+ */
+export function canUploadCaptain(user: SessionUser): boolean {
+  return Boolean(user.alsoCapitan) || isSecretary(user);
+}
+
+/** Exige poder subir la disponibilidad de capitán. */
+export async function requireCaptain(): Promise<
+  SessionUser & { congregationId: string }
+> {
+  const user = await requireCongregation();
+  if (!canUploadCaptain(user)) redirect(landingFor(user));
+  return user;
 }
 
 /** Exige acceso a la sección Superintendente de Servicio. */

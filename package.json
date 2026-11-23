@@ -53,6 +53,7 @@
     "test:carreras": "tsx scripts/test-carreras-alta.mts",
     "test:asistencia-pdf": "tsx scripts/test-asistencia-pdf.mts",
     "test:asistencia": "tsx scripts/test-asistencia.mts",
+    "test:capitanes": "tsx scripts/test-capitanes.mts",
     "test:resp-editar": "tsx scripts/test-resp-editar.mts",
     "test:resp-lote": "tsx scripts/test-resp-lote.mts",
     "test:programa-libre": "tsx scripts/test-programa-libre.mts",
@@ -77,6 +78,7 @@
     "test:serie": "tsx scripts/test-serie-asignaciones.mts",
     "verificar:pdfs": "tsx scripts/verificar-pdfs-reunion.mts",
     "db:migrate-asistencia": "tsx scripts/migrate-asistencia.mts",
+    "db:migrate-capitanes": "tsx scripts/migrate-capitanes.mts",
     "db:migrate-acomodadores": "tsx scripts/migrate-acomodadores.mts",
     "test:acomodadores": "tsx scripts/test-acomodadores.mts"
   },

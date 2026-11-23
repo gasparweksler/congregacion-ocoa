@@ -10,6 +10,7 @@
 
 import { MEETING_DAYS, MONTH_NAMES, type MeetingDays } from "@/lib/constants";
 import { meetingDatesInMonth } from "@/lib/period";
+import { fechaDeISO, isoDeFecha } from "@/lib/dia";
 
 /** Los 12 meses del año de servicio, en orden: septiembre → agosto. */
 export const MESES_ANIO_SERVICIO = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8] as const;
@@ -110,19 +111,10 @@ export function etiquetaDeMes(year: number, month: number): string {
   return `${MONTH_NAMES[month - 1].toLowerCase()} de ${year}`;
 }
 
-/** La fecha de una fila, como la guarda la base (mediodía local). */
-export function fechaDeISO(dateISO: string): Date {
-  const [y, m, d] = dateISO.split("-").map(Number);
-  return new Date(y, m - 1, d, 12, 0, 0);
-}
-
-/** "2026-11-06" a partir de una fecha. */
-export function isoDeFecha(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+// Las fechas de un día se guardan a mediodía local y viajan como
+// "2026-11-06". La regla vive en src/lib/dia.ts, porque la comparten varias
+// secciones; se reexporta aquí para no cambiar lo que ya la usaba.
+export { fechaDeISO, isoDeFecha };
 
 /**
  * Lo que se escribe en la casilla de asistencia, ya limpio: solo números

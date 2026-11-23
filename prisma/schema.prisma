@@ -78,6 +78,9 @@ model Congregation {
   serviceOutings          ServiceOuting[]
   servicePresets          ServicePreset[]
   meetingAttendance       MeetingAttendance[]
+  captainSlots            CaptainTimeSlot[]
+  captainSurveys          CaptainSurvey[]
+  captainResponses        CaptainResponse[]
 }
 
 // ----------------------------------------------------------------------------
@@ -121,6 +124,10 @@ model User {
   // los que la tienen trabajan sobre los mismos datos de la congregación.
   alsoTerritorios Boolean @default(false)
 
+  // Rol adicional: puede subir su propia disponibilidad como capitán de
+  // predicación. No da acceso a nada más.
+  alsoCapitan Boolean @default(false)
+
   // Etiqueta secundaria en un grupo para el Administrador (SUPERINTENDENTE |
   // AUXILIAR). No cambia sus permisos (sigue con acceso total); es solo una
   // designación visible, junto con groupId.
@@ -147,6 +154,7 @@ model User {
   reportsSubmitted MonthlyReport[] @relation("ReportSubmittedBy")
   auditLogs        AuditLog[]
   meetingsCreated  Meeting[]       @relation("MeetingCreatedBy")
+  captainResponses CaptainResponse[]
 
   @@index([groupId])
   @@index([role])
@@ -674,4 +682,105 @@ model MeetingAttendance {
 
   @@unique([congregationId, date, day])
   @@index([congregationId, date])
+}
+
+// ----------------------------------------------------------------------------
+//  CAPITANES DE PREDICACIÓN  (encuesta mensual de disponibilidad)
+// ----------------------------------------------------------------------------
+// El Administrador configura los horarios de su congregación, abre una
+// encuesta para un mes y la reparte por WhatsApp. Los hermanos marcan en un
+// calendario los días que pueden ser capitanes, con qué horarios y en qué
+// modalidad. Se responde por el enlace público o entrando con el usuario de
+// siempre: las dos cosas acaban en las mismas filas.
+
+/** Un horario que la congregación usa para salir a predicar. */
+model CaptainTimeSlot {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  /** Como se escribe en la encuesta: "9:00 a 11:00". */
+  label String
+  /** Para ordenar la lista a mano. */
+  order Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Sin horarios repetidos dentro de una misma congregación.
+  @@unique([congregationId, label])
+  @@index([congregationId])
+}
+
+/** La encuesta de un mes. Una por congregación y mes. */
+model CaptainSurvey {
+  id String @id @default(cuid())
+
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  year  Int
+  month Int
+
+  /** Lo que va en el enlace público. No se puede adivinar. */
+  token String @unique
+  /** Cerrada = ya no admite respuestas nuevas. */
+  open  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responses CaptainResponse[]
+
+  @@unique([congregationId, year, month])
+  @@index([congregationId])
+}
+
+/** Lo que contesta un hermano a la encuesta de un mes. */
+model CaptainResponse {
+  id String @id @default(cuid())
+
+  surveyId String
+  survey   CaptainSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  // La congregación se repite aquí a propósito: así ninguna consulta de
+  // respuestas puede quedarse sin el filtro, ni por descuido.
+  congregationId String
+  congregation   Congregation @relation(fields: [congregationId], references: [id], onDelete: Cascade)
+
+  name String
+  /** El nombre en limpio, para no guardar dos veces al mismo hermano. */
+  nameKey String
+  /** Si respondió desde su sesión, queda apuntado quién fue. */
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  days CaptainResponseDay[]
+
+  @@unique([surveyId, nameKey])
+  @@index([congregationId])
+  @@index([surveyId])
+}
+
+/** Un día que el hermano puede, con sus horarios y su modalidad. */
+model CaptainResponseDay {
+  id String @id @default(cuid())
+
+  responseId String
+  response   CaptainResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  /** El día, a mediodía local. */
+  date DateTime
+  /** Los horarios elegidos para ESE día, separados por "|". */
+  slots String @default("")
+  /** Modalidad de ese día. */
+  houseToHouse Boolean @default(true)
+  zoom         Boolean @default(false)
+
+  @@unique([responseId, date])
+  @@index([responseId])
 }

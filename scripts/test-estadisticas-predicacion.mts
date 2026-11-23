@@ -163,6 +163,7 @@ const base: SessionUser = {
   id: "u", username: "u", name: "Hermano", role: "SUPERINTENDENTE",
   groupId: "g1", congregationId: "c1", congregationName: "Ocoa",
   mustChangePassword: false, alsoConfirmador: false, alsoTerritorios: false,
+  alsoCapitan: false,
 };
 check(
   canAccessService({ ...base, role: "SECRETARIO" }),
@@ -373,6 +374,7 @@ try {
         groupId: null, congregationId: u.congregationId,
         congregationName: "Prueba", mustChangePassword: false,
         alsoConfirmador: false, alsoTerritorios: u.alsoTerritorios,
+        alsoCapitan: false,
       });
       check(
         canAccessService(sesion(uno)) && canAccessService(sesion(dos)),

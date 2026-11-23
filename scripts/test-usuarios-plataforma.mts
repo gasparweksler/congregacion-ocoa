@@ -40,6 +40,7 @@ const base = {
   mustChangePassword: false,
   alsoConfirmador: false,
   alsoTerritorios: false,
+  alsoCapitan: false,
 };
 const superadmin: SessionUser = {
   ...base,

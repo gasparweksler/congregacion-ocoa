@@ -66,6 +66,7 @@ export const createUserSchema = z
     mustChangePassword: z.boolean().optional().default(false),
     alsoConfirmador: z.boolean().optional().default(false),
     alsoTerritorios: z.boolean().optional().default(false),
+    alsoCapitan: z.boolean().optional().default(false),
     groupRoleLabel: z.string().trim().optional().nullable(),
   })
   .refine(
@@ -84,6 +85,7 @@ export const updateUserSchema = z
     active: z.boolean().optional().default(true),
     alsoConfirmador: z.boolean().optional().default(false),
     alsoTerritorios: z.boolean().optional().default(false),
+    alsoCapitan: z.boolean().optional().default(false),
     groupRoleLabel: z.string().trim().optional().nullable(),
     // Opcional: si se completa, restablece la contraseña.
     newPassword: z

@@ -54,6 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           mustChangePassword: user.mustChangePassword,
           alsoConfirmador: user.alsoConfirmador,
           alsoTerritorios: user.alsoTerritorios,
+          alsoCapitan: user.alsoCapitan,
         };
       },
     }),
@@ -71,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.mustChangePassword = user.mustChangePassword ?? false;
         token.alsoConfirmador = user.alsoConfirmador ?? false;
         token.alsoTerritorios = user.alsoTerritorios ?? false;
+        token.alsoCapitan = user.alsoCapitan ?? false;
       }
       return token;
     },
@@ -88,6 +90,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
         session.user.alsoConfirmador = Boolean(token.alsoConfirmador);
         session.user.alsoTerritorios = Boolean(token.alsoTerritorios);
+        session.user.alsoCapitan = Boolean(token.alsoCapitan);
       }
       return session;
     },

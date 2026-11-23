@@ -114,7 +114,31 @@ export default async function AppLayout({
       icon: "📊",
       group: "Superintendente de Servicio",
     },
+    // La encuesta de capitanes la lleva el Administrador: quien solo tiene la
+    // capacidad de territorios no la ve.
+    ...(isSecretary
+      ? [
+          {
+            href: "/territorios/capitanes",
+            label: "Capitanes",
+            icon: "🧭",
+            group: "Superintendente de Servicio",
+          } as NavItem,
+        ]
+      : []),
   ];
+  // Quien tenga la casilla "Capitán" sube la suya desde aquí. No da acceso a
+  // nada más: las respuestas de los demás solo las ve el Administrador.
+  const captainItems: NavItem[] = user.alsoCapitan
+    ? [
+        {
+          href: "/mi-disponibilidad",
+          label: "Mi disponibilidad de capitán",
+          icon: "🙋",
+          group: "Mi cuenta",
+        },
+      ]
+    : [];
   const secretaryItems: NavItem[] = [
     {
       href: "/precursores-auxiliares",
@@ -162,6 +186,7 @@ export default async function AppLayout({
     navItems = [
       ...meetingsItems,
       ...(alsoTerritorios ? serviceItems : []),
+      ...captainItems,
       ...accountItems,
     ];
   } else if (isSecretary) {
@@ -172,6 +197,7 @@ export default async function AppLayout({
       ...meetingsItems,
       ...serviceItems,
       ...secretaryItems,
+      ...captainItems,
       ...accountItems,
     ];
   } else {
@@ -181,6 +207,7 @@ export default async function AppLayout({
       ...reportsItems,
       ...(alsoConfirmador ? meetingsItems : []),
       ...(alsoTerritorios ? serviceItems : []),
+      ...captainItems,
       ...accountItems,
     ];
   }

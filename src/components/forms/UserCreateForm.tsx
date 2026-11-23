@@ -169,6 +169,23 @@ export function UserCreateForm({
         </label>
       ) : null}
 
+      {/* La casilla de capitán vale para cualquier rol: solo abre subir la
+          propia disponibilidad, nada más. */}
+      <label className="flex items-start gap-2 rounded-lg border border-border bg-slate-50 p-2.5 text-sm text-foreground">
+        <input
+          type="checkbox"
+          name="alsoCapitan"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+        />
+        <span>
+          <strong>Capitán</strong>
+          <span className="block text-xs text-muted">
+            Podrá subir su propia disponibilidad de capitán de predicación
+            desde su cuenta. No ve las respuestas de los demás.
+          </span>
+        </span>
+      </label>
+
       <label className="flex items-center gap-2 text-sm text-foreground">
         <input
           type="checkbox"

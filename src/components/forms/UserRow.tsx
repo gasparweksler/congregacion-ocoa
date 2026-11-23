@@ -25,6 +25,7 @@ export type UserRowData = {
   active: boolean;
   alsoConfirmador: boolean;
   alsoTerritorios: boolean;
+  alsoCapitan: boolean;
   groupRoleLabel: string | null;
 };
 
@@ -73,6 +74,11 @@ export function UserRow({
           {user.alsoTerritorios ? (
             <span className="mt-1 inline-block">
               <Badge tone="blue">+ Sup. de Servicio - Territorios</Badge>
+            </span>
+          ) : null}
+          {user.alsoCapitan ? (
+            <span className="mt-1 inline-block">
+              <Badge tone="green">+ Capitán</Badge>
             </span>
           ) : null}
           {user.role === ROLES.SECRETARIO &&
@@ -237,6 +243,22 @@ export function UserRow({
             </span>
           </label>
         ) : null}
+
+        <label className="flex items-start gap-2 text-sm text-foreground sm:col-span-2">
+          <input
+            type="checkbox"
+            name="alsoCapitan"
+            defaultChecked={user.alsoCapitan}
+            className="mt-0.5 h-4 w-4 rounded border-border"
+          />
+          <span>
+            <strong>Capitán</strong>
+            <span className="block text-xs text-muted">
+              Podrá subir su propia disponibilidad de capitán de predicación
+              desde su cuenta. No ve las respuestas de los demás.
+            </span>
+          </span>
+        </label>
 
         <div className="flex gap-2 sm:col-span-2">
           <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>
