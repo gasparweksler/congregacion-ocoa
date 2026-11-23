@@ -8,11 +8,12 @@
 //  modalidad, que valen para las dos.
 // ============================================================================
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CABECERA_SEMANA,
   MODALIDADES,
+  cuentasDelDia,
   etiquetaDeDia,
   etiquetaDelMes,
   etiquetaModalidad,
@@ -53,6 +54,7 @@ export function RespuestasCapitanes({
   const router = useRouter();
   const [vista, setVista] = useState<"lista" | "calendario">("lista");
   const [filtro, setFiltro] = useState<FiltroRespuestas>({});
+  const [diaAbierto, setDiaAbierto] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<RespuestaResumen | null>(null);
   const [aviso, setAviso] = useState<FormState>({});
@@ -317,11 +319,21 @@ export function RespuestasCapitanes({
             {semanas.flat().map((c, i) => {
               if (c.dateISO === null) return <div key={`v${i}`} aria-hidden />;
               const gente = agenda.get(c.dateISO) ?? [];
+              const iso = c.dateISO;
               return (
-                <div
+                <button
                   key={c.dateISO}
+                  type="button"
+                  onClick={() => setDiaAbierto(iso)}
+                  aria-label={`${etiquetaDeDia(iso)}: ${
+                    gente.length === 0
+                      ? "nadie"
+                      : gente.length === 1
+                        ? "1 hermano"
+                        : `${gente.length} hermanos`
+                  }`}
                   className={
-                    "min-h-20 rounded-xl border p-1.5 text-left align-top " +
+                    "min-h-20 rounded-xl border p-1.5 text-left align-top transition-colors hover:border-primary hover:bg-primary/10 " +
                     (gente.length > 0
                       ? "border-primary/30 bg-primary/5"
                       : "border-border bg-white")
@@ -350,10 +362,13 @@ export function RespuestasCapitanes({
                       </li>
                     ))}
                   </ul>
-                </div>
+                </button>
               );
             })}
           </div>
+          <p className="mt-2 text-center text-xs text-muted">
+            Toca un día para ver quién puede y con qué horario.
+          </p>
 
           {/* El mismo calendario, día a día, para leerlo en el móvil. */}
           <ul className="mt-3 space-y-2 sm:hidden">
@@ -420,6 +435,143 @@ export function RespuestasCapitanes({
         onCancel={() => setBorrando(null)}
         onConfirm={eliminar}
       />
+
+      <VentanaDelDia
+        dateISO={diaAbierto}
+        gente={diaAbierto ? (agenda.get(diaAbierto) ?? []) : []}
+        horarios={horarios}
+        conFiltro={hayFiltro}
+        onCerrar={() => setDiaAbierto(null)}
+      />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+//  La ventana de un día
+//
+//  Al tocar un día del calendario se abre esto: cuántos pueden ese día,
+//  repartidos por horario y por modalidad, y la lista de quién es cada uno.
+//  Es solo para mirar; corregir y borrar siguen estando en la lista.
+// ---------------------------------------------------------------------------
+
+function VentanaDelDia({
+  dateISO,
+  gente,
+  horarios,
+  conFiltro,
+  onCerrar,
+}: {
+  /** El día abierto, o nulo si la ventana está cerrada. */
+  dateISO: string | null;
+  gente: Array<{ name: string; dia: DiaDisponible }>;
+  horarios: string[];
+  /** Si hay filtros puestos, lo que se ve es solo lo que pasa el filtro. */
+  conFiltro: boolean;
+  onCerrar: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const cuentas = useMemo(
+    () => cuentasDelDia(gente, horarios),
+    [gente, horarios],
+  );
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (dateISO && !d.open) d.showModal();
+    if (!dateISO && d.open) d.close();
+  }, [dateISO]);
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onCancel={onCerrar}
+      // m-auto: el reset de Tailwind quita el margen que centra un <dialog>.
+      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-border bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/40"
+    >
+      <div className="max-h-[80vh] space-y-4 overflow-y-auto p-5">
+        <div>
+          <h2 className="text-base font-semibold capitalize text-foreground">
+            {dateISO ? etiquetaDeDia(dateISO) : ""}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">
+            {cuentas.total === 0
+              ? "Nadie ha marcado este día."
+              : cuentas.total === 1
+                ? "1 hermano puede este día."
+                : `${cuentas.total} hermanos pueden este día.`}
+            {conFiltro && cuentas.total > 0 ? " Con los filtros puestos." : ""}
+          </p>
+        </div>
+
+        {cuentas.total > 0 ? (
+          <div className="space-y-2 rounded-xl border border-border bg-slate-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Por horario
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {cuentas.porHorario.map((h) => (
+                <li key={h.horario}>
+                  <Badge tone="blue">
+                    {h.horario}: {h.cuantos}
+                  </Badge>
+                </li>
+              ))}
+              {cuentas.sinHorario > 0 ? (
+                <li>
+                  <Badge tone="amber">
+                    Sin horario: {cuentas.sinHorario}
+                  </Badge>
+                </li>
+              ) : null}
+            </ul>
+            <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted">
+              Por modalidad
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              <li>
+                <Badge tone="green">Casa en casa: {cuentas.casa}</Badge>
+              </li>
+              <li>
+                <Badge tone="violet">Por Zoom: {cuentas.zoom}</Badge>
+              </li>
+            </ul>
+          </div>
+        ) : null}
+
+        {cuentas.total > 0 ? (
+          <ul className="space-y-2">
+            {gente.map((g, i) => (
+              <li
+                key={i}
+                className="rounded-xl border border-border bg-white p-3"
+              >
+                <p className="font-semibold text-foreground">{g.name}</p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {g.dia.slots.join(" · ") || "sin horario"} ·{" "}
+                  {etiquetaModalidad(g.dia)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">
+            Cuando alguien lo marque en la encuesta, aparecerá aquí.
+          </p>
+        )}
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-slate-50"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </dialog>
   );
 }

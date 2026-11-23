@@ -293,6 +293,59 @@ export function porDia(
   return mapa;
 }
 
+/** El recuento de un día suelto, para la ventana que se abre al tocarlo. */
+export type CuentasDelDia = {
+  /** Cuántos hermanos pueden ese día. */
+  total: number;
+  /** Cuántos por cada horario; primero los de la lista del Administrador. */
+  porHorario: Array<{ horario: string; cuantos: number }>;
+  /** Cuántos marcaron cada modalidad (uno puede estar en las dos). */
+  casa: number;
+  zoom: number;
+  /** Los que no dejaron ningún horario puesto. */
+  sinHorario: number;
+};
+
+/**
+ * Las cuentas de un día: cuántos pueden, con qué horario y de qué forma.
+ *
+ * Los horarios van en el orden del Administrador. Si alguien guardó un horario
+ * que después se quitó de la lista, sale igual al final: lo que contestó el
+ * hermano no se esconde.
+ */
+export function cuentasDelDia(
+  gente: Array<{ name: string; dia: DiaDisponible }>,
+  horarios: string[],
+): CuentasDelDia {
+  const cuenta = new Map<string, number>();
+  let casa = 0;
+  let zoom = 0;
+  let sinHorario = 0;
+
+  for (const { dia } of gente) {
+    if (dia.houseToHouse) casa++;
+    if (dia.zoom) zoom++;
+    const suyos = [...new Set(dia.slots.map(limpiarHorario).filter(Boolean))];
+    if (suyos.length === 0) sinHorario++;
+    for (const s of suyos) cuenta.set(s, (cuenta.get(s) ?? 0) + 1);
+  }
+
+  const puestos = new Set<string>();
+  const porHorario: Array<{ horario: string; cuantos: number }> = [];
+  for (const h of horarios) {
+    const limpio = limpiarHorario(h);
+    if (puestos.has(limpio)) continue;
+    puestos.add(limpio);
+    const cuantos = cuenta.get(limpio) ?? 0;
+    if (cuantos > 0) porHorario.push({ horario: limpio, cuantos });
+  }
+  for (const [h, cuantos] of cuenta) {
+    if (!puestos.has(h)) porHorario.push({ horario: h, cuantos });
+  }
+
+  return { total: gente.length, porHorario, casa, zoom, sinHorario };
+}
+
 /** Los que todavía no han contestado, de entre los que tienen la casilla. */
 export function faltanPorResponder(
   capitanes: Array<{ id: string; name: string }>,

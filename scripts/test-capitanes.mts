@@ -19,6 +19,7 @@ import { canUploadCaptain, type SessionUser } from "../src/lib/access.js";
 import {
   claveDeHorario,
   claveDeNombre,
+  cuentasDelDia,
   diaPasaFiltro,
   errorDeRespuesta,
   esDelMes,
@@ -368,6 +369,54 @@ titulo("A9. El enlace público no pisa lo que se firmó con la cuenta");
   check(
     !puedePisarDesdeElEnlace({ userId: "u9" }),
     "pero una firmada con el usuario, no",
+  );
+}
+
+titulo("A10. Las cuentas de un día suelto (la ventana del calendario)");
+{
+  const horarios = ["9:00 a 11:00", "15:00 a 17:00", "19:00 a 20:30"];
+  const gente = [
+    { name: "Ana", dia: dia("2026-12-08", ["9:00 a 11:00"], true, false) },
+    {
+      name: "Beto",
+      dia: dia("2026-12-08", ["9:00 a 11:00", "19:00 a 20:30"], true, true),
+    },
+    { name: "Carlos", dia: dia("2026-12-08", [], false, true) },
+  ];
+  const c = cuentasDelDia(gente, horarios);
+
+  check(c.total === 3, `cuenta los tres hermanos (${c.total})`);
+  check(c.casa === 2, `dos van de casa en casa (${c.casa})`);
+  check(c.zoom === 2, `dos por Zoom (${c.zoom})`);
+  check(c.sinHorario === 1, `uno no puso horario (${c.sinHorario})`);
+  check(
+    c.porHorario.length === 2,
+    "solo salen los horarios que alguien eligió",
+  );
+  check(
+    c.porHorario[0].horario === "9:00 a 11:00" && c.porHorario[0].cuantos === 2,
+    "el primero es el de la lista del Administrador, con sus dos hermanos",
+  );
+  check(
+    c.porHorario[1].horario === "19:00 a 20:30" && c.porHorario[1].cuantos === 1,
+    "y después el otro, con uno",
+  );
+
+  // Un horario que el Administrador quitó después no puede desaparecer de lo
+  // que contestó el hermano.
+  const viejo = cuentasDelDia(
+    [{ name: "Ana", dia: dia("2026-12-08", ["7:00 a 8:00"], true, false) }],
+    horarios,
+  );
+  check(
+    viejo.porHorario.length === 1 && viejo.porHorario[0].horario === "7:00 a 8:00",
+    "un horario ya borrado de la lista se sigue viendo",
+  );
+
+  const vacio = cuentasDelDia([], horarios);
+  check(
+    vacio.total === 0 && vacio.porHorario.length === 0 && vacio.casa === 0,
+    "un día sin nadie no inventa cuentas",
   );
 }
 
