@@ -40,7 +40,7 @@ export default async function CapitanesPage({
 }: {
   searchParams: Promise<{ anio?: string; mes?: string }>;
 }) {
-  await requireSecretary();
+  const user = await requireSecretary();
   const sp = await searchParams;
   const { year, month } = parsePeriod(sp.anio, sp.mes);
 
@@ -71,16 +71,22 @@ export default async function CapitanesPage({
         <PeriodSelector year={year} month={month} />
       </div>
 
-      {/* 1. Enviar la encuesta del mes */}
-      <Card className="mb-4">
-        <CardHeader
+      {/* 1. Enviar la encuesta del mes.
+          Va plegada: el enlace se reparte una vez y después estorba. Si el
+          mes todavía no tiene encuesta, se abre sola para crearla. */}
+      <div className="mb-4">
+        <CollapsibleCard
           title={`Encuesta de ${etiquetaDelMes(year, month)}`}
-          description="Cada mes tiene su propia encuesta y su propio enlace."
-        />
-        <CardBody>
+          description={
+            encuesta
+              ? `${encuesta.open ? "Abierta" : "Cerrada"} · aquí está el enlace para repartir por WhatsApp.`
+              : "Todavía no has creado la encuesta de este mes."
+          }
+          defaultOpen={!encuesta}
+        >
           <InvitacionCapitanes year={year} month={month} encuesta={encuesta} />
-        </CardBody>
-      </Card>
+        </CollapsibleCard>
+      </div>
 
       {/* 2. Las respuestas */}
       {encuesta ? (
@@ -97,6 +103,8 @@ export default async function CapitanesPage({
               horarios={etiquetasHorarios}
               respuestas={respuestas}
               capitanes={capitanes}
+              miId={user.id}
+              miNombre={user.name ?? user.username}
             />
           </CardBody>
         </Card>

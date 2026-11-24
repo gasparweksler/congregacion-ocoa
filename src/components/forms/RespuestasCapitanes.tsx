@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import {
   CABECERA_SEMANA,
   MODALIDADES,
+  claveDeNombre,
   cuentasDelDia,
   etiquetaDeDia,
   etiquetaDelMes,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/capitanes";
 import {
   borrarRespuesta,
+  guardarMiRespuestaAdmin,
   guardarRespuestaAdmin,
 } from "@/server/capitanes-actions";
 import { Alert, Badge, Button, EmptyState, Select } from "@/components/ui";
@@ -42,6 +44,8 @@ export function RespuestasCapitanes({
   horarios,
   respuestas,
   capitanes,
+  miId,
+  miNombre,
 }: {
   surveyId: string;
   year: number;
@@ -50,9 +54,14 @@ export function RespuestasCapitanes({
   respuestas: RespuestaResumen[];
   /** Los hermanos con la casilla Capitán, para saber quién falta. */
   capitanes: Array<{ id: string; name: string }>;
+  /** Quién está mirando la pantalla, para que pueda dejar la suya. */
+  miId: string;
+  miNombre: string;
 }) {
   const router = useRouter();
-  const [vista, setVista] = useState<"lista" | "calendario">("lista");
+  // El calendario primero: es como se mira el mes de un vistazo.
+  const [vista, setVista] = useState<"lista" | "calendario">("calendario");
+  const [miFormulario, setMiFormulario] = useState(false);
   const [filtro, setFiltro] = useState<FiltroRespuestas>({});
   const [diaAbierto, setDiaAbierto] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
@@ -80,8 +89,22 @@ export function RespuestasCapitanes({
 
   const hayFiltro = Boolean(filtro.dateISO || filtro.slot || filtro.modalidad);
 
+  /** Lo que ya dejó el propio Administrador, si lo dejó. */
+  const mia = useMemo(() => {
+    const clave = claveDeNombre(miNombre);
+    return (
+      respuestas.find(
+        (r) => r.userId === miId || (clave !== "" && claveDeNombre(r.name) === clave),
+      ) ?? null
+    );
+  }, [respuestas, miId, miNombre]);
+
   const guardarEdicion = (nombre: string, dias: DiaDisponible[]) =>
     guardarRespuestaAdmin(surveyId, nombre, dias);
+
+  /** La suya va firmada con su usuario, como si la subiera desde su cuenta. */
+  const guardarLaMia = (_nombre: string, dias: DiaDisponible[]) =>
+    guardarMiRespuestaAdmin(surveyId, dias);
 
   const eliminar = () => {
     const id = borrando?.id;
@@ -103,8 +126,65 @@ export function RespuestasCapitanes({
 
   return (
     <div className="space-y-4">
+      {/* Mi propia disponibilidad */}
+      <div className="rounded-2xl border border-border bg-slate-50 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {mia ? "Tu disponibilidad" : "¿Tú también puedes ser capitán?"}
+            </p>
+            <p className="text-xs text-muted">
+              {mia
+                ? `Ya dejaste la tuya: ${resumenDeDias(
+                    mia.dias.map((d) => d.dateISO),
+                    year,
+                    month,
+                  )}.`
+                : "Apúntate aquí mismo, sin pasar por el enlace."}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setMiFormulario((v) => !v)}
+            className="shrink-0"
+          >
+            {miFormulario
+              ? "Cancelar"
+              : mia
+                ? "✏️ Cambiar mi disponibilidad"
+                : "➕ Agregar mi propia disponibilidad"}
+          </Button>
+        </div>
+
+        {miFormulario ? (
+          <div className="mt-3 border-t border-border pt-3">
+            <DisponibilidadCapitan
+              year={year}
+              month={month}
+              horarios={horarios}
+              inicial={mia?.dias ?? null}
+              nombreInicial={mia?.name ?? miNombre}
+              nombreFijo
+              textoBoton={mia ? "Guardar mis cambios" : "Guardar mi disponibilidad"}
+              onGuardar={guardarLaMia}
+              onListo={() => {
+                setMiFormulario(false);
+                router.refresh();
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+
       {/* Vistas */}
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setVista("calendario")}
+          className={pestaña(vista === "calendario")}
+        >
+          🗓️ Calendario del mes
+        </button>
         <button
           type="button"
           onClick={() => setVista("lista")}
@@ -115,13 +195,6 @@ export function RespuestasCapitanes({
             ? `${vistos.length} de ${respuestas.length}`
             : respuestas.length}
           )
-        </button>
-        <button
-          type="button"
-          onClick={() => setVista("calendario")}
-          className={pestaña(vista === "calendario")}
-        >
-          🗓️ Calendario del mes
         </button>
       </div>
 

@@ -3,9 +3,9 @@
 // Crear la encuesta de un mes y repartirla: copiar el enlace o mandarlo por
 // WhatsApp, igual que la invitación de precursor auxiliar.
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { appOrigin } from "@/lib/app-url";
+import { appOrigin, appOriginConfigurado } from "@/lib/app-url";
 import { etiquetaDelMes } from "@/lib/capitanes";
 import {
   cambiarEstadoEncuesta,
@@ -30,8 +30,16 @@ export function InvitacionCapitanes({
   const [copiado, setCopiado] = useState<"enlace" | "mensaje" | null>(null);
   const [trabajando, startTransition] = useTransition();
 
+  // El enlace se pinta en la propia página, así que el servidor y el
+  // navegador tienen que escribir lo mismo. En producción los dos conocen el
+  // dominio; en local solo lo sabe el navegador, y se completa al montar.
+  const [origen, setOrigen] = useState(appOriginConfigurado());
+  useEffect(() => {
+    if (!origen) setOrigen(appOrigin());
+  }, [origen]);
+
   const mes = etiquetaDelMes(year, month);
-  const enlace = encuesta ? `${appOrigin()}/capitanes/${encuesta.token}` : "";
+  const enlace = encuesta && origen ? `${origen}/capitanes/${encuesta.token}` : "";
 
   const mensaje =
     `Hola querido hermano 😊\n\n` +

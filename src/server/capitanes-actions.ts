@@ -502,6 +502,38 @@ export async function guardarRespuestaAdmin(
   });
 }
 
+/**
+ * El Administrador deja (o corrige) SU PROPIA disponibilidad, sin salir de la
+ * pantalla de capitanes.
+ *
+ * Va firmada con su usuario, igual que si la hubiera subido desde su cuenta,
+ * así que después nadie puede pisarla desde el enlace público. Aquí no se
+ * mira si la encuesta está abierta: el que la abre y la cierra es él.
+ */
+export async function guardarMiRespuestaAdmin(
+  surveyId: string,
+  dias: DiaDisponible[],
+): Promise<FormState> {
+  const user = await requireSecretary();
+  const cong = congregationId(user);
+  const encuesta = await prisma.captainSurvey.findFirst({
+    where: { id: surveyId, congregationId: cong },
+    select: { id: true, year: true, month: true },
+  });
+  if (!encuesta) return { error: "Esa encuesta ya no existe." };
+
+  return guardarDisponibilidad({
+    surveyId,
+    congregationId: cong,
+    year: encuesta.year,
+    month: encuesta.month,
+    nombre: user.name ?? user.username,
+    dias,
+    userId: user.id,
+    autorId: user.id,
+  });
+}
+
 /** El Administrador borra la respuesta de un hermano. */
 export async function borrarRespuesta(id: string): Promise<FormState> {
   const user = await requireSecretary();
