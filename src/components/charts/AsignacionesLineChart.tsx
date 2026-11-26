@@ -7,15 +7,15 @@
 //  cambiar cualquier filtro se vuelve a pintar solo, porque los filtros viven
 //  en la dirección y la página entera se rehace.
 //
-//  Cuatro líneas, que son las cuatro cifras de los recuadros de arriba:
-//  el total de asignaciones del mes y cómo quedaron (confirmadas, rechazadas
-//  y sin respuesta). La quinta cifra, cuántos hermanos distintos participaron,
-//  va en el globo: como línea se confundiría con el total.
+//  Una sola línea: las asignaciones del mes. Cuenta todas, haya contestado
+//  el hermano o no, que es el criterio de toda la pantalla. Cómo quedaron
+//  (confirmadas, rechazadas, sin respuesta) y cuántos hermanos distintos
+//  participaron se leen en el globo: como líneas competían con el total y
+//  hacían pensar que la estadística dependía de la respuesta.
 // ============================================================================
 
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -80,7 +80,6 @@ export function AsignacionesLineChart({ data }: { data: PuntoDeLaSerie[] }) {
           />
           <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
           <Tooltip content={<Globo />} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
           <Line
             type="monotone"
             dataKey="total"
@@ -88,33 +87,6 @@ export function AsignacionesLineChart({ data }: { data: PuntoDeLaSerie[] }) {
             stroke={COLORES.total}
             strokeWidth={2.5}
             dot={{ r: 2.5 }}
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="confirmadas"
-            name="Confirmadas"
-            stroke={COLORES.confirmadas}
-            strokeWidth={2}
-            dot={{ r: 2 }}
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="rechazadas"
-            name="Rechazadas"
-            stroke={COLORES.rechazadas}
-            strokeWidth={2}
-            dot={{ r: 2 }}
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="sinRespuesta"
-            name="Sin respuesta"
-            stroke={COLORES.sinRespuesta}
-            strokeWidth={2}
-            dot={{ r: 2 }}
             isAnimationActive={false}
           />
         </LineChart>

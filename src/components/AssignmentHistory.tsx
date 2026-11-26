@@ -8,8 +8,11 @@ import { useState } from "react";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { MEETING_SECTION_LABELS } from "@/lib/constants";
-import { DONE_LABELS, type BrotherStats } from "@/lib/assignment-stats";
-import { CONFIRM_STATUS_LABELS, type ConfirmStatus } from "@/lib/constants";
+import {
+  DONE_LABELS,
+  resumenDeAsignaciones,
+  type BrotherStats,
+} from "@/lib/assignment-stats";
 
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString("es-CL", {
@@ -58,6 +61,7 @@ export function AssignmentHistory({
         const pasado =
           b.daysSinceAssigned !== null && b.daysSinceAssigned > dias;
         const nunca = b.lastAssigned === null;
+        const resumen = resumenDeAsignaciones(b);
 
         return (
           <div
@@ -79,18 +83,17 @@ export function AssignmentHistory({
                     <span className="text-xs text-muted">{b.groupName}</span>
                   ) : null}
                 </div>
+                {/* Lo que cuenta es cuántas veces le tocó. Si confirmó o no
+                    está en el detalle de cada participación, no aquí. */}
                 <p className="mt-0.5 text-sm text-muted">
-                  {b.doneCount} confirmada(s)
+                  <strong className="font-semibold text-foreground">
+                    {resumen.total}
+                  </strong>{" "}
+                  asignación(es)
                   <span className="mx-1.5 text-border">·</span>
-                  {b.asResponsable} como responsable
+                  {resumen.responsable} como responsable
                   <span className="mx-1.5 text-border">·</span>
-                  {b.asAuxiliar} como auxiliar
-                  {b.unrecordedCount > 0 ? (
-                    <>
-                      <span className="mx-1.5 text-border">·</span>
-                      {b.unrecordedCount} sin respuesta
-                    </>
-                  ) : null}
+                  {resumen.auxiliar} como auxiliar
                 </p>
                 {b.variants.length > 1 ? (
                   <p className="mt-0.5 text-xs text-muted">
@@ -146,9 +149,6 @@ export function AssignmentHistory({
                         {MEETING_SECTION_LABELS[p.section] ?? p.section}
                         <span className="mx-1.5 text-border">·</span>
                         {p.role === "responsable" ? "Responsable" : "Auxiliar"}
-                        <span className="mx-1.5 text-border">·</span>
-                        {CONFIRM_STATUS_LABELS[p.confirmStatus as ConfirmStatus] ??
-                          p.confirmStatus}
                       </p>
                       <div className="mt-1.5">
                         <Badge
@@ -176,8 +176,7 @@ export function AssignmentHistory({
                       <th className="px-3 py-2 font-semibold">Asignación</th>
                       <th className="px-3 py-2 font-semibold">Parte</th>
                       <th className="px-3 py-2 font-semibold">Papel</th>
-                      <th className="px-3 py-2 font-semibold">Confirmación</th>
-                      <th className="px-3 py-2 font-semibold">¿Realizada?</th>
+                      <th className="px-3 py-2 font-semibold">Respuesta</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -202,10 +201,6 @@ export function AssignmentHistory({
                         <td className="px-3 py-2">{p.label}</td>
                         <td className="px-3 py-2">
                           {p.role === "responsable" ? "Responsable" : "Auxiliar"}
-                        </td>
-                        <td className="px-3 py-2 text-muted">
-                          {CONFIRM_STATUS_LABELS[p.confirmStatus as ConfirmStatus] ??
-                            p.confirmStatus}
                         </td>
                         <td className="px-3 py-2">
                           <Badge

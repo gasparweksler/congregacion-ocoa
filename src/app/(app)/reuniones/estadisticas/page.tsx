@@ -3,19 +3,18 @@
 //  Historial completo de asignaciones de la congregación, con filtros y aviso
 //  por hermanos que llevan tiempo sin que les TOQUE una asignación.
 //
-//  Dos medidas distintas, a propósito:
-//   - El aviso de días mira la ASIGNACIÓN: para repartir importa a quién le
-//     tocó, haya contestado el WhatsApp o no.
-//   - El recuadro "Sin ninguna confirmada" mira la CONFIRMACIÓN: la respuesta
-//     del hermano al abrir su enlace. Lo que nadie respondió cuenta como "sin
-//     respuesta", nunca como un sí.
+//  Todo lo que se cuenta aquí mira la ASIGNACIÓN, nunca la respuesta: una
+//  asignación cuenta desde que el hermano está en el programa de una reunión
+//  ya celebrada, la haya confirmado, rechazada o no haya contestado. La
+//  confirmación se sigue guardando y se ve en el detalle de cada
+//  participación, pero no cambia ninguna cifra.
 // ============================================================================
 
 import { requireMeetingsAccess, congregationId } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CollapsibleCard, Alert } from "@/components/ui";
+import { Card, CollapsibleCard } from "@/components/ui";
 import { BackButton } from "@/components/BackButton";
 import { AssignmentStatsFilters } from "@/components/forms/AssignmentStatsFilters";
 import {
@@ -125,7 +124,10 @@ export default async function EstadisticasAsignacionesPage({
         (a.groupName ?? "").localeCompare(b.groupName ?? "", "es") ||
         a.name.localeCompare(b.name, "es"),
     );
-  const sinNinguna = rows.filter((b) => b.lastDone === null).length;
+  // Asignaciones contadas, sin mirar si el hermano respondió.
+  const asignaciones = totals.participations;
+  const promedio =
+    rows.length > 0 ? Math.round((asignaciones / rows.length) * 10) / 10 : 0;
 
   // La serie del gráfico sale de `rows`, que ya pasó por todos los filtros:
   // el gráfico y el detalle de abajo cuentan exactamente lo mismo.
@@ -135,36 +137,28 @@ export default async function EstadisticasAsignacionesPage({
     <>
       <PageHeader
         title="Estadísticas de Asignaciones"
-        description="Historial de asignaciones de cada hermano y aviso por tiempo sin participar."
+        description="Cuántas veces le ha tocado a cada hermano, haya confirmado, rechazado o no haya contestado, y aviso por tiempo sin participar."
         action={<BackButton href="/reuniones" />}
       />
 
-      {/* Sin este aviso, los números de abajo se leerían mal. */}
-      {totals.sinRegistrar > 0 ? (
-        <div className="mb-4">
-          <Alert tone="warning">
-            ⚠️ Hay <strong>{totals.sinRegistrar}</strong> asignación(es) sin
-            respuesta todavía, de un total de {totals.participations}. No se
-            cuentan como confirmadas: el sistema no da por hecho que el hermano
-            haya aceptado. Se confirman con el enlace que se le envía por
-            WhatsApp desde cada reunión.
-          </Alert>
-        </div>
-      ) : null}
-
       <div className="mb-6 grid gap-4 sm:grid-cols-4">
         <Card className="p-4">
-          <p className="text-sm text-muted">Confirmadas</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
-            {totals.realizadas}
+          {/* Todas: confirmadas, rechazadas y sin contestar cuentan igual. */}
+          <p className="text-sm text-muted">Asignaciones</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
+            {asignaciones}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            Haya confirmado o no el hermano
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted">
-            Rechazadas / sin respuesta
-          </p>
+          <p className="text-sm text-muted">Hermanos asignados</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700">
-            {totals.noRealizadas + totals.sinRegistrar}
+            {rows.length}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            {rows.length > 0 ? `${promedio} asignación(es) de media` : "—"}
           </p>
         </Card>
         <WithoutAssignmentTile
@@ -173,10 +167,13 @@ export default async function EstadisticasAsignacionesPage({
           sinParticipacion={sinParticipacion}
         />
         <Card className="p-4">
-          {/* Distinto del aviso de al lado: aquí se mira la confirmación. */}
-          <p className="text-sm text-muted">Sin ninguna confirmada</p>
+          {/* Publicadores activos que no aparecen en ningún programa. */}
+          <p className="text-sm text-muted">Sin ninguna asignación</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700">
-            {sinNinguna}
+            {sinParticipacion.length}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            Publicadores activos, en el período mirado
           </p>
         </Card>
       </div>
@@ -248,9 +245,11 @@ export default async function EstadisticasAsignacionesPage({
       </CollapsibleCard>
 
       <p className="mt-4 text-xs text-muted">
-        El resaltado indica únicamente que al hermano no le ha tocado ninguna
-        asignación en ese tiempo, haya confirmado o no las anteriores. No
-        significa que esté inactivo ni supone ningún problema.
+        Cada asignación cuenta desde que el hermano aparece en el programa de
+        una reunión ya celebrada: confirmarla o rechazarla no cambia ninguna
+        cifra de esta pantalla. El resaltado indica únicamente que no le ha
+        tocado ninguna asignación en ese tiempo; no significa que esté inactivo
+        ni supone ningún problema.
       </p>
     </>
   );

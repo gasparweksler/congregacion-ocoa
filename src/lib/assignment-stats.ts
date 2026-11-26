@@ -3,10 +3,12 @@
 //
 //  Dos ideas que conviene tener claras al leer esto:
 //
-//  1. Todo sale de la CONFIRMACIÓN del hermano: la respuesta que da al abrir
-//     el enlace que se le envía por WhatsApp (Confirmada, Rechazada o sin
-//     responder). No hay un registro aparte de "se realizó": lo que no se ha
-//     respondido cuenta como "sin respuesta", nunca como un sí.
+//  1. LO QUE SE CUENTA ES LA ASIGNACIÓN, no la respuesta del hermano. Una
+//     asignación cuenta desde que su nombre está en el programa de una
+//     reunión ya celebrada, la haya confirmado, rechazada o no haya
+//     contestado. La confirmación se sigue guardando y se sigue viendo en el
+//     detalle de cada participación, pero no cambia ningún número: si a un
+//     hermano le tocó diez veces, sus estadísticas dicen diez.
 //
 //  2. El nombre del hermano en la asignación es TEXTO LIBRE, no una referencia
 //     al publicador. Aquí se normaliza (sin tildes ni mayúsculas) y se cruza
@@ -57,7 +59,10 @@ export type BrotherStats = {
   /** Variantes del nombre encontradas en las asignaciones. */
   variants: string[];
   participations: Participation[];
-  /** Solo las que el hermano confirmó. */
+  /**
+   * Solo las que el hermano confirmó. Es un dato del historial, NO la
+   * estadística: lo que se cuenta son las asignaciones que tuvo.
+   */
   doneCount: number;
   asResponsable: number;
   asAuxiliar: number;
@@ -76,6 +81,25 @@ export type BrotherStats = {
   /** Asignaciones que todavía no ha respondido. */
   unrecordedCount: number;
 };
+
+/**
+ * Lo que se enseña de cada hermano: cuántas veces le tocó, y en qué papel.
+ *
+ * Cuenta las asignaciones, no las respuestas. Si de diez veces confirmó tres,
+ * rechazó una y no contestó seis, el total sigue siendo diez. Vive aquí, y no
+ * dentro de la pantalla, para poder probarlo solo.
+ */
+export function resumenDeAsignaciones(b: {
+  participations: unknown[];
+  asResponsable: number;
+  asAuxiliar: number;
+}): { total: number; responsable: number; auxiliar: number } {
+  return {
+    total: b.participations.length,
+    responsable: b.asResponsable,
+    auxiliar: b.asAuxiliar,
+  };
+}
 
 /** Normaliza un nombre para comparar: sin tildes, sin puntos, minúsculas. */
 export function normalizeName(s: string): string {

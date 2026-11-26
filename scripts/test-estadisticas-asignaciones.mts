@@ -3,11 +3,11 @@
 //  rastro: todo lo que escribe ocurre dentro de una transacción que se revierte.
 //
 //  Lo que se comprueba:
-//   - Solo cuenta como realizada lo que está marcado; "sin registrar" no suma.
+//   - Cuenta TODAS las asignaciones: confirmar o rechazar no mueve el total.
 //   - Responsable y Auxiliar se cuentan por separado y no se duplican.
 //   - El emparejamiento de nombres agrupa variantes del mismo hermano y deja
 //     aparte lo que no casa con ningún publicador.
-//   - Los días desde la última realizada se calculan bien.
+//   - Los días desde la última asignación se calculan bien.
 //
 //    npx tsx scripts/test-estadisticas-asignaciones.mts
 // ============================================================================
@@ -17,6 +17,7 @@ import {
   doneStateOf,
   matchPublisher,
   normalizeName,
+  resumenDeAsignaciones,
 } from "../src/lib/assignment-stats.js";
 
 const p = new PrismaClient();
@@ -26,7 +27,7 @@ const check = (ok: boolean, msg: string) => {
   if (!ok) fallos++;
 };
 
-// --- 1. El estado sale de la confirmación del hermano ---
+// --- 1. El estado de la respuesta (se sigue guardando, aunque no cuente) ---
 console.log("1. Programada frente a confirmada");
 check(
   doneStateOf("PENDIENTE") === "sin_respuesta",
@@ -80,7 +81,56 @@ if (base) {
   );
 }
 
-// --- 3. Días desde la última realizada ---
+// --- 2b. Lo que se cuenta es la asignación, no la respuesta ---
+console.log("\n2b. Las estadísticas cuentan asignaciones");
+{
+  const parte = (done: string) => ({ done });
+  // Diez asignaciones del mismo hermano: tres confirmadas, una rechazada y
+  // seis sin contestar. Las estadísticas tienen que decir diez.
+  const hermano = {
+    participations: [
+      ...Array(3).fill(parte("confirmada")),
+      parte("rechazada"),
+      ...Array(6).fill(parte("sin_respuesta")),
+    ],
+    asResponsable: 7,
+    asAuxiliar: 3,
+  };
+  const r = resumenDeAsignaciones(hermano);
+  check(r.total === 10, `diez asignaciones cuentan diez (${r.total})`);
+  check(
+    r.total === r.responsable + r.auxiliar,
+    "responsable y auxiliar suman el total, sin duplicar",
+  );
+
+  // El mismo hermano, si de pronto contesta a todo, sigue teniendo diez.
+  const todasConfirmadas = {
+    ...hermano,
+    participations: Array(10).fill(parte("confirmada")),
+  };
+  check(
+    resumenDeAsignaciones(todasConfirmadas).total === r.total,
+    "contestar a todas no cambia el total",
+  );
+  const ningunaRespondida = {
+    ...hermano,
+    participations: Array(10).fill(parte("sin_respuesta")),
+  };
+  check(
+    resumenDeAsignaciones(ningunaRespondida).total === r.total,
+    "no contestar a ninguna tampoco",
+  );
+  check(
+    resumenDeAsignaciones({
+      participations: [],
+      asResponsable: 0,
+      asAuxiliar: 0,
+    }).total === 0,
+    "sin asignaciones, cero",
+  );
+}
+
+// --- 3. Días desde la última asignación ---
 console.log("\n3. Cálculo de días");
 const hoy = new Date(2026, 9, 23);
 check(daysSince(new Date(2026, 9, 23), hoy) === 0, "hoy = 0 días");

@@ -3,8 +3,11 @@
 // Recuadro "Más de N días sin asignación": el número grande y un ojo que
 // despliega de quién se trata. Son dos cosas distintas y conviene no
 // mezclarlas:
-//   - los que hace más de N días que no tienen una asignación realizada, y
-//   - los publicadores que no han tenido ninguna participación.
+//   - los que hace más de N días que no les toca una asignación, y
+//   - los publicadores que no han tenido ninguna.
+//
+// Las dos miran la asignación, no la respuesta del hermano: para repartir las
+// partes importa a quién le tocó, haya contestado el WhatsApp o no.
 
 import { useState } from "react";
 import { Card } from "@/components/ui";
@@ -12,7 +15,7 @@ import { Card } from "@/components/ui";
 export type SinAsignacion = {
   name: string;
   groupName: string | null;
-  /** Días desde su última asignación realizada; null si nunca tuvo una. */
+  /** Días desde la última asignación que tuvo; null si nunca tuvo ninguna. */
   days: number | null;
 };
 
@@ -71,7 +74,7 @@ export function WithoutAssignmentTile({
   sinParticipacion,
 }: {
   dias: number;
-  /** Hermanos con más de `dias` sin una asignación realizada. */
+  /** Hermanos con más de `dias` sin que les toque una asignación. */
   conAviso: SinAsignacion[];
   /** Publicadores sin ninguna participación en el período. */
   sinParticipacion: SinAsignacion[];
@@ -104,16 +107,16 @@ export function WithoutAssignmentTile({
         <div className="mt-3 space-y-3 rounded-lg bg-slate-50 px-3 py-2">
           <div>
             <p className="mb-1 text-xs font-semibold text-foreground">
-              Más de {dias} días sin una asignación realizada
+              Más de {dias} días sin que les toque una asignación
             </p>
             <Lista
               items={conAviso}
-              vacio={`Nadie lleva más de ${dias} días sin una asignación realizada.`}
+              vacio={`Nadie lleva más de ${dias} días sin que le toque una asignación.`}
             />
           </div>
           <div className="border-t border-border pt-2">
             <p className="mb-1 text-xs font-semibold text-foreground">
-              Sin ninguna participación ({sinParticipacion.length})
+              Sin ninguna asignación ({sinParticipacion.length})
             </p>
             <Lista
               items={sinParticipacion}
