@@ -3,11 +3,12 @@
 //
 //  Módulo PURO (sin base de datos ni React) para poder probarlo aislado.
 //
-//  Se arma a partir de las MISMAS participaciones que ya se enseñan en la
-//  pantalla, o sea, después de todos los filtros (nombre, sección, fechas y
-//  "incluir responsabilidades"). Así el gráfico no puede discrepar de los
-//  recuadros ni de la lista: cuando cambia un filtro, cambian los dos juntos
-//  porque salen del mismo sitio.
+//  El gráfico es del PERÍODO, no de la búsqueda: enseña cuántas asignaciones
+//  hubo cada mes en toda la congregación. Solo lo delimitan las fechas
+//  "Desde" y "Hasta" y, si no se ponen, el tramo de "Avisar tras … días"
+//  (ver `desdeDelGrafico`). El nombre, el tipo de asignación y las
+//  responsabilidades recortan los recuadros y la lista de abajo, pero no la
+//  línea: así se puede buscar a un hermano sin perder de vista el mes.
 // ============================================================================
 
 import { MONTH_NAMES } from "@/lib/constants";
@@ -46,6 +47,24 @@ const MES_CORTO = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ] as const;
+
+/**
+ * Desde dónde empieza el gráfico cuando no se ponen fechas: los últimos
+ * `dias` días del filtro "Avisar tras … días sin asignación".
+ *
+ * Se redondea hacia atrás al día 1 de ese mes a propósito. Si se cortara en
+ * el día exacto, el primer mes saldría a medias y su caída en la línea no
+ * sería real, sino el trozo de mes que quedó fuera.
+ *
+ * @returns la fecha en ISO (YYYY-MM-DD), lista para el filtro "desde".
+ */
+export function desdeDelGrafico(dias: number, hoy = new Date()): string {
+  const d = Math.min(3650, Math.max(1, Math.floor(dias) || 90));
+  const atras = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - d);
+  const primero = new Date(atras.getFullYear(), atras.getMonth(), 1);
+  const mes = String(primero.getMonth() + 1).padStart(2, "0");
+  return `${primero.getFullYear()}-${mes}-01`;
+}
 
 /** "2026-06" -> el mes siguiente, para rellenar los huecos. */
 function siguienteMes(clave: string): string {

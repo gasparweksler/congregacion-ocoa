@@ -23,7 +23,7 @@ import {
 } from "@/components/AssignmentHistory";
 import { WithoutAssignmentTile } from "@/components/WithoutAssignmentTile";
 import { AsignacionesLineChart } from "@/components/charts/AsignacionesLineChart";
-import { serieMensual } from "@/lib/assignment-series";
+import { desdeDelGrafico, serieMensual } from "@/lib/assignment-series";
 import { getAssignmentStats } from "@/server/assignment-stats-actions";
 import { NombresSinEmparejar } from "@/components/NombresSinEmparejar";
 import {
@@ -55,14 +55,25 @@ export default async function EstadisticasAsignacionesPage({
   const hayFiltros =
     !!sp.q || !!sp.section || !!sp.desde || !!sp.hasta || incluirResponsabilidades || dias !== 90;
 
-  const { brothers, neverAssigned, unmatched, sections, totals } =
-    await getAssignmentStats({
-    q: sp.q,
-    section: sp.section,
-    desde: sp.desde,
-    hasta: sp.hasta,
-    incluirResponsabilidades,
-  });
+  // El gráfico va aparte: es del PERÍODO, no de la búsqueda. Solo lo
+  // delimitan "Desde" y "Hasta" y, si no se ponen, el tramo de "Avisar tras …
+  // días" (en meses enteros). Buscar a un hermano o elegir un tipo de
+  // asignación recorta los recuadros y la lista, pero no la línea.
+  const desdeGrafico = sp.desde || desdeDelGrafico(dias);
+
+  const [
+    { brothers, neverAssigned, unmatched, sections, totals },
+    { brothers: hermanosDelGrafico },
+  ] = await Promise.all([
+    getAssignmentStats({
+      q: sp.q,
+      section: sp.section,
+      desde: sp.desde,
+      hasta: sp.hasta,
+      incluirResponsabilidades,
+    }),
+    getAssignmentStats({ desde: desdeGrafico, hasta: sp.hasta }),
+  ]);
 
   // Para poder fusionar un nombre suelto con el hermano que de verdad es:
   // la lista de hermanos inscritos, que es la que se ofrece en el selector.
@@ -129,9 +140,16 @@ export default async function EstadisticasAsignacionesPage({
   const promedio =
     rows.length > 0 ? Math.round((asignaciones / rows.length) * 10) / 10 : 0;
 
-  // La serie del gráfico sale de `rows`, que ya pasó por todos los filtros:
-  // el gráfico y el detalle de abajo cuentan exactamente lo mismo.
-  const serie = serieMensual(rows);
+  // La serie sale de su propia consulta, la del período entero.
+  const serie = serieMensual(
+    hermanosDelGrafico.map((b) => ({
+      name: b.name,
+      participations: b.participations.map((p) => ({
+        date: p.date.toISOString(),
+        done: p.done,
+      })),
+    })),
+  );
 
   return (
     <>
@@ -220,16 +238,21 @@ export default async function EstadisticasAsignacionesPage({
         <h2 className="text-base font-semibold text-foreground">
           Asignaciones mes a mes
         </h2>
-        <p className="mt-0.5 mb-4 text-sm text-muted">
+        <p className="mt-0.5 text-sm text-muted">
           {serie.length > 0
-            ? `Lo que dejan ver los filtros puestos: ${serie.length} mes(es), de ${serie[0].etiquetaLarga} a ${serie[serie.length - 1].etiquetaLarga}. Pasa el dedo o el ratón por un mes para ver sus cifras.`
+            ? `${serie.length} mes(es), de ${serie[0].etiquetaLarga} a ${serie[serie.length - 1].etiquetaLarga}. Pasa el dedo o el ratón por un mes para ver sus cifras.`
             : "Cuando haya asignaciones en reuniones ya pasadas, aquí se verá cómo se reparten mes a mes."}
+        </p>
+        <p className="mt-0.5 mb-4 text-xs text-muted">
+          {sp.desde || sp.hasta
+            ? "Toda la congregación entre las fechas puestas. Buscar un hermano, elegir un tipo de asignación o incluir las responsabilidades cambia los recuadros y la lista, pero no esta línea."
+            : `Toda la congregación en los últimos ${dias} días, en meses enteros. Solo lo cambian «Desde», «Hasta» y «Avisar tras … días sin asignación».`}
         </p>
         {serie.length > 0 ? (
           <AsignacionesLineChart data={serie} />
         ) : (
           <p className="py-8 text-center text-sm text-muted">
-            No hay ninguna asignación que coincida con los filtros.
+            No hay ninguna asignación en ese período.
           </p>
         )}
       </Card>

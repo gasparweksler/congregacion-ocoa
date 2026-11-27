@@ -1,14 +1,15 @@
 // ============================================================================
 //  Prueba del gráfico de líneas de "Estadísticas de Asignaciones".
 //
-//  El gráfico se dibuja con serieMensual(rows), y `rows` son las MISMAS
-//  participaciones ya filtradas que enseña la lista de abajo. Así que probar
-//  que la serie cuenta exactamente lo que se le da equivale a probar que el
-//  gráfico respeta los filtros: si un filtro quita participaciones, al
-//  gráfico le llegan menos y dibuja menos.
+//  El gráfico se dibuja con serieMensual() sobre las participaciones del
+//  PERÍODO: toda la congregación entre las fechas puestas o, si no se ponen,
+//  desde donde diga desdeDelGrafico() con los días del aviso. Aquí se prueba
+//  que la serie cuenta exactamente lo que se le da y que ese tramo empieza
+//  siempre en un mes entero.
 //    npm run test:serie
 // ============================================================================
 import {
+  desdeDelGrafico,
   serieMensual,
   type HermanoDeLaSerie,
 } from "../src/lib/assignment-series.js";
@@ -149,6 +150,46 @@ check(
   "y se queda con los más recientes",
   largo[largo.length - 1].clave,
 );
+
+// --- Desde dónde arranca el gráfico cuando no se ponen fechas --------------
+console.log("\nEl tramo de 'Avisar tras … días'");
+{
+  const hoy = new Date(2026, 10, 27); // viernes 27 de noviembre de 2026
+  check(
+    desdeDelGrafico(90, hoy) === "2026-08-01",
+    "90 días atrás (29 de agosto) empieza el 1 de agosto, sin medio mes",
+    desdeDelGrafico(90, hoy),
+  );
+  check(
+    desdeDelGrafico(30, hoy) === "2026-10-01",
+    "30 días atrás empieza en octubre",
+    desdeDelGrafico(30, hoy),
+  );
+  check(
+    desdeDelGrafico(365, hoy) === "2025-11-01",
+    "un año atrás cruza bien el cambio de año",
+    desdeDelGrafico(365, hoy),
+  );
+  check(
+    desdeDelGrafico(1, new Date(2026, 2, 1)) === "2026-02-01",
+    "un día atrás desde el 1 de marzo cae en febrero",
+    desdeDelGrafico(1, new Date(2026, 2, 1)),
+  );
+  check(
+    desdeDelGrafico(0, hoy) === desdeDelGrafico(90, hoy) &&
+      desdeDelGrafico(NaN, hoy) === desdeDelGrafico(90, hoy),
+    "un número inservible vuelve a los 90 días de siempre",
+  );
+  check(
+    desdeDelGrafico(99999, hoy) === desdeDelGrafico(3650, hoy),
+    "y un número enorme se queda en el tope de 10 años",
+  );
+  check(
+    /^\d{4}-\d{2}-01$/.test(desdeDelGrafico(47, hoy)),
+    "siempre devuelve el día 1 de un mes",
+    desdeDelGrafico(47, hoy),
+  );
+}
 
 console.log(`\n=== ${ok} bien, ${bad} mal ===`);
 process.exit(bad === 0 ? 0 : 1);
